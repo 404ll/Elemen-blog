@@ -13,7 +13,7 @@ export default function ArticleCard({ post }: ArticleCardProps) {
   const href = `/blog/${slug}`;
 
   return (
-    <article className="mb-8 last:mb-0 font-zenmaru">
+    <article className="font-zenmaru">
       {/* 标题 */}
       <h2 className="text-2xl font-bold tracking-tight mb-2 text-black font-zenmaru flex items-center gap-2">
         <Image src="/icon/light.png" alt="light" width={20} height={20} className="flex-shrink-0" />

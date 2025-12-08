@@ -23,22 +23,24 @@ const colorClassMap = {
 export default function CategoryCard() {
   const categories = CATEGORIES;
   return (
-    <div className="max-w-xl mx-auto mt-10">
-        <div className="text-2xl font-bold tracking-tight mb-2 text-black font-zenmaru flex items-center gap-2 text-color[#D18F31]">
-            Article Categories
+    <div className="sticky top-24">
+      <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 transition-all shadow-lg hover:shadow-xl">
+        <h2 className="text-2xl font-bold tracking-tight mb-4 text-black font-zenmaru">
+          Article Categories
+        </h2>
+        <div className="flex flex-col gap-3">
+          {Object.values(categories).map((category) => {
+            const colorClasses = colorClassMap[category.color as keyof typeof colorClassMap];
+            return (
+              <div 
+                key={category.name} 
+                className={`px-4 py-3 ${colorClasses.bg} ${colorClasses.hover} text-base font-bold rounded-lg transition-all text-black cursor-pointer shadow-sm hover:shadow-md`}
+              >
+                {category.name}
+              </div>
+            );
+          })}
         </div>
-    <div className="flex gap-4 flex-wrap justify-center">
-      {Object.values(categories).map((category) => {
-        const colorClasses = colorClassMap[category.color as keyof typeof colorClassMap];
-        return (
-          <div 
-            key={category.name} 
-            className={`px-2 py-1 ${colorClasses.bg} ${colorClasses.hover} text-base font-bold rounded-md transition-colors text-black`}
-          >
-            {category.name}
-          </div>
-        );
-      })}
       </div>
     </div>
   );
