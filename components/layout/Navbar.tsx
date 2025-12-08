@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AnimatePresence, motion } from "framer-motion";
-import { SunIcon, MoonIcon } from "lucide-react";
+import { SunIcon, MoonIcon, GithubIcon } from "lucide-react";
 
 export default function Navbar() {
   const { t } = useTranslation();
@@ -33,6 +33,7 @@ export default function Navbar() {
       
       {/* 右侧：语言切换 + 主题切换 */}
       <div className="flex items-center gap-2">
+        <Link href="https://github.com/404ll/Elemen-blog" target="_blank" className="hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 focus:p-2 rounded-lg"><GithubIcon className="w-5 h-5 text-black"/></Link>
         <LanguageSwitcher />
         <button
           onClick={toggleTheme}
@@ -69,7 +70,9 @@ export default function Navbar() {
             </AnimatePresence>
           </div>
         </button>
+      
       </div>
+
     </nav>
   );
 }
