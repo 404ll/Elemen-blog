@@ -1,26 +1,334 @@
+/* ============================================
+   Tailwind CSS v4 导入
+   ============================================ */
+/* 
+   Tailwind CSS v4 使用新的 @import 语法
+   这会导入 Tailwind 的所有基础样式、组件和工具类
+*/
 @import "tailwindcss";
 
+/* ============================================
+   CSS 变量定义（主题色、字体等）
+   ============================================ */
+/* 
+   使用 CSS 变量可以方便地管理主题色和字体
+   这些变量可以在整个应用中使用，也支持暗色模式切换
+*/
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* 字体变量 - 从 layout.tsx 中定义的字体 */
+  --font-bitcount: 'Bitcount Prop Single', sans-serif;
+ 
+  /* 主题色 - 浅色模式 */
+  --background: 255 255 255;        /* 白色背景 */
+  --foreground: 0 0 0;              /* 黑色文字 */
+  
+  /* 主色调 - 可以根据你的品牌色调整 */
+  --primary: 59 130 246;            /* 蓝色 */
+  --primary-foreground: 255 255 255;
+  
+  /* 次要色 */
+  --secondary: 244 244 245;        /* 浅灰色 */
+  --secondary-foreground: 9 9 11;
+  
+  /* 边框和分割线 */
+  --border: 229 229 230;
+  --ring: 59 130 246;               /* 焦点环颜色 */
+  
+  /* 文本颜色 */
+  --muted: 244 244 245;             /* 静音背景 */
+  --muted-foreground: 113 113 122;  /* 静音文字 */
+  
+  /* 成功、警告、错误等状态色 */
+  --success: 34 197 94;
+  --warning: 234 179 8;
+  --error: 239 68 68;
+  
+  /* 圆角大小 */
+  --radius: 0.5rem;
+  
+  /* 渐变背景 - 从浅蓝色到浅黄色 */
+  --gradient-bg: linear-gradient(180deg, #A8D3FF 0%, #FFF4DF 100%);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
+/* 暗色模式变量 */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: 0 0 0;            /* 黑色背景 */
+    --foreground: 244 244 245;     /* 浅色文字 */
+    
+    --primary: 96 165 250;
+    --primary-foreground: 0 0 0;
+    
+    --secondary: 39 39 42;
+    --secondary-foreground: 244 244 245;
+    
+    --border: 39 39 42;
+    --ring: 96 165 250;
+    
+    --muted: 39 39 42;
+    --muted-foreground: 161 161 170;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* 如果使用 class 切换暗色模式（而不是 prefers-color-scheme） */
+.dark {
+  --background: 0 0 0;
+  --foreground: 244 244 245;
+  
 }
+
+/* ============================================
+   全局样式重置
+   ============================================ */
+/* 
+   重置浏览器默认样式，确保跨浏览器一致性
+*/
+* {
+  /* 使用 border-box 模型，padding 和 border 包含在宽度内 */
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  /* 平滑滚动 - 点击锚点链接时平滑滚动到目标位置 */
+  scroll-behavior: smooth;
+  
+  /* 防止 iOS Safari 的字体大小调整 */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  /* 使用 CSS 变量中定义的字体 */
+  font-family: var(--font-bitcount), sans-serif;
+  
+  /* 渐变背景 - 从浅蓝色到浅黄色 */
+  background: var(--gradient-bg);
+  background-attachment: fixed; /* 固定背景，滚动时保持渐变位置 */
+  
+  /* 文字颜色 - 使用 RGB 值配合 Tailwind 的 opacity */
+  color: rgb(var(--foreground));
+  
+  /* 字体渲染优化 */
+  -webkit-font-smoothing: antialiased;  /* macOS/iOS */
+  -moz-osx-font-smoothing: grayscale;   /* Firefox on macOS */
+  
+  /* 防止文本选择时的蓝色高亮（移动端） */
+  -webkit-tap-highlight-color: transparent;
+  
+  /* 最小高度确保内容不足时也能填满屏幕 */
+  min-height: 100vh;
+}
+
+/* ============================================
+   链接样式
+   ============================================ */
+/* 
+   定义链接的默认样式和悬停效果
+*/
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  /* 悬停时可以改变颜色，具体颜色根据设计调整 */
+  opacity: 0.8;
+}
+
+/* ============================================
+   图片和媒体元素
+   ============================================ */
+/* 
+   确保图片和视频响应式且不会溢出容器
+*/
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* ============================================
+   表单元素
+   ============================================ */
+/* 
+   统一表单元素的样式
+*/
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ============================================
+   代码块样式
+   ============================================ */
+/* 
+   为代码块和行内代码定义样式
+*/
+code {
+  font-family: var(--font-bitcount), monospace;
+  font-size: 0.9em;
+  background-color: rgb(var(--muted));
+  padding: 0.125rem 0.25rem;
+  border-radius: calc(var(--radius) / 2);
+}
+
+pre {
+  font-family: var(--font-bitcount), monospace;
+  overflow-x: auto;
+  background-color: rgb(var(--muted));
+  padding: 1rem;
+  border-radius: var(--radius);
+}
+
+pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+/* ============================================
+   滚动条样式（Webkit 浏览器）
+   ============================================ */
+/* 
+   自定义滚动条外观（Chrome、Safari、Edge）
+*/
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(var(--background));
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--muted));
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--muted-foreground) / 0.5);
+}
+
+/* ============================================
+   选择文本的样式
+   ============================================ */
+/* 
+   自定义文本被选中时的背景色和文字颜色
+*/
+::selection {
+  background-color: rgb(var(--primary) / 0.3);
+  color: rgb(var(--foreground));
+}
+
+/* ============================================
+   焦点可见性
+   ============================================ */
+/* 
+   为键盘导航提供清晰的焦点指示
+   使用 :focus-visible 只在键盘导航时显示，鼠标点击时不显示
+*/
+:focus-visible {
+  outline: 2px solid rgb(var(--ring));
+  outline-offset: 2px;
+}
+
+/* ============================================
+   工具类（自定义类）
+   ============================================ */
+/* 
+   定义一些常用的工具类，可以在组件中直接使用
+*/
+
+/* 字体类 - 使用自定义字体变量 */
+.font-bitcount {
+  font-family: var(--font-bitcount), sans-serif;
+}
+
+/* 渐变背景类 - 从浅蓝色到浅黄色 */
+.bg-gradient-custom {
+  background: var(--gradient-bg);
+  background-attachment: fixed; /* 可选：让背景固定，滚动时不动 */
+}
+
+/* 容器类 - 限制最大宽度并居中 */
+.container-custom {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* 文本截断 - 单行文本溢出显示省略号 */
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 多行文本截断 - 显示指定行数后截断 */
+.text-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.text-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 平滑过渡动画 */
+.transition-smooth {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 隐藏滚动条但保持滚动功能 */
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE 和 Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;  /* Chrome、Safari、Opera */
+}
+
+/* ============================================
+   响应式断点说明（Tailwind 默认）
+   ============================================ */
+/* 
+   Tailwind CSS 的默认断点：
+   - sm: 640px   (小屏幕，如大手机)
+   - md: 768px   (中等屏幕，如平板)
+   - lg: 1024px  (大屏幕，如小笔记本)
+   - xl: 1280px  (超大屏幕，如桌面)
+   - 2xl: 1536px (超超大屏幕)
+   
+   在组件中使用：className="md:text-lg lg:text-xl"
+*/
