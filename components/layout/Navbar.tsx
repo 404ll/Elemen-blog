@@ -1,7 +1,20 @@
+'use client';
 import Link from "next/link";
 import LanguageSwitcher from "../i18n/LanguageSwitcher";
 import Image from "next/image";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { AnimatePresence, motion } from "framer-motion";
+import { SunIcon, MoonIcon } from "lucide-react";
+
 export default function Navbar() {
+  const { t } = useTranslation();
+  const [isDark, setIsDark] = useState(false);
+
+  const toggleTheme = () => {
+    setIsDark(!isDark);
+  };
+
   return (
     <nav className="w-full flex items-center justify-between p-4 text-black fixed top-0 left-0 right-0 z-50 backdrop-blur-sm bg-white/10"> {/* 毛玻璃效果 */}
       {/* 左侧：Logo + 标题 */}
@@ -12,16 +25,50 @@ export default function Navbar() {
       
       {/* 中间：导航链接 */}
       <div className="flex items-center gap-6">
-        <Link href="/about" className="hover:opacity-70 transition-opacity text-xl font-semibold">About</Link>
-        <Link href="/blog" className="hover:opacity-70 transition-opacity text-xl font-semibold">Blog</Link>
-        <Link href="/projects" className="hover:opacity-70 transition-opacity text-xl font-semibold">Projects</Link>
-        <Link href="/contact" className="hover:opacity-70 transition-opacity text-xl font-semibold">Contact</Link>
+        <Link href="/about" className="hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 focus:p-2 rounded-lg">About</Link>
+        <Link href="/blog" className="hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 focus:p-2 rounded-lg">Blog</Link>
+        <Link href="/projects" className="hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 focus:p-2 rounded-lg">Projects</Link>
+        <Link href="/contact" className="hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 focus:p-2 rounded-lg">Contact</Link>
       </div>
       
       {/* 右侧：语言切换 + 主题切换 */}
       <div className="flex items-center gap-2">
         <LanguageSwitcher />
-        <div>主题切换</div>
+        <button
+          onClick={toggleTheme}
+          className="relative p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2"
+          aria-label={
+            isDark ? t("theme.switchToLight") : t("theme.switchToDark")
+          }
+        >
+          <div className="relative w-5 h-5">
+            <AnimatePresence mode="wait">
+              {isDark ? (
+                <motion.div
+                  key="sun"
+                  initial={{ opacity: 0, rotate: -90, scale: 0 }}
+                  animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                  exit={{ opacity: 0, rotate: 90, scale: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute inset-0 "
+                >
+                  <SunIcon className="w-5 h-5 text-black" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="moon"
+                  initial={{ opacity: 0, rotate: 90, scale: 0 }}
+                  animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                  exit={{ opacity: 0, rotate: -90, scale: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute inset-0"
+                >
+                  <MoonIcon className="w-5 h-5 text-black" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </button>
       </div>
     </nav>
   );
