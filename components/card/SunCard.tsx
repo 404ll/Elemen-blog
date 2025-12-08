@@ -84,9 +84,9 @@ const fragmentShader = `
 `;
 
 export default function SunCard() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationFrameRef = useRef<number | undefined>(undefined);
-  const mouseRef = useRef({ x: 0, y: 0 });
+  const canvasRef = useRef<HTMLCanvasElement>(null);//canvasRef是用来引用canvas元素的
+  const animationFrameRef = useRef<number | undefined>(undefined); // 动画帧引用
+  const mouseRef = useRef({ x: 0, y: 0 }); // 鼠标位置引用
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -221,7 +221,7 @@ export default function SunCard() {
   }, []);
 
   return (
-    <div className="w-full h-64 rounded-xl overflow-hidden border-4 border-black bg-black">
+    <div className="w-full h-64 rounded-xl overflow-hidden border-1 border-black bg-black">
       <canvas
         ref={canvasRef}
         className="w-full h-full"

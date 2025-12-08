@@ -10,10 +10,18 @@ export default function Home() {
   return (
     <div className="pt-20">
       <SelfCard />
-      <div className="max-w-2xl mx-auto mt-10">
-        <ArticleList posts={posts} />
+      <div className="flex gap-4">
+        {/*左边*/}
+        <div className="max-w-2xl mx-auto mt-10">
+          <ArticleList posts={posts} />
+        </div>
+        {/*右边*/}
+        <div className="w-1/4">
+        <CategoryCard />
+        </div>
       </div>
-      <CategoryCard />
+     
+     
       <SunCard />
       
     </div>
