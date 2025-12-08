@@ -3,7 +3,7 @@ import LanguageSwitcher from "../i18n/LanguageSwitcher";
 import Image from "next/image";
 export default function Navbar() {
   return (
-    <nav className="w-full flex items-center justify-between px-6 text-black">
+    <nav className="w-full flex items-center justify-between p-4 text-black fixed top-0 left-0 right-0 z-50 backdrop-blur-sm bg-white/10"> {/* 毛玻璃效果 */}
       {/* 左侧：Logo + 标题 */}
       <div className="flex items-center gap-2">
         <Image src="/logo.jpg" alt="logo" className="w-8 h-8 rounded-full" width={100} height={100} />

@@ -17,6 +17,7 @@
 :root {
   /* 字体变量 - 从 layout.tsx 中定义的字体 */
   --font-bitcount: 'Bitcount Prop Single', sans-serif;
+  --font-zenmaru: 'Zen Maru Gothic', sans-serif;
  
   /* 主题色 - 浅色模式 */
   --background: 255 255 255;        /* 白色背景 */
@@ -48,6 +49,8 @@
   
   /* 渐变背景 - 从浅蓝色到浅黄色 */
   --gradient-bg: linear-gradient(180deg, #A8D3FF 0%, #FFF4DF 100%);
+  /* 按钮渐变颜色 */
+  --button-gradient: linear-gradient(180deg, #D18F31 0%, #D32A2A 100%);
 }
 
 /* 暗色模式变量 */
@@ -83,12 +86,6 @@
 /* 
    重置浏览器默认样式，确保跨浏览器一致性
 */
-* {
-  /* 使用 border-box 模型，padding 和 border 包含在宽度内 */
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
 
 html {
   /* 平滑滚动 - 点击锚点链接时平滑滚动到目标位置 */
@@ -264,6 +261,10 @@ pre code {
   font-family: var(--font-bitcount), sans-serif;
 }
 
+.font-zenmaru {
+  font-family: var(--font-zenmaru), sans-serif;
+}
+
 /* 渐变背景类 - 从浅蓝色到浅黄色 */
 .bg-gradient-custom {
   background: var(--gradient-bg);
@@ -309,6 +310,26 @@ pre code {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* 文章 Read more 按钮样式 */
+.article-read-more {
+  display: inline-block;
+  font-size: 1rem;
+  font-weight: bold;
+  font-family: var(--font-bitcount), sans-serif;
+  color: white;
+  text-decoration: none;
+  background-color: rgb(114, 172, 234);
+  padding: 0 0.2rem;
+  /* background: var(--button-gradient); */
+  border-radius: 0.3rem;
+  transition: all 0.2s ease;
+}
+
+.article-read-more:hover {
+  background-color: rgb(35, 99, 167);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(114, 172, 234, 0.3);
+}
 /* 隐藏滚动条但保持滚动功能 */
 .hide-scrollbar {
   -ms-overflow-style: none;  /* IE 和 Edge */
