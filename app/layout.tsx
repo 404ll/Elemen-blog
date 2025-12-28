@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-// import { Geist, Geist_Mono,} from "next/font/google";
+import { Geist, Geist_Mono, Inter} from "next/font/google";
 import "./globals.css";
 import I18nProvider from "@/components/i18n/I18nProvider";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import localFont from "next/font/local";
@@ -15,6 +16,13 @@ const bitcountFont = localFont({
   weight: '100 900', 
 });
 
+//mono font
+const monoFont = Inter({
+  subsets: ['latin'],
+  variable: '--font-mono',
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
+});
 // Zen Maru Gothic - 日文中文字体（支持中文显示）
 const zenMaruGothicFont = localFont({
   src: [
@@ -68,15 +76,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${bitcountFont.variable} ${zenMaruGothicFont.variable} bg-gradient-bg antialiased container-custom`}
+        className={`${bitcountFont.variable} ${zenMaruGothicFont.variable} ${monoFont.variable} bg-gradient-bg antialiased container-custom`}
       >
-        <I18nProvider>
-          <Navbar />
-          {children}
-          <Footer />
-        </I18nProvider>
+        <ThemeProvider>
+          <I18nProvider>
+            <Navbar />
+            {children}
+            <Footer />
+          </I18nProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

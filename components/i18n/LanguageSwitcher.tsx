@@ -20,7 +20,7 @@ export default function LanguageSwitcher() {
      {/* 语言切换 */}
      <button
           onClick={() => i18n.changeLanguage(i18n.language === "zh" ? "en" : "zh")}
-          className="relative p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2"
+          className="relative p-2 rounded-lg text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2"
           aria-label="切换语言"
         >
           <div className="flex items-center gap-1.5">
