@@ -16,10 +16,13 @@ export const MacCodeBlock = ({ children, hasLanguage = false }: MacCodeBlockProp
   const getLanguage = () => {
     if (!hasLanguage) return null;
     
-    const child = React.Children.toArray(children)[0] as any;
-    const className = child?.props?.className || "";
-    const match = className.match(/language-(\w+)/);
-    return match ? match[1] : null;
+    const firstChild = React.Children.toArray(children)[0];
+    if (React.isValidElement<{ className?: string }>(firstChild)) {
+      const className = firstChild.props.className ?? "";
+      const match = className.match(/language-(\w+)/);
+      return match ? match[1] : null;
+    }
+    return null;
   };
 
   // 提取代码文本

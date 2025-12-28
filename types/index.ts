@@ -5,5 +5,5 @@ export interface Post {
     date?: string
     excerpt?: string
     category?: string
-    [key: string]: any //索引签名 - 字段可扩展
+    [key: string]: unknown //索引签名 - 字段可扩展
   }

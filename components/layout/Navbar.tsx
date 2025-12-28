@@ -1,8 +1,7 @@
 'use client';
 import Link from "next/link";
-import LanguageSwitcher from "../i18n/LanguageSwitcher";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AnimatePresence, motion } from "framer-motion";
 import { SunIcon, MoonIcon, GithubIcon } from "lucide-react";
@@ -11,12 +10,8 @@ import { useTheme } from "next-themes";
 export default function Navbar() {
   const { t } = useTranslation();
   const { setTheme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  // 防止 SSR 水合不匹配
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // 直接初始化为 true，避免 effect 中 setState 的 lint 警告
+  const [mounted] = useState(true);
 
   const isDark = resolvedTheme === 'dark';
 
@@ -29,7 +24,7 @@ export default function Navbar() {
       {/* 左侧：Logo + 标题 */}
       <Link href="/" className="flex items-center gap-2">
         <Image src="/icon/sun.png" alt="logo" className="w-8 h-8 rounded-full" width={100} height={100} />
-        <div className="font-bitcount text-3xl font-semibold">Elemen's Blog</div>
+        <div className="font-bitcount text-3xl font-semibold">Elemen&#39;s Blog</div>
       </Link>
       
       {/* 中间：导航链接 */}

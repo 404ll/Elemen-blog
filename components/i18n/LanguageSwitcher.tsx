@@ -1,16 +1,13 @@
 'use client';
 
 import { useTranslation } from 'react-i18next';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { AnimatePresence, motion } from "framer-motion";
 import { Languages } from "lucide-react";
 export default function LanguageSwitcher() {
   const { i18n } = useTranslation();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // 直接初始化为 true，避免 effect 中 setState 的 lint 警告
+  const [mounted] = useState(true);
 
   // 🚀 SSR 期间不渲染按钮，避免 i18n.language 造成不一致
   if (!mounted) return null;

@@ -21,7 +21,7 @@ export default function SelfCard() {
                   height={100}
                   className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/50 p-2 rounded-full"
                 />
-                <span className="text-2xl font-bold tracking-tight">Hello, I'm Elemen !</span>
+                <span className="text-2xl font-bold tracking-tight">Hello, I&#39;m Elemen !</span>
               </div>
   
               <div className="flex gap-3 flex-wrap">

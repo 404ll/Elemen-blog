@@ -28,7 +28,7 @@ function getSlugFromPath(filePath: string): string {
 }
 
 // 解析 frontmatter（简单的 YAML 解析，不依赖 gray-matter）
-function parseFrontmatter(content: string): { frontmatter: Record<string, any>, body: string } {
+function parseFrontmatter(content: string): { frontmatter: Record<string, string>, body: string } {
   const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/
   const match = content.match(frontmatterRegex)
 
@@ -40,7 +40,7 @@ function parseFrontmatter(content: string): { frontmatter: Record<string, any>, 
   const body = match[2]
 
   // 简单的 frontmatter 解析（支持 title, subtitle, date, excerpt）
-  const frontmatter: Record<string, any> = {}
+  const frontmatter: Record<string, string> = {}
   frontmatterText.split("\n").forEach((line) => {
     const colonIndex = line.indexOf(":")
     if (colonIndex > 0) {
@@ -86,7 +86,7 @@ export function getAllPosts(): Post[] {
   })
 }
 
-export function getPostBySlug(slug: string): { frontmatter: Record<string, any>, content: string } | null {
+export function getPostBySlug(slug: string): { frontmatter: Record<string, string>, content: string } | null {
   const filePath = path.join(postsDirectory, `${slug}.mdx`)
   
   if (!fs.existsSync(filePath)) {

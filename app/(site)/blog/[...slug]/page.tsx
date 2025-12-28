@@ -129,11 +129,6 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
         </header>
       </div>
 
-      {/* 分割线 */}
-      <div className="max-w-[72ch] mx-auto px-6">
-        <hr className="border-gray-300 dark:border-gray-700 my-8 transition-colors" />
-      </div>
-
       {/* 文章正文 */}
       <main className="max-w-4xl mx-auto px-6">
         <article className="prose prose-slate dark:prose-invert prose-headings:font-zenmaru prose-p:font-zenmaru max-w-none text-[17px] leading-[1.75] prose-p:leading-[1.75] prose-p:my-[1.6em] prose-li:leading-[1.7] prose-ul:my-[1.2em] prose-ol:my-[1.2em]">

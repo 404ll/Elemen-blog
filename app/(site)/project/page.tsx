@@ -52,7 +52,7 @@ export default function ProjectPage() {
     <div className="pt-20 pb-16">
       <div className="max-w-6xl mx-auto px-4 space-y-8">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-black dark:text-white font-zenmaru">Projects</h1>
+          <h1 className="text-3xl font-bold font-bitcount tracking-[0.2em] text-gray-800 dark:text-gray-400 font-semibold transition-colors">Projects</h1>
           <p className="text-gray-600 dark:text-gray-400 font-zenmaru">
             最近做过的项目与练习，点击卡片可直接前往仓库。
           </p>

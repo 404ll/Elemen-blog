@@ -36,19 +36,14 @@ export default async function BlogCategoryPage({
     <div className="pt-20 pb-16">
       <div className="max-w-5xl mx-auto px-4 space-y-8">
         <header className="space-y-3">
-          <p className="text-xs uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400 font-semibold transition-colors">
+          <p className="text-3xl font-bold font-bitcount tracking-[0.2em] text-gray-800 dark:text-gray-400 font-semibold transition-colors">
             Category
           </p>
-          <h1 className="text-3xl font-bold text-black dark:text-white font-zenmaru transition-colors">
+          <h1 className="text-xl font-bold text-black dark:text-white font-zenmaru transition-colors">
             {meta.name}
           </h1>
         
           <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 transition-colors">
-            <span
-              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${badgeClassName[badgeTone] ?? badgeClassName.gray}`}
-            >
-              {meta.name}
-            </span>
             <span className="text-gray-500 dark:text-gray-400">
               {posts.length > 0 ? `${posts.length} 篇文章` : "暂无文章"}
             </span>
