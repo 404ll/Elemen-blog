@@ -42,9 +42,7 @@ export default async function BlogCategoryPage({
           <h1 className="text-3xl font-bold text-black dark:text-white font-zenmaru transition-colors">
             {meta.name}
           </h1>
-          {meta.description && (
-            <p className="text-gray-600 dark:text-gray-400 font-zenmaru transition-colors">{meta.description}</p>
-          )}
+        
           <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 transition-colors">
             <span
               className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${badgeClassName[badgeTone] ?? badgeClassName.gray}`}

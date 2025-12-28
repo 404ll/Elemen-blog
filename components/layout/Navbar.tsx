@@ -44,7 +44,7 @@ export default function Navbar() {
         <Link href="https://github.com/404ll/Elemen-blog" target="_blank" className="hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 focus:p-2 rounded-lg">
           <GithubIcon className="w-5 h-5 text-black dark:text-white transition-colors"/>
         </Link>
-        {/* <LanguageSwitcher />
+        {/* <LanguageSwitcher /> */}
         <button
           onClick={toggleTheme}
           className="relative p-2 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2"
@@ -81,7 +81,7 @@ export default function Navbar() {
               </AnimatePresence>
             )}
           </div>
-        </button> */}
+        </button>
       
       </div>
 

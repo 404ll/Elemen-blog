@@ -1,23 +1,22 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter} from "next/font/google";
+import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import I18nProvider from "@/components/i18n/I18nProvider";
-import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { ThemeProvider } from "@/provider/ThemeProvider";
 import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
 import localFont from "next/font/local";
 
 
 // Bitcount Prop Single - 英文像素字体
 const bitcountFont = localFont({
-  src: '../fonts/Bitcount_Prop_Single/BitcountPropSingle-VariableFont_CRSV,ELSH,ELXP,slnt,wght.ttf',
+  src: './fonts/Bitcount_Prop_Single/BitcountPropSingle-VariableFont_CRSV,ELSH,ELXP,slnt,wght.ttf',
   variable: '--font-bitcount',
   display: 'swap',
   weight: '100 900', 
 });
 
-//mono font
-const monoFont = Inter({
+// Google 等宽字体（JetBrains Mono）
+const monoFont = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-mono',
   display: 'swap',
@@ -27,27 +26,27 @@ const monoFont = Inter({
 const zenMaruGothicFont = localFont({
   src: [
     {
-      path: '../fonts/Zen_Maru_Gothic/ZenMaruGothic-Light.ttf',
+      path: './fonts/Zen_Maru_Gothic/ZenMaruGothic-Light.ttf',
       weight: '300',
       style: 'normal',
     },
     {
-      path: '../fonts/Zen_Maru_Gothic/ZenMaruGothic-Regular.ttf',
+      path: './fonts/Zen_Maru_Gothic/ZenMaruGothic-Regular.ttf',
       weight: '400',
       style: 'normal',
     },
     {
-      path: '../fonts/Zen_Maru_Gothic/ZenMaruGothic-Medium.ttf',
+      path: './fonts/Zen_Maru_Gothic/ZenMaruGothic-Medium.ttf',
       weight: '500',
       style: 'normal',
     },
     {
-      path: '../fonts/Zen_Maru_Gothic/ZenMaruGothic-Bold.ttf',
+      path: './fonts/Zen_Maru_Gothic/ZenMaruGothic-Bold.ttf',
       weight: '700',
       style: 'normal',
     },
     {
-      path: '../fonts/Zen_Maru_Gothic/ZenMaruGothic-Black.ttf',
+      path: './fonts/Zen_Maru_Gothic/ZenMaruGothic-Black.ttf',
       weight: '900',
       style: 'normal',
     },
@@ -84,7 +83,6 @@ export default function RootLayout({
           <I18nProvider>
             <Navbar />
             {children}
-            <Footer />
           </I18nProvider>
         </ThemeProvider>
       </body>

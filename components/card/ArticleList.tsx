@@ -3,7 +3,7 @@ import type { Post } from "@/types";
 
 export default function ArticleList({ posts }: { posts: Post[] }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 mt-4">
       {posts.length > 0 ? (
         posts.map((post) => (
           <div 

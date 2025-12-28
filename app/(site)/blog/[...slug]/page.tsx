@@ -1,9 +1,10 @@
 import { renderMDX } from "@/lib/mdx";
-import { getAllPosts, getPostBySlug } from "@/lib/post";
+import { getAllPosts, getPostBySlug, normalizeTags } from "@/lib/post";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Calendar, Clock, Tag } from "lucide-react"; 
 import { mdxComponents } from "@/components/ui/MdxContent"; 
+
 
 type BlogPageProps = {
   params: Promise<{ slug: string[] }>;
@@ -74,10 +75,10 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
   );
 
   const displayDate = formatDate(frontmatter.date);
-  const tags = frontmatter.tags || [];
+  const tags = normalizeTags(frontmatter.tags);
 
   return (
-    <div className="mt-20 pb-16 font-zenmaru selection:bg-blue-100 dark:selection:bg-blue-900 selection:text-blue-900 dark:selection:text-blue-100 max-w-5xl mx-auto rounded-2xl transition-colors">
+    <div className="mt-20 pb-16 mb-10 shadow-lg font-zenmaru selection:bg-blue-100 dark:selection:bg-blue-900 selection:text-blue-900 dark:selection:text-blue-100 max-w-5xl mx-auto rounded-2xl transition-colors bg-white dark:bg-gray-900">
       {/* 顶部导航占位 + 返回按钮 */}
       <div className="max-w-4xl mx-auto px-6 pt-12 mb-8">
         <Link 

@@ -77,7 +77,7 @@ export const mdxComponents = {
 
   blockquote: (props: any) => (
     <blockquote
-      className="mt-6 border-l-4 border-gray-400 pl-6 italic text-gray-800 dark:text-gray-200 dark:border-gray-500 [&>*]:text-gray-800 dark:[&>*]:text-gray-200"
+      className="mt-6 border-l-4 border-gray-400 pl-6 italic text-gray-800 dark:text-gray-200 dark:border-gray-500 [&>*]:text-gray-800 dark:[&>*]:text-gray-200 bg-gray-100 dark:bg-gray-800/50 p-4 rounded-lg"
       {...props}
     />
   ),
@@ -93,7 +93,7 @@ export const mdxComponents = {
   ),
 
   thead: (props: any) => (
-    <thead className="border-b bg-gray-50 dark:bg-gray-800/50" {...props} />
+    <thead className="border-b bg-gray-100 dark:bg-gray-800" {...props} />
   ),
 
   tbody: (props: any) => (
@@ -132,7 +132,9 @@ export const mdxComponents = {
     
     return (
       <div className="my-8">
-        <MacCodeBlock hasLanguage={hasLanguage}>{children}</MacCodeBlock>
+        <MacCodeBlock hasLanguage={hasLanguage}>
+          {children}
+        </MacCodeBlock>
       </div>
     );
   },
@@ -142,7 +144,7 @@ export const mdxComponents = {
     if (!className || !className.startsWith('language-')) {
       return (
         <code
-          className="relative rounded bg-gray-100 dark:bg-gray-800 px-[0.4rem] py-[0.2rem] font-mono text-sm font-semibold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"
+          className="relative rounded bg-gray-100 dark:bg-gray-800 px-[0.1rem] py-[0.2rem] font-mono text-sm font-semibold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"
           {...props}
         >
           {children}

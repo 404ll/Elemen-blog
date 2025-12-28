@@ -60,7 +60,12 @@ function parseFrontmatter(content: string): { frontmatter: Record<string, any>, 
 
 
 export function getAllPosts(): Post[] {
-  const files = getAllMdxFiles(postsDirectory)
+  // 仅展示位于子文件夹内的文章，过滤掉 content 根目录下的散落 MDX
+  // 相对路径中包含分隔符（/ 或 \）即表示在子目录
+  const files = getAllMdxFiles(postsDirectory).filter((filePath) => {
+    const relative = path.relative(postsDirectory, filePath)
+    return /[\\/]/.test(relative)
+  })
 
   const posts = files.map((filePath) => {
     const fileContent = fs.readFileSync(filePath, "utf-8")
@@ -92,4 +97,35 @@ export function getPostBySlug(slug: string): { frontmatter: Record<string, any>,
   const { frontmatter, body } = parseFrontmatter(fileContent)
 
   return { frontmatter, content: body }
+}
+
+// 辅助函数：归一化 tags，支持数组、逗号分隔、JSON 数组字符串
+export function normalizeTags(raw: unknown): string[] {
+  const clean = (val: string) =>
+    val.replace(/^["']|["']$/g, "").trim();
+
+  if (Array.isArray(raw)) {
+    return raw.map((t) => clean(String(t))).filter(Boolean);
+  }
+
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    // 尝试解析 JSON 数组字符串
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return parsed.map((t) => clean(String(t))).filter(Boolean);
+        }
+      } catch (_) {
+        // fallback 到逗号分隔解析
+      }
+    }
+    return trimmed
+      .split(",")
+      .map((t) => clean(t))
+      .filter(Boolean);
+  }
+
+  return [];
 }
