@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CATEGORIES } from "@/constant";
 
 // 颜色类名映射 - Tailwind 需要完整的类名才能识别
@@ -29,15 +30,19 @@ export default function CategoryCard() {
           Article Categories
         </h2>
         <div className="flex flex-col gap-3">
-          {Object.values(categories).map((category) => {
-            const colorClasses = colorClassMap[category.color as keyof typeof colorClassMap];
+          {Object.entries(categories).map(([key, category]) => {
+            const colorClasses =
+              colorClassMap[category.color as keyof typeof colorClassMap] ??
+              colorClassMap.gray;
             return (
-              <div 
-                key={category.name} 
-                className={`px-4 py-3 ${colorClasses.bg} ${colorClasses.hover} text-base font-bold rounded-lg transition-all text-black dark:text-white cursor-pointer shadow-sm hover:shadow-md`}
+              <Link
+                key={category.name}
+                href={`/blog/category/${key}`}
+                aria-label={`查看 ${category.name} 分类`}
+                className={`block px-4 py-3 ${colorClasses.bg} ${colorClasses.hover} text-base font-bold rounded-lg transition-all text-black dark:text-white cursor-pointer shadow-sm hover:shadow-md`}
               >
                 {category.name}
-              </div>
+              </Link>
             );
           })}
         </div>
