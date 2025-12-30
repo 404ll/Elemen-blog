@@ -179,12 +179,12 @@ export default function HomePage() {
 1. 响应式切换：
     - 切换语言时，不需要刷新浏览器，页面瞬间变化。这是 SPA (单页应用) 的标准体验。
 2. 开发体验极佳：
-    - 代码里直接写 {locale.home.title}，有 TypeScript 甚至还能有智能提示。
+    - 代码里直接写 `{locale.home.title}`，有 TypeScript 甚至还能有智能提示。
     - 完全符合 React 的声明式编程思维，心智负担小。
 3. 强大的插值能力：
-    - 处理 "Welcome, {name}" 这种带参数的文案非常简单，写个简单的 replace 函数即可，或者直接在组件里拼接。
+    - 处理 `"Welcome, {name}"` 这种带参数的文案非常简单，写个简单的 replace 函数即可，或者直接在组件里拼接。
 4. 组件化支持：
-    - 可以轻松翻译组件的 Props，比如 <Input placeholder={locale.searchPlaceholder} />，这是原生 DOM 方案很难做到的。
+    - 可以轻松翻译组件的 Props，比如 `<Input placeholder={locale.searchPlaceholder} />`，这是原生 DOM 方案很难做到的。
 
 ❌ **缺点**
 

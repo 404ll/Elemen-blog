@@ -1,0 +1,5 @@
+#!/bin/sh
+
+# 在提交前执行构建，失败则阻止提交
+npm run build || exit 1
+
