@@ -1,0 +1,574 @@
+---
+title: "前端国际化（i18n）- React"
+date: "2025-10-15"
+excerpt: "主要叙述React方向目前的多语言方案"
+category: "frontend"
+---
+## **方案一： 原生 JS**
+
+### 命令式编程
+
+核心：独立语言配置文件 + 全局工具函数 + 语言切换逻辑，适配纯静态页面
+
+命令式编程的缺点太普遍，这里就不重复说明，仅仅介绍方法作为一个演变过程的了解
+
+1. 第一步：创建多语言配置文件（`lang` 目录下）
+
+```jsx
+// lang/zh-CN.js  中文配置
+export default {
+  button: { submit: "提交", cancel: "取消" },
+  tip: { success: "操作成功", fail: "操作失败" },
+  user: { name: "用户名", login: "请登录后操作" }
+};
+
+// lang/en-US.js  英文配置
+export default {
+  button: { submit: "Submit", cancel: "Cancel" },
+  tip: { succes
+  s: "Operation succeeded", fail: "Operation failed" },
+  user: { name: "Username", login: "Please log in first" }
+};
+```
+
+1. 第二步：封装多语言核心工具类（`lang/index.js`）
+
+```jsx
+import zhCN from "./zh-CN.js";
+import enUS from "./en-US.js";
+
+// 全局存储当前语言+配置
+const Lang = {
+  currentLang: "zh-CN", // 默认中文
+  langConfig: { "zh-CN": zhCN, "en-US": enUS },
+
+  // 获取对应key的文案，支持嵌套key（如 button.submit）
+  get(key) {
+    const keys = key.split(".");
+    let value = this.langConfig[this.currentLang];
+    for (const k of keys) {
+      value = value?.[k] || key; // 无对应key返回本身，兜底
+    }
+    return value;
+  },
+
+  // 切换语言，触发页面重新渲染
+  changeLang(lang) {
+    if (!this.langConfig[lang]) return;
+    this.currentLang = lang;
+    this.renderPage(); // 重新渲染页面文案
+  },
+
+  // 遍历页面带data-lang-key属性的元素，更新文案
+  renderPage() {
+    document.querySelectorAll("[data-lang-key]").forEach(el => {
+      const key = el.getAttribute("data-lang-key");
+      el.textContent = this.get(key);
+    });
+  }
+};
+
+export default Lang;
+```
+
+1. 第三步：页面使用 + 语言切换
+
+```html
+<!-- HTML 结构 -->
+<div>
+  <button onclick="Lang.changeLang('zh-CN')">中文</button>
+  <button onclick="Lang.changeLang('en-US')">English</button>
+  <button data-lang-key="button.submit"></button>
+  <p data-lang-key="tip.success"></p>
+</div>
+
+<!-- 引入脚本 -->
+<script type="module">
+  import Lang from "./lang/index.js";
+  window.Lang = Lang;
+  // 页面初始化渲染
+  Lang.renderPage();
+</script>
+```
+
+---
+
+### 声明式编程
+
+1. 改造语言包 
+
+```jsx
+// lang/zh-CN.js
+export default {
+  welcome: "欢迎",
+  button: "提交"
+};
+```
+
+1. 创建 React Context 
+
+创建一个 useLocale Hook，代替直接命令式编程的 import。
+
+```jsx
+// src/hooks/useLocale.js
+import { useState, useContext, createContext } from "react";
+import zhCN from "../lang/zh-CN";
+import enUS from "../lang/en-US";
+
+// 1. 建立对应关系
+const langMap = {
+  "zh-CN": zhCN,
+  "en-US": enUS
+};
+
+// 2. 创建上下文
+const LocaleContext = createContext();
+
+// 3. 提供器组件 (包裹在 App 最外层)
+export const LocaleProvider = ({ children }) => {
+  // 核心：这里用 useState 存当前语言包，这样切换时才会触发 React 重新渲染！
+  const [langType, setLangType] = useState("zh-CN");
+
+  // 动态获取当前的语言对象
+  const locale = langMap[langType]; 
+
+  const changeLang = (type) => {
+    setLangType(type);
+  };
+
+  return (
+    <LocaleContext.Provider value={{ locale, changeLang, langType }}>
+      {children}
+    </LocaleContext.Provider>
+  );
+};
+
+// 4. 导出 Hook 
+export const useLocale = () => {
+  const context = useContext(LocaleContext);
+  if (!context) throw new Error("useLocale must be used within LocaleProvider");
+  return context;
+};
+```
+
+3. 组件里使用 
+
+```jsx
+import { useLocale } from "./hooks/useLocale";
+
+export default function HomePage() {
+  // 这里拿到的 locale 是响应式的！
+  const { locale, changeLang } = useLocale(); 
+
+  return (
+    <div>
+      {/* 像对象一样直接点出来 */}
+      <h1>{locale.welcome}</h1> 
+      <button>{locale.button}</button>
+
+      {/* 点击切换，不需要刷新页面，React 自动重新渲染 */}
+      <button onClick={() => changeLang("zh-CN")}>中文</button>
+      <button onClick={() => changeLang("en-US")}>English</button>
+    </div>
+  );
+}
+```
+
+**✅ 优点**
+
+1. 响应式切换：
+    - 切换语言时，不需要刷新浏览器，页面瞬间变化。这是 SPA (单页应用) 的标准体验。
+2. 开发体验极佳：
+    - 代码里直接写 {locale.home.title}，有 TypeScript 甚至还能有智能提示。
+    - 完全符合 React 的声明式编程思维，心智负担小。
+3. 强大的插值能力：
+    - 处理 "Welcome, {name}" 这种带参数的文案非常简单，写个简单的 replace 函数即可，或者直接在组件里拼接。
+4. 组件化支持：
+    - 可以轻松翻译组件的 Props，比如 <Input placeholder={locale.searchPlaceholder} />，这是原生 DOM 方案很难做到的。
+
+❌ **缺点**
+
+1. 渲染性能开销：
+    - 因为语言 Context 通常包裹在最顶层 (<App>)。一旦语言切换，整个 React 组件树都会重新渲染。
+    - *注：对于绝大多数应用，这个开销是可以忽略不计的，除非你的页面极其庞大且没有做任何 memo 优化。*
+2. 包体积问题（需优化）：
+    - 如果直接 import zh from './zh-CN'，无论你用不用，所有语言包都会被打包进主 JS 里。
+    - *解决方案：需要配合 React.lazy 或动态 import() 实现语言包的按需加载。*
+
+## **方案二： React + react-i18next**
+
+核心：基于 i18next 核心引擎，提供专属 Hooks，支持懒加载、SSR，适配 React 函数组件，步骤如下
+
+1. 安装依赖
+
+```bash
+npm install i18next react-i18next i18next-http-backend --save
+# i18next-http-backend：支持远程加载配置文件，可选
+```
+
+1. 初始化 i18n 配置（`src/i18n.js`）
+
+```jsx
+import i18n from "i18next";
+import { initReactI18next } from "react-i18next";
+import Backend from "i18next-http-backend"; // 按需加载配置文件
+
+// 本地语言配置（也可放独立JSON文件，通过Backend加载）
+const resources = {
+  "zh-CN": {
+    translation: {
+      button: { submit: "提交", cancel: "取消" },
+      tip: { success: "操作成功" },
+      user: { welcome: "欢迎{{name}}登录" } // 占位符语法
+    }
+  },
+  "en-US": {
+    translation: {
+      button: { submit: "Submit", cancel: "Cancel" },
+      tip: { success: "Operation succeeded" },
+      user: { welcome: "Welcome {{name}} to log in" }
+    }
+  }
+};
+
+i18n
+  .use(Backend) // 启用远程加载（可选，小型项目可省略）
+  .use(initReactI18next) // 绑定react-i18next
+  .init({
+    resources,
+    lng: "zh-CN", // 默认语言
+    fallbackLng: "zh-CN", // 兜底语言
+    interpolation: {
+      escapeValue: false // React自带XSS防护，关闭即可
+    }
+  });
+
+export default i18n;
+```
+
+1. 全局引入（`src/index.js`）
+
+```jsx
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import "./i18n"; // 引入i18n配置，无需挂载，自动生效
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+```
+
+1. 组件内使用
+
+```jsx
+// App.jsx
+import { useTranslation } from "react-i18next";
+
+function App() {
+  // 1. 获取 hook
+  // t: 翻译函数
+  // i18n: 实例对象，用于切换语言
+  const { t, i18n } = useTranslation();
+
+  // 切换语言
+  const handleSwitch = (lang) => {
+    i18n.changeLanguage(lang);
+  };
+
+  return (
+   <div className="p-4 border rounded">
+      {/* 基础用法：直接翻译 */}
+      <h2>{t('tip.success')}</h2>
+
+      {/* 插值用法：传递变量 */}
+      {/* 对应配置: "welcome": "欢迎 {{name}} 登录" */}
+      <p>{t('user.welcome', { name: '张三' })}</p>
+
+      {/* 组件插值 (高级用法) */}
+      {/* 场景：文案里夹杂着加粗、链接 */}
+      <Trans i18nKey="user.agreement">
+        我已阅读并同意 <strong>用户协议</strong>
+      </Trans>
+
+      {/* 切换按钮 */}
+      <div className="mt-4 gap-2 flex">
+        <button onClick={() => handleSwitch('zh-CN')}>中文</button>
+        <button onClick={() => handleSwitch('en-US')}>English</button>
+      </div>
+    </div>
+  );
+  );
+}
+
+export default App;
+```
+
+### 工程化进阶
+
+如果做的是大型项目，不要把所有翻译都塞进一个 resources 对象里。
+
+**命名空间 (Namespaces) —— 文件拆分**
+
+i18next 支持把翻译文件按模块拆分（如 common.json, header.json, settings.json）。
+
+```jsx
+// 组件里只加载自己需要的模块，提升性能
+const { t } = useTranslation('settings'); 
+t('title'); // 会去 settings.json 里找
+```
+
+**懒加载 (Lazy Loading) —— 极致性能**
+
+结合 i18next-http-backend，我们不需要在首屏把所有语言包（比如几十种语言）都打包进 JS 里。
+
+```jsx
+// i18n.js 修改
+i18n
+  .use(Backend)
+  .init({
+    // 不需要在这里写 resources 对象了！
+    // 告诉它去哪里加载静态文件
+    backend: {
+      loadPath: '/locales/{{lng}}/{{ns}}.json',
+    },
+    // ...
+  });
+```
+
+- **效果**：用户访问页面时，浏览器会在 Network 里发起一个请求去下载 `/locales/zh-CN/translation.json`。切换到英文时，再下载英文包。**首屏体积大幅减小。**
+
+**✅ 优点** 
+
+1. 生态霸主：i18next 是 JS 界最成熟的国际化库，几乎没有它解不了的 bug。
+2. 性能优化完备：
+    - 按需加载：不用一次性把 10MB 的翻译文件全加载进来。
+    - Memoization：内部做了缓存优化，比手写的 Context 性能更好。
+    - SSR 支持：完美支持 Next.js / Remix 等服务端渲染框架。
+3. 功能极其强大：
+    - 复数处理：自动处理英文的单复数（apple vs apples）。
+    - 上下文：支持基于上下文的翻译（比如“行”：行走的行 vs 银行的行）。
+    - 嵌套引用：一个翻译里可以引用另一个翻译 key。
+4. 安全：自带 XSS 防护，默认转义 HTML 字符。
+
+**❌ 缺点** 
+
+1. **配置繁琐**：相比于手写一个简单的 Context，i18next 需要引入 2-3 个包，配置一大堆参数（backend, detector, interpolation...）。
+2. **包体积**：虽然支持懒加载语言包，但 i18next 核心库本身有一定体积（约 15-20KB gzipped），对于追求极致轻量的微型项目来说有点重。
+3. **TypeScript 支持略繁琐**：要想获得完美的类型提示（键入 t(' 时自动提示 user.welcome），需要写额外的 d.ts 类型声明文件来覆盖默认类型，新手容易卡住。
+
+---
+
+## **方案三： React + react-intl (FormatJS)**
+
+核心：雅虎（Yahoo!）开源，基于 Web 标准（ICU 语法），强调**数据格式化**（日期、货币），采用**组件化**风格，适合对国际化标准要求极高的金融 / B端项目。
+
+1. 安装依赖
+
+```bash
+npm install react-intl --save
+```
+
+1. 全局配置与注入（src/main.jsx）
+
+不同于 i18next 的单例模式，react-intl 采用标准的 React Context Provider 模式。
+
+```jsx
+import React, { useState } from 'react';
+import ReactDOM from 'react-dom/client';
+import { IntlProvider } from 'react-intl';
+import App from './App';
+
+// 1. 引入语言包（实际项目中通常按需加载）
+import zhCN from './locales/zh-CN.json';
+import enUS from './locales/en-US.json';
+
+const messages = {
+  'zh-CN': zhCN,
+  'en-US': enUS,
+};
+
+const Root = () => {
+  const [locale, setLocale] = useState('zh-CN');
+
+  return (
+    // 2. 使用 IntlProvider 包裹应用
+    // key={locale} 是一个小技巧：强迫 Provider 在语言切换时彻底重新渲染，避免更新延迟
+    <IntlProvider locale={locale} messages={messages[locale]} key={locale}>
+      <App changeLanguage={setLocale} />
+    </IntlProvider>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Root />);
+```
+
+1. 组件内使用
+
+react-intl 提供了两种风格：**组件式** 和 **Hook 式**
+
+```jsx
+import React from 'react';
+import { FormattedMessage, FormattedDate, FormattedNumber, useIntl } from 'react-intl';
+
+export default function Dashboard({ changeLanguage }) {
+  // Hook 方式：用于无法使用组件的地方（如 placeholder, title 属性）
+  const intl = useIntl();
+  
+  return (
+    <div className="p-4">
+      {/* 1. 核心特性：组件式翻译 */}
+      {/* id 对应 json 中的 key，defaultMessage 是兜底文案 */}
+      <h1>
+        <FormattedMessage id="dashboard.title" defaultMessage="仪表盘" />
+      </h1>
+
+      {/* 2. 核心特性：强大的数据格式化 (日期/货币) */}
+      <p>
+        当前时间：
+        <FormattedDate 
+          value={new Date()} 
+          year="numeric" 
+          month="long" 
+          day="2-digit" 
+        />
+        {/* 中文下显示：2024年1月21日 */}
+        {/* 英文下显示：January 21, 2024 */}
+      </p>
+
+      <p>
+        账户余额：
+        <FormattedNumber 
+          value={9999.99} 
+          style="currency" 
+          currency="USD" 
+        />
+        {/* 自动处理千分位和货币符号：$9,999.99 */}
+      </p>
+
+      {/* 3. 属性翻译 (使用 Hook) */}
+      <input 
+        placeholder={intl.formatMessage({ id: 'search.placeholder', defaultMessage: '搜索...' })} 
+      />
+
+      {/* 切换按钮 */}
+      <div className="mt-4">
+        <button onClick={() => changeLanguage('zh-CN')}>中文</button>
+        <button onClick={() => changeLanguage('en-US')}>English</button>
+      </div>
+    </div>
+  );
+}
+```
+
+### 工程化进阶
+
+**自动化提取  — 「一键初始化」**
+
+react-intl (FormatJS) 生态最大的亮点是它的 CLI 工具。它鼓励你在代码里写 defaultMessage，然后通过工具自动提取出 json 文件，防止漏翻。
+
+```jsx
+# 安装 CLI
+npm install --save-dev @formatjs/cli
+
+# package.json 添加脚本
+# "extract": "formatjs extract 'src/**/*.js*' --out-file lang/en.json --id-interpolation-pattern '[sha512:contenthash:base64:6]'"
+```
+
+- **效果**：开发时直接写 `<FormattedMessage defaultMessage="你好" />`，运行脚本后，自动生成 id 和翻译文件，大大降低维护成本。
+
+**按需加载 - 「对比react-i18next理解」**
+
+默认的 import zhCN from './zh-CN.json' 会将所有语言包打包进主 bundle.js。如果项目有 10 种语言，用户只看中文，却被迫下载了其他 9 种语言的资源。
+
+**解决方案**：利用 Vite/Webpack 的 **Dynamic Import (import())** 能力，将语言包拆分成独立的 Chunk，点击切换时才通过网络请求加载。
+
+**1. 第一步：重构目录结构**
+
+将语言包放在 src 目录下（而不是 public），这样 Vite 才能对 JSON 文件进行打包、压缩和 Hash 处理。
+
+```latex
+src/
+  locales/
+    zh-CN.json
+    en-US.json
+  i18n/
+    loader.js  <-- 新增：专门负责动态加载
+```
+
+**2. 第二步：编写异步加载器 (src/i18n/loader.js)**
+
+我们需要封装一个函数，根据传入的 locale 字符串，动态 import 对应的文件。
+
+```jsx
+// src/i18n/loader.js
+
+// 定义支持的语言列表（白名单）
+const localeMap = {
+  'zh-CN': () => import('../locales/zh-CN.json'),
+  'en-US': () => import('../locales/en-US.json'),
+};
+
+export const loadLocaleData = async (locale) => {
+  // 1. 检查语言是否支持，不支持则回退到默认
+  const loader = localeMap[locale] || localeMap['zh-CN'];
+  
+  try {
+    // 2. 动态加载 (Vite 会自动将这些 json 分割成单独的 js chunk)
+    const module = await loader();
+    
+    // 3. 返回 JSON 内容 (注意: 动态 import 得到的是 Module，数据在 default 属性里)
+    return module.default;
+  } catch (error) {
+    console.error(`无法加载语言包: ${locale}`, error);
+    return {};
+  }
+};
+```
+
+**3. 第三步：改造入口组件 (支持异步状态)**
+
+注：IntlProvider 不能在 messages 为空时渲染，所以我们需要处理 **Loading 状态**。
+
+```jsx
+// src/App.jsx 或 src/main.jsx
+import React, { useState, useEffect } from 'react';
+import { IntlProvider } from 'react-intl';
+import { loadLocaleData } from './i18n/loader';
+import Dashboard from './Dashboard';
+
+export default function App() {
+  const [locale, setLocale] = useState('zh-CN');
+  const [messages, setMessages] = useState(null); // 初始为空
+
+  useEffect(() => {
+    // 切换语言时，触发异步加载
+    loadLocaleData(locale).then((data) => {
+      setMessages(data);
+    });
+  }, [locale]);
+
+  // 1. 如果消息还没加载回来，显示 Loading (防止页面闪烁或报错)
+  if (!messages) {
+    return <div className="p-4 text-gray-500">Language Loading...</div>;
+  }
+
+  // 2. 加载完成后，渲染应用
+  return (
+    <IntlProvider locale={locale} messages={messages} key={locale}>
+      <Dashboard changeLanguage={setLocale} />
+    </IntlProvider>
+  );
+}
+```
+
+**✅ 优点**
+
+1. 标准化：严格遵循 ICU 国际标准语法，处理复数、性别等复杂语法极其精准。
+2. 格式化能力最强：内置了对日期、时间、数字、货币、百分比的专业格式化，这是 i18next 相对较弱的地方（虽然 i18next 也有插件，但不如这个原生）。
+3. 代码即文档：鼓励在代码中写 defaultMessage，看代码就能知道这里原本显示的文案，不用去翻 json 文件。
+4. 工具链完善：自动提取消息的 CLI 工具非常成熟，适合多人协作的大型项目。
+
+**❌ 缺点**
+
+1. **代码啰嗦**：大量使用 <FormattedMessage /> 组件，导致 JSX 结构变得很深、很重，不如 t('') 函数简洁。
+2. **包体积**：由于包含了大量 Polyfill（为了兼容旧浏览器对 Intl API 的支持），体积相对较大。
