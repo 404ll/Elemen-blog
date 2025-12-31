@@ -60,7 +60,7 @@ export const metadata: Metadata = {
   description: "Elemen's Blog",
   icons: {
     icon: [
-      { url: '/logo.JPG', type: 'image/png' },
+      { url: '/logo.JPG', type: 'image/jpg' },
     ],
     shortcut: '/logo.JPG',
     apple: '/logo.JPG',
