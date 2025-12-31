@@ -1,7 +1,6 @@
 <div align="center">
   <h1>🧩 Elemen — 技术博客</h1>
   <p><strong>前端 × Web3 · 像素美学 · MDX 驱动</strong></p>
-  <img width="220" src="https://dummyimage.com/200x200/000/fff&text=ELE" />
   
   <p>
     <a href="./README.md">🌍 English Version</a>
@@ -20,8 +19,6 @@
 - **MDX 内容系统**
 
 博客内容涵盖前端工程、区块链技术、智能合约、Move/Solidity、UI/UX，以及我的组件库。
-
-只要我对某件事好奇 → 我就会构建它、记录它。
 
 ---
 
