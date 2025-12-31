@@ -6,14 +6,17 @@ import { useTranslation } from "react-i18next";
 import { AnimatePresence, motion } from "framer-motion";
 import { SunIcon, MoonIcon, GithubIcon } from "lucide-react";
 import { useTheme } from "next-themes";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function Navbar() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { setTheme, resolvedTheme } = useTheme();
   // 直接初始化为 true，避免 effect 中 setState 的 lint 警告
   const [mounted] = useState(true);
 
   const isDark = resolvedTheme === 'dark';
+  const isZhCN = i18n.language === 'zh-CN';
+  const navFontClass = isZhCN ? 'font-zenmaru' : 'font-bitcount';
 
   const toggleTheme = () => {
     setTheme(isDark ? 'light' : 'dark');
@@ -28,10 +31,10 @@ export default function Navbar() {
       </Link>
       
       {/* 中间：导航链接 */}
-      <div className="flex items-center gap-6">
-        <Link href="/blog" className="hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 focus:p-2 rounded-lg">Blog</Link>
-        <Link href="/project" className="hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 focus:p-2 rounded-lg">Project</Link>
-        <Link href="/about" className="hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 focus:p-2 rounded-lg">About</Link>
+      <div className="flex items-center gap-10">
+        <Link href="/blog" className={`hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 focus:p-2 rounded-lg ${navFontClass}`}>{t('nav.blog')}</Link>
+        <Link href="/project" className={`hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 focus:p-2 rounded-lg ${navFontClass}`}>{t('nav.project')}</Link>
+        <Link href="/about" className={`hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 focus:p-2 rounded-lg ${navFontClass}`}>{t('nav.about')}</Link>
       </div>
       
       {/* 右侧：语言切换 + 主题切换 */}
@@ -39,7 +42,7 @@ export default function Navbar() {
         <Link href="https://github.com/404ll/Elemen-blog" target="_blank" className="hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 focus:p-2 rounded-lg">
           <GithubIcon className="w-5 h-5 text-black dark:text-white transition-colors"/>
         </Link>
-        {/* <LanguageSwitcher /> */}
+        <LanguageSwitcher />
         <button
           onClick={toggleTheme}
           className="relative p-2 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2"

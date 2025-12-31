@@ -1,5 +1,7 @@
+'use client';
 import Link from "next/link";
 import { CATEGORIES } from "@/constant";
+import { useTranslation } from "react-i18next";
 
 // 颜色类名映射 - Tailwind 需要完整的类名才能识别
 const colorClassMap = {
@@ -22,12 +24,13 @@ const colorClassMap = {
 } as const;
 
 export default function CategoryCard() {
+  const { t } = useTranslation();
   const categories = CATEGORIES;
   return (
     <div className="sticky top-24">
       <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 transition-all shadow-lg hover:shadow-xl dark:bg-gray-800 dark:border dark:border-gray-700">
         <h2 className="text-2xl font-bold tracking-tight mb-4 text-black font-zenmaru dark:text-white">
-          Article Categories
+          {t('home.articleCategories')}
         </h2>
         <div className="flex flex-col gap-3">
           {Object.entries(categories).map(([key, category]) => {

@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import I18nProvider from "@/components/i18n/I18nProvider";
+import I18nProvider from "@/provider/I18nProvider";
 import { ThemeProvider } from "@/provider/ThemeProvider";
 import Navbar from "@/components/layout/Navbar";
 import localFont from "next/font/local";
-
+// import "@/i18n"; 
 
 // Bitcount Prop Single - 英文像素字体
 const bitcountFont = localFont({
@@ -59,13 +59,11 @@ export const metadata: Metadata = {
   title: "Elemen's Blog",
   description: "Elemen's Blog",
   icons: {
-    icon: '/logo.jpg',
-    shortcut: '/logo.jpg',
-    apple: '/logo.jpg',
-    other: {
-      rel: 'icon',
-      url: '/logo.jpg',
-    },
+    icon: [
+      { url: '/logo.JPG', type: 'image/png' },
+    ],
+    shortcut: '/logo.JPG',
+    apple: '/logo.JPG',
   },
 };
 

@@ -1,9 +1,12 @@
+'use client';
 import ArticleList from "@/components/card/ArticleList";
 import { getAllPosts } from "@/lib/post";
 import { CATEGORIES } from "@/constant";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 
 export default function BlogPage() {
+  const { t } = useTranslation();
   const posts = getAllPosts();
   const badgeClassName = {
     blue: "bg-blue-50 text-black border border-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
@@ -16,9 +19,9 @@ export default function BlogPage() {
     <div className="pt-20 pb-16">
       <div className="max-w-5xl mx-auto px-4 space-y-8">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold font-bitcount tracking-[0.2em] text-gray-800 dark:text-gray-400 font-semibold transition-colors">Blog</h1>
+          <h1 className="text-3xl font-bold font-bitcount tracking-[0.2em] text-gray-800 dark:text-gray-400 font-semibold transition-colors">{t('blog.title')}</h1>
           <p className="text-gray-600 dark:text-gray-400 font-zenmaru transition-colors">
-            技术、区块链与折腾记录。
+            {t('blog.subtitle')}
           </p>
           <div className="flex flex-wrap gap-2 pt-2">
             {Object.entries(CATEGORIES).map(([key, meta]) => (
