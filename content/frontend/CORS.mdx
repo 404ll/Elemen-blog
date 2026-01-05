@@ -1,0 +1,212 @@
+---
+title: "同源策略&跨域方法"
+date: "2026-1-5"
+excerpt: "关于同源策略，以及实战中常用的跨域方法整理"
+category: "frontend"
+---
+## 同源策略
+
+**同源**：域名、端口、协议三者相同
+- **规则**：如果你的网页在 http://a.com，你想请求 http://b.com 的数据。
+- **拦截**：**协议、域名、端口** 只要有一个不一样，就会拦截**响应数据**
+（注意：请求其实发出去了，后端也处理了，但浏览器把回来的数据拦截了）
+
+## 跨域方法
+
+### 方案一：CORS (后端配置)
+
+这是 W3C 标准方案。既然浏览器是因为“没得到允许”才拦截，那让后端给个“通行证”不就行了？
+- **原理**：后端在响应头（Response Header）里加上几个字段。
+- **关键字段**：
+    - Access-Control-Allow-Origin: http://your-frontend.com (允许哪个源)
+    - Access-Control-Allow-Methods: GET, POST (允许什么方法)
+    - Access-Control-Allow-Credentials: true (允许带 Cookie)
+
+**细节**：
+
+- **简单请求 vs 预检请求 (Preflight)**：
+    如果你发的是 application/json 或者带了自定义 Header（如 Authorization），浏览器会先自动发一个 **OPTIONS** 请求去探路。如果后端没处理 OPTIONS，跨域就会失败。
+    
+- **适用场景**：公共 API、后端完全由自己团队控制的项目。
+
+**关于预检请求** 
+
+在 CORS 跨域请求中，浏览器为了安全，会在发送真正的业务请求（如 POST）之前，先自动发送一个 **OPTIONS** 方法的请求，用于向服务器确认是否允许该跨域操作。这一过程称为“预检”。
+**2. 触发条件 (非简单请求)**
+
+只要满足以下**任意**一点，浏览器就会强制发送 OPTIONS：
+- **Content-Type** 是 application/json (最常见)。
+- **请求头** 中包含了自定义 Header（如 Authorization, X-Token）。
+- **请求方法** 是 PUT, DELETE, PATCH 等。
+
+**3. 请求流程**
+
+1. **浏览器**：自动发出 OPTIONS 请求，询问服务器允许的方法和 Header。
+2. **服务器**：返回 204 No Content 或 200 OK，并在响应头中通过 Access-Control-Allow-* 字段告知权限。
+3. **浏览器**：检查权限通过后，才会发出真正的业务请求（如 POST）。
+    - *现象：Network 面板中同一个接口会出现两次请求。*
+
+**4. 性能优化**
+
+后端可以在 OPTIONS 的响应头中设置 **Access-Control-Max-Age**（单位：秒）。
+- **作用**：让浏览器缓存预检结果。
+- **效果**：在有效期内，浏览器再次发送同样的请求时，直接跳过 OPTIONS，直接发送业务请求，减少网络延迟。
+
+---
+
+### 方案二：开发环境代理 (Vite / Webpack Proxy)
+
+开发场景：本地 localhost:3000 调不动开发环境 dev-api.com 的接口。
+这时候改后端配置太麻烦，我们在**本地**欺骗浏览器。
+
+- **原理**：
+ 
+    浏览器有同源策略，但**服务器没有**。
+    
+    前端 (localhost) -> **本地 Node 服务 (Vite)** -> 后端 API。
+    
+    Vite 作为一个中间人，帮转发请求。
+    
+- **Vite 配置 (vite.config.ts)**
+    
+    ```jsx
+    export default defineConfig({
+      server: {
+        proxy: {
+          '/api': {
+            target: 'http://backend-api.com', // 真实接口地址
+            changeOrigin: true, // 把 Host 头改成后端的，防止后端校验
+            rewrite: (path) => path.replace(/^\/api/, '') // 去掉 /api 前缀
+          }
+        }
+      }
+    })
+    ```
+    
+    - **效果**：你请求 /api/user，Vite 帮你转给 http://backend-api.com/user。浏览器觉得你是在请求 localhost，所以不跨域。
+- **⚠️** ：**这个配置只在开发环境（npm run dev）有效！** 打包后生成的是静态 HTML/JS 文件，没有 Node 服务了，这个代理就失效了。
+
+---
+
+### 方案三：Nginx 反向代理
+
+接方案二，Vite 代理打包后失效了，那上线了怎么办？
+
+我们在生产环境部署一个 **Nginx**（或者云网关），让它充当和 Vite 代理一样的角色。
+
+- **拓扑结构**：
+    
+    用户浏览器 -> Nginx (80端口) -> 分发给前端静态资源
+    
+    - > 分发给后端 API
+- **Nginx 配置示例**：
+    
+    ```jsx
+    server {
+        listen 80;
+        server_name my-website.com;
+    
+        # 1. 访问前端页面
+        location / {
+            root /var/www/html/dist; # Vite 打包后的 dist 目录
+            index index.html;
+            try_files $uri $uri/ /index.html; # 支持 History 路由
+        }
+    
+        # 2. 访问接口 (反向代理解决跨域)
+        location /api/ {
+            # 浏览器请求 /api/user，Nginx 转发给后端，浏览器认为是同源的
+            proxy_pass http://backend-server:8080/; 
+        }
+    }
+    ```
+    
+- **适用场景**：大多数企业级的前后端分离部署。
+
+---
+
+### 方案四：BFF / API Routes (Next.js 特供)
+
+既然你用 **Next.js**，你手里自带了一把跨域神器。
+
+- **原理**：Next.js 本身就是个服务端（Node.js）。可以写一个 API Route，让 Next.js 的服务端去请求外部 API，然后再把数据给前端组件。这其实就是**自带了反向代理**。
+- **代码示例 (src/app/api/proxy/route.ts)**：
+    
+    ```tsx
+    import { NextResponse } from 'next/server';
+    
+    export async function GET() {
+      // 1. Next.js 服务端发请求（无跨域限制）
+      const res = await fetch('https://external-api.com/data', {
+          headers: { 'Authorization': 'Bearer xxx' }
+      });
+      const data = await res.json();
+    
+      // 2. 返回给前端（同源）
+      return NextResponse.json(data);
+    }
+    ```
+    
+- **前端调用**：fetch('/api/proxy')
+- **适用场景**：
+    - 调用第三方的、无法控制 CORS 配置的接口。
+    - 需要隐藏 API Key（比如 OpenAI 的 Key 不能暴露在前端，必须在 BFF 层转发）。
+
+> BFF 是位于前端与后端服务之间的一层定制后端，
+> 用于为特定前端提供最合适的接口形态，
+> 通过接口聚合和适配提升性能和开发效率。
+
+---
+
+### 补充学习：**window.postMessage**
+
+场景：
+- **页面 A** (www.main.com): 你的主系统。
+- **页面 B** (www.child.com): 用 <iframe> 嵌入在 A 里面的一个子页面（或者 A 打开的一个新窗口）。
+因为同源策略，A 想要拿到 B 里面的 DOM（比如 iframe.contentWindow.document），或者读取 B 的 LocalStorage，浏览器会直接报错：**"Blocked a frame with origin..."**
+
+### 核心 API
+
+发送方 (页面 A)
+```jsx
+// 获取 iframe 的窗口对象
+const iframeWin = document.getElementById('myFrame').contentWindow;
+
+// 发送消息
+// 参数1: 要发的数据 (可以是 JSON 对象)
+// 参数2: 目标源 (Security!). "*" 代表不限制，但生产环境必须写具体域名，防止被截获。
+iframeWin.postMessage({ type: 'LOGIN_SUCCESS', token: 'xyz' }, 'http://www.child.com');
+```
+
+接收方 (页面 B)
+```jsx
+// 监听 'message' 事件
+window.addEventListener('message', (event) => {
+  // 🔥 关键安检：必须检查消息来源！防止坏人给你发假消息
+  if (event.origin !== 'http://www.main.com') return;
+
+  // 处理数据
+  const { type, token } = event.data;
+  if (type === 'LOGIN_SUCCESS') {
+    localStorage.setItem('token', token);
+    console.log('收到主应用的 Token 啦！');
+  }
+});
+```
+
+### 实战案例：微前端与 SSO
+**案例 1：微前端父子通信 (qiankun / wujie)**
+在大厂的微前端架构中，基座应用（父）和子应用（子）可能部署在不同的域名下。
+- **场景**：基座切换了“深色模式”，需要通知所有子应用变色。
+- **实现**：基座通过 postMessage 广播 `{ theme: 'dark' }`，子应用监听到后修改自己的 CSS 变量。
+
+**案例 2：跨域 LocalStorage 共享 (SSO)**
+你登录了 taobao.com，为什么访问 tmall.com 也是登录状态？
+（虽然实际通常用 Cookie，但 postMessage 也能做）。
+- **原理**：
+    1. tmall.com 偷偷加载一个隐藏的 iframe login.taobao.com。
+    2. login.taobao.com 读取自己的 LocalStorage Token。
+    3. 通过 postMessage 把 Token 发回给 tmall.com。
+    4. tmall.com 收到 Token，写入自己的 Storage。
+
+**⚠️**：如果你监听了 message 事件，但没检查 event.origin，那么**任何网站**都可以用 iframe 嵌入你的页面，然后给你发一条恶意的指令（比如 `{ type: 'DELETE_USER' }`）。
