@@ -162,7 +162,7 @@ category: "frontend"
 
 场景：
 - **页面 A** (www.main.com): 你的主系统。
-- **页面 B** (www.child.com): 用 <iframe> 嵌入在 A 里面的一个子页面（或者 A 打开的一个新窗口）。
+- **页面 B** (www.child.com): 用 `<iframe>` 嵌入在 A 里面的一个子页面（或者 A 打开的一个新窗口）。
 因为同源策略，A 想要拿到 B 里面的 DOM（比如 iframe.contentWindow.document），或者读取 B 的 LocalStorage，浏览器会直接报错：**"Blocked a frame with origin..."**
 
 ### 核心 API
