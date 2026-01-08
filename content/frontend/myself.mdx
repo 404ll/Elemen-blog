@@ -1,0 +1,149 @@
+---
+title: "情景开发"
+date: "2026-1-8"
+excerpt: "为了进一步的学习一些我在平时开发过程中不怎么熟悉的底层逻辑和hooks，因此我做了一套提示词专门让大模型来帮我，从实战中加深影响，所以有了这个栏目「**情景开发**」"
+category: "frontend"
+---
+
+## 页面滚动→显示按钮
+
+当用户滚动页面超过 300px 时，显示一个“回到顶部”的按钮。
+
+```jsx
+import React, { useState, useEffect } from 'react';
+
+function ScrollToTop() {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    // 1. 定义处理函数
+    const handleScroll = () => {
+      console.log("正在滚动..."); // 验证是否多次注册
+      if (window.scrollY > 300) {
+        setShow(true);
+      } else {
+        setShow(false);
+      }
+    };
+
+    // 2. 在 Mount 之后绑定
+    window.addEventListener('scroll', handleScroll);
+
+    // 3. 必须：在 Unmount 之前清理
+    // 底层逻辑：当组件销毁，React 会调用这个返回函数
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []); // 空数组确保只在挂载和卸载时执行
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  return (
+    show && (
+      <button 
+        onClick={scrollToTop} 
+        style={{ position: 'fixed', bottom: 50, right: 50 }}
+      >
+        Back to Top
+      </button>
+    )
+  );
+}
+```
+
+### **如果监听的是“特定容器”而非 Window，**使用useRef
+
+```jsx
+function ScrollBox() {
+  const containerRef = React.useRef(null);
+
+  useEffect(() => {
+    const box = containerRef.current; // 通过 ref 拿到 DOM
+    if (!box) return;
+
+    const handleScroll = () => {
+      console.log("容器内滚动:", box.scrollTop);
+    };
+
+    // 在特定元素上绑定
+    box.addEventListener('scroll', handleScroll);
+
+    return () => box.removeEventListener('scroll', handleScroll);
+  }, []); // 注意：如果 containerRef 指向的元素会变，这里逻辑会更复杂
+
+  return (
+    <div ref={containerRef} style={{ height: '200px', overflow: 'auto' }}>
+      <div style={{ height: '1000px' }}>滚动我内容</div>
+    </div>
+  );
+}
+```
+
+### 如果我的 `handleScroll` 函数里需要用到一个由 `props` 传进来的 `threshold`不是写死的数字
+
+```jsx
+function ScrollToTop({ threshold }) { // threshold 从 props 传进来
+  const [show, setShow] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleScroll = () => {
+      // 这里的 threshold 永远是当前渲染周期的新值
+      if (window.scrollY > threshold) {
+        setShow(true);
+      } else {
+        setShow(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+
+    return () => {
+      // 关键：每次 threshold 变化，都会先跑这里，注销旧的监听
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [threshold]); // 依赖项必须包含 threshold
+
+  // ... render ...
+}
+```
+
+**底层性能**角度看，这里隐藏着一个工程痛点：
+
+- **问题**：如果 `threshold` 频繁变化（虽然实际业务中少见，但假设它变了），`useEffect` 就会不断地“卸载-挂载-卸载-挂载”。对于全局 `window` 监听来说，这虽然不至于卡顿，但不是最优解。
+
+### 引入useRef→跳出闭包陷阱
+
+这个模式在开发高性能组件（如复杂图表、拖拽组件）时非常常用。其实可以总结记忆「当你希望组件“记住”某些信息，但又不想让这些信息 [触发新的渲染](https://zh-hans.react.dev/learn/render-and-commit) 时，你可以使用 **ref** 」
+
+```jsx
+function ScrollToTop({ threshold }) {
+  const [show, setShow] = React.useState(false);
+  
+  // 1. 创建 Ref
+  const thresholdRef = React.useRef(threshold);
+  
+  // 2. 每次渲染时，手动更新 current
+  // 因为这是在 Render 阶段执行的赋值，它是同步的，极快
+  thresholdRef.current = threshold; 
+
+  React.useEffect(() => {
+    const handleScroll = () => {
+      // 3. 这里永远能拿到最新的 current
+      if (window.scrollY > thresholdRef.current) {
+        setShow(true);
+      } else {
+        setShow(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []); // 保持空数组，只绑定一次
+
+  // ... render ...
+}
+```
+
+未完待续…

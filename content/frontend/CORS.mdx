@@ -127,7 +127,6 @@ category: "frontend"
 
 ### 方案四：BFF / API Routes (Next.js 特供)
 
-既然你用 **Next.js**，你手里自带了一把跨域神器。
 
 - **原理**：Next.js 本身就是个服务端（Node.js）。可以写一个 API Route，让 Next.js 的服务端去请求外部 API，然后再把数据给前端组件。这其实就是**自带了反向代理**。
 - **代码示例 (src/app/api/proxy/route.ts)**：

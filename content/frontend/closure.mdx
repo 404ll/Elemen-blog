@@ -56,7 +56,7 @@ function debounce(fn, delay) {
   // 准备一个“取消执行”的开关
   let timer = null;
 
-  return function () {
+  return function (...args) {
     // 每次触发都先取消上一次
     clearTimeout(timer);
 
