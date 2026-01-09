@@ -1,7 +1,7 @@
 ---
 title: "情景开发"
 date: "2026-1-8"
-excerpt: "为了进一步的学习一些我在平时开发过程中不怎么熟悉的底层逻辑和hooks，因此我做了一套提示词专门让大模型来帮我，从实战中加深影响，所以有了这个栏目「**情景开发**」"
+excerpt: "为了进一步的学习一些我在平时开发过程中不怎么熟悉的底层逻辑和hooks，因此我做了一套提示词专门让大模型来帮我，从实战中加深影响，所以有了这个栏目「情景开发」"
 category: "frontend"
 ---
 
@@ -53,7 +53,7 @@ function ScrollToTop() {
 }
 ```
 
-### **如果监听的是“特定容器”而非 Window，**使用useRef
+### 如果监听的是“特定容器”而非 Window -> 使用useRef
 
 ```jsx
 function ScrollBox() {
@@ -81,7 +81,7 @@ function ScrollBox() {
 }
 ```
 
-### 如果我的 `handleScroll` 函数里需要用到一个由 `props` 传进来的 `threshold`不是写死的数字
+### 如果我的 `handleScroll` 函数里需要用到一个由 `props` 传进来的 `threshold`不是写死的数字?
 
 ```jsx
 function ScrollToTop({ threshold }) { // threshold 从 props 传进来

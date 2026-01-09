@@ -1,0 +1,537 @@
+---
+title: "React Hooks"
+date: "2026-1-9"
+excerpt: "收集整理常用到的hook"
+category: "frontend"
+---
+
+感觉如果真正掌握的话，还是可以把官方文档多读几遍。这样融会贯通得更快，理解得也更深刻
+
+## 关于Hook
+
+### 理解hook前需要理解「渲染」
+
+**「 刷新页面 」 = 组件被卸载并重新挂载**
+
+**「 渲染 」 = React 调用组件函数，将需要显示的UI展示在页面上**
+
+**React的渲染过程**：
+
+- 执行组件函数 - 这个过程就是 *渲染过程*
+- 生成虚拟DOM
+- 把结果更新到真实页面（DOM） - diff比较
+
+**什么时候会触发渲染**
+
+- 第一次进入页面（组件挂载）
+- state 变化
+- props 变化
+- 父组件渲染导致子组件也渲染
+
+**什么时候会卸载组件**
+
+- 条件渲染中不再渲染它
+- 离开路由页面
+- 手动卸载
+
+### Hook的结构
+
+Hooks 底层并不是通过 key 或名字索引，而是基于调用顺序进行状态匹配，因此 React 在 Fiber 节点上维护了一个 Hook 链表，在每次 render 时按顺序遍历和复用对应的 Hook 节点。
+
+```jsx
+export type Hook = {
+  memoizedState: any,// 存储 Hook 的当前状态
+  baseState: any,//基础状态，用于状态更新时的计算
+  baseQueue: Update<any, any> | null,//基础更新队列
+  queue: any,//当前更新队列
+  next: Hook | null,//指向链表中下一个 Hook 的引用
+};
+```
+
+Hook的结构决定了hook的原则： **Hooks 必须在函数组件顶层调用**
+
+因为Hooks 的调用顺序在 render 阶段是确定的，但名字在运行时是不可感知的。
+
+---
+
+### useEffect
+
+`useEffect` 用于处理**组件渲染**后产生的副作用（Side Effects），例如：
+
+- 数据请求（fetch）
+- DOM 操作
+- 事件监听
+- 定时器
+- 订阅 / 取消订阅
+- 日志 / 埋点
+
+React 会在**渲染后**执行 effect，并在下次执行前或组件卸载时执行返回的清理函数（cleanup）。
+
+```jsx
+useEffect(() => {
+  // 副作用逻辑：初始化、请求数据、注册一次性事件
+  return () => {
+    // 清理逻辑：组件卸载时执行
+  };
+}, []); // 空依赖：只在组件挂载后执行一次
+
+useEffect(() => {
+  // 当依赖项变化时执行
+  return () => {
+    // 下次依赖变化前清理
+  };
+}, [a, b]);
+
+useEffect(() => {
+  // 每次渲染都会执行
+  return () => {
+    // 下次渲染前清理
+  };
+});
+```
+
+第一次渲染完 → effect 执行 →（更新时）先执行 cleanup → 再执行新的 effect → （卸载时）执行最后一次 cleanup，避免：
+
+- 内存泄漏
+- 重复注册监听事件
+- 重复计时器
+- 重复订阅
+- 使用过期状态
+
+---
+
+### useRef
+
+```jsx
+const ref  = useRef(null)
+<input ref={ref} />
+```
+
+主要是一些对**DOM的操作，以及**当一条信息用于渲染时，将它保存在 state 中。当一条信息仅被事件处理器需要，并且**更改它不需要重新渲染时**，使用 ref 可能会更高效。
+
+应用场景：
+
+- 聚焦
+- 滚动
+- 选择文本 / 控制视频 / 调用原始 DOM API
+
+---
+
+### useMemo & useCallback
+
+React 的核心机制是 **Re-render（重新渲染）**。
+当父组件状态改变时，它会重新执行函数体。对于函数组件来说，**“重新执行”意味着“一切重来”**
+
+**useMemo**
+
+```jsx
+const value = useMemo(() => {
+  return heavyWork(a, b)
+}, [a, b])
+```
+
+- **缓存“返回值”**（通常是昂贵运算的结果）
+- 避免组件每次渲染都重复执行计算
+- 有时用于缓存“引用类型”，避免子组件不必要更新
+
+应用场景：
+
+| 场景 | 示例 |
+| --- | --- |
+| 计算量大 | 复杂列表过滤、排序 |
+| 依赖数据不变的情况下避免重新计算 | 价格合计、统计逻辑 |
+| 缓存对象/数组，避免引用频繁变化 | 传给子组件的 options、config |
+
+**useCallback**
+
+```jsx
+const handleClick = useCallback(() => {
+  doSomething(id)
+}, [id])
+```
+
+主要作用
+
+- **缓存函数引用**，让每次渲染不会重新创建新函数
+- 搭配 `React.memo` 使用时，可以减少子组件重渲染
+
+应用场景：
+
+| 场景 | 原因 |
+| --- | --- |
+| 传给 memo 子组件的事件处理函数 | 保持 props 引用稳定 |
+| 使用依赖函数的 useEffect | 避免 effect 不必要触发 |
+| 避免在循环中重复创建函数 | 性能优化 |
+
+**React.memo**
+
+React 函数组件的默认规则：父组件每次渲染时，子组件也会一起渲染（无论 props 有没有变化），会带来一些性能上的问题。
+
+```jsx
+const MyComponent = React.memo(function MyComponent(props) {
+  console.log("render");
+  return <div>{props.value}</div>;
+});
+```
+
+**React.memo 是一个高阶组件**，用来缓存“函数组件”的渲染结果，避免不必要的重新渲染。一般都是搭配useCallback使用。
+
+```jsx
+// React 内部的判断逻辑
+if (prevProps === nextProps) {
+  // 命中缓存！直接复用上次渲染生成的虚拟 DOM，跳过该组件的函数执行
+  return prevFiber; 
+} else {
+  // 属性变了，重新执行函数体
+  return renderComponent(nextProps);
+}
+```
+
+React.memo 只比较 props 的“**浅层比较**”
+
+- 数字、字符串、布尔：没问题
+- 对象、数组、函数：每次都是新引用 → props 判定为“变化”
+
+例如：
+
+`<Child onClick={() => {}} />`每次父组件渲染都会创建新函数→ React.memo 判定 props 改变→Child 会重新渲染→ React.memo 白用了
+
+解决方法：
+
+用 useCallback 稳定函数引用：
+
+```jsx
+const handleClick = useCallback(() => {}, [])
+<Child onClick={handleClick} />
+```
+
+---
+
+### useContext
+
+用来实现跨组件通信，避免层层传递props
+
+1. 创建context: Context  + useState
+
+```jsx
+import { createContext, useContext, useState, useEffect } from "react";
+
+const UserContext = createContext(null);
+
+// 创建相关Provider
+export function UserProvider({ children }) {
+  const [user, setUser] = useState(null);   // 后端数据
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // 获取数据函数
+  async function fetchUser() {
+    try {
+      setLoading(true);
+
+      const res = await fetch("/api/user");
+      if (!res.ok) throw new Error("Failed to fetch user");
+
+      const data = await res.json();
+      setUser(data);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // 页面加载自动请求
+  useEffect(() => {
+    fetchUser();
+  }, []);
+
+  // 暴露给外部的操作
+  const refresh = () => fetchUser();
+  
+	//🌟: 这里也可以使用useMemo来避免 value 频繁变化
+  return (
+    <UserContext.Provider value={{ user, loading, error, refresh }}>
+      {children}
+    </UserContext.Provider>
+  );
+}
+
+//b. 导出context
+export function useUser() {
+  return useContext(UserContext);
+}
+```
+
+1. 用provider包裹子组件
+
+```jsx
+import { UserProvider } from "./UserContext";
+import UserProfile from "./UserProfile";
+
+export default function App() {
+  return (
+    <UserProvider>
+      <UserProfile />
+    </UserProvider>
+  );
+}
+```
+
+1. 组件使用
+
+```jsx
+import { useUser } from "./UserContext";
+
+export default function UserProfile() {
+  const { user, loading, error, refresh } = useUser();
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error}</p>;
+
+  return (
+    <div>
+      <h2>User Profile</h2>
+      <p>Name: {user.name}</p>
+      <p>Email: {user.email}</p>
+
+      <button onClick={refresh}>Refresh</button>
+    </div>
+  );
+}
+```
+
+主要运用场景是：
+
+1. 用户状态（User）
+
+- 登录用户信息
+- 权限 role
+- Token/登录态
+
+2. 全局 UI 状态
+
+- 主题（dark / light）
+- 当前语言 locale（i18n）
+- 模式切换（侧边栏展开/关闭）
+
+3. 全局配置（Config）
+
+- 请求配置（baseURL）
+- App 配置
+- 静态配置（env）
+
+---
+
+### useReducer
+
+这个目前我在项目里用得比较少（水平有限），先结合 (React文档):[https://react.dev/learn/extracting-state-logic-into-a-reducer]整理在这里
+
+**为什么不是 useState？**
+
+| **维度** | **useState** | **useReducer** |
+| --- | --- | --- |
+| **逻辑位置** | 散落在各个事件处理函数（Handler）中 | 集中在单一的 `reducer` 函数中 |
+| **更新方式** | 直接覆盖或依赖前值计算 | 通过 `dispatch(action)` 触发状态机转换 |
+| **状态关联** | 多个状态更新需要写多个 `setXXX` | 一个 `action` 可以同时更新多个关联状态 |
+| **可测试性** | 逻辑耦合在组件内，难以纯函数测试 | `reducer` 是纯函数，脱离 React 也能写单元测试 |
+
+当 state 很简单（1～3 个字段），useState 最好,但当出现以下情况时，用 useState 就“乱了”：
+
+- 多个 state 之间存在**关联逻辑**
+- 多个 setState 会导致**难以维护**
+- 更新逻辑有**明确定义的分支**
+- 需要将 state 更新逻辑**抽离成一个可复用模块**
+
+比如：
+
+- 表单状态（多个字段 + 多种操作）
+- 复杂 UI 状态（modal、loading、errors、steps）
+- 游戏状态 / 编辑器状态（撤销/重做）
+- 全局状态管理（结合 useContext）
+
+**useReducer 用于管理复杂、多分支、可预测的状态更新逻辑，用来分离简化使用useState的状态管理逻辑，**个人感觉其实就是让状态更新逻辑更像「状态机」
+
+它不是通过设置状态来告诉 React “要做什么”，而是通过事件处理程序 dispatch 一个 “action” 来指明 “用户刚刚做了什么”
+
+```jsx
+// 1. 定义初始状态（心智模型：状态机的所有可能状态）
+const initialState = { count: 0, lastAction: null };
+
+// 2. 编写 Reducer（心智模型：状态转换规则）
+// 它是纯函数：相同的输入必有相同的输出，无副作用
+function countReducer(state, action) {
+  switch (action.type) {
+    case "increment":
+      return { ...state, count: state.count + 1, lastAction: 'add' };
+    case "decrement":
+      return { ...state, count: state.count - 1, lastAction: 'sub' };
+    case "reset":
+      return initialState;
+    default:
+      throw new Error(`未知的 action 类型: ${action.type}`);
+  }
+}
+
+function CounterApp() {
+  const [state, dispatch] = useReducer(countReducer, initialState);
+
+  return (
+    <div>
+      <p>当前计数：{state.count} (上次操作: {state.lastAction})</p>
+      {/* 这里的 dispatch 引用永远不变，对性能优化极友好 */}
+      <button onClick={() => dispatch({ type: "increment" })}>增加</button>
+      <button onClick={() => dispatch({ type: "decrement" })}>减少</button>
+    </div>
+  );
+}
+```
+
+主要场景：
+
+- 复杂表单管理
+- 组件中包含多个状态且相互关联
+- 多步骤流程
+
+---
+
+## 相关面试题自检 - AI
+
+- 为什么 useEffect 会执行两次？（严格模式）
+    
+    **因为 React18 的 StrictMode 会故意执行两次“初始化阶段的副作用”，用于帮助开发者发现：**
+    
+    - 副作用是否是“纯函数”
+    - 是否存在未清理的订阅、定时器、事件监听
+    - 是否依赖同步状态更新导致的 bug
+    
+    **生产环境不会执行两次，只在开发环境中执行。**
+    
+    **严格模式做的事：**
+    
+    - mount → 执行 effect( )
+    - **unmount → 执行 cleanup( )（模拟一次卸载）**
+    - mount → 再次执行 effect( )
+- React.memo 原理
+    
+    **React.memo 会缓存一个组件的渲染结果，并在下次渲染时对比新的 props：**
+    
+    - 如果 props“浅比较”后未变化 → 直接复用缓存 → 不重新渲染
+    - 如果 props 变化 → 执行重新渲染
+    
+    **浅比较规则：**
+    
+    - 基本类型直接比较值
+    - 引用类型比较地址（导致对象/数组/函数永远不相等）
+- useCallback 什么时候会“反而拖慢性能”？
+    
+    **useCallback 本身也需要开销（记忆 + 比较依赖项），**
+    
+    如果以下情况使用 useCallback，性能反而更差：
+    
+    - 函数本身是轻量的
+    - 组件不会频繁重新渲染
+    - 不会传递给 React.memo 子组件
+    - 不作为 useEffect 的依赖
+    
+    > 面试金句：
+    > 
+    > 
+    > **useCallback 是性能优化工具，不是默认写法。多数情况下，直接写函数更快。**
+    > 
+- 为什么说 useRef 可以解决 stale closure（闭包陷阱）？
+    
+    ### 先理解 stale closure 是什么？
+    
+    当你在 useEffect 内使用旧的 state 值时，就会出现“闭包捕获旧值”。
+    示例：
+    
+    ```jsx
+    useEffect(() => {
+      setInterval(() => {
+        console.log(count); // 永远是旧的 count
+      }, 1000);
+    }, []);
+    ```
+    
+    ### useRef 为什么能解决？
+    
+    因为 useRef 永远指向同一个对象，改变 `.current` 不会触发重新渲染
+    所以在 interval 中使用：
+    
+    ```jsx
+    const countRef = useRef(0);
+    
+    useEffect(() => {
+      const id = setInterval(() => {
+        console.log(countRef.current); // 永远是最新值
+      }, 1000);
+    
+      return () => clearInterval(id);
+    }, []);
+    
+    useEffect(() => {
+      countRef.current = count;
+    }, [count]);
+    ```
+    > **useRef 让我们绕过闭包捕获机制，可以读到“最新”的值。** 
+
+- useReducer vs useState 什么时候用哪个？
+    
+    ### ⭐ useState 用于：
+    
+    - 状态简单（1～3 个字段）
+    - 状态结构不复杂
+    - 更新方式单一
+    
+    ---
+    ### ⭐ useReducer 用于：
+
+    - 状态多、复杂（多字段）
+    - 多个状态之间存在**关联**（例如互相影响）
+    - 更新逻辑需要 switch/多分支
+    - 希望将“状态更新逻辑”抽离（更易维护）
+    - 需要支持撤销/重做（编辑器类）
+    > **当状态像“状态机”时，用 useReducer。** 
+- useMemo 为什么不能乱用？
+    **useMemo 也有成本，例如：**
+    - 需要执行依赖比较（一次浅比较）
+    - 需要缓存内存
+    - 需要维护闭包
+    
+    如果你的计算很简单，或者依赖变化频繁：
+    👉 使用 useMemo 比直接计算更慢！
+    **真正适合 useMemo 的情况：**
+    - “重计算”开销大（排序、过滤、大数组计算）
+    - 依赖不常变
+    - 传给 React.memo 子组件（引用要稳定）
+    > **useMemo 是为了优化“昂贵计算”，不是为了所有计算**
+- Context 为什么不适合“全局大对象”？
+    
+    **因为 Context 的 value 一旦变化，会导致所有消费它的组件全部重新渲染（无法避免）。**
+    
+    如果 value 是一个“大对象”，例如：
+    
+    ```jsx
+    value={{ user, token, theme, config, cart, language, setting... }}
+    ```
+    
+    只要其中任何一个字段变化：
+    👉 全部依赖 useContext 的组件都会全部重新渲染
+    👉 导致性能雪崩
+    > **Context 适合 “低频变化 + 小数据” ，不适合大而频繁变动的全局状态。**
+
+- 父组件渲染一定会导致子组件渲染吗？哪些情况下不会？
+    父组件渲染 *默认会* 导致子组件渲染，但有 **三个例外**：
+    1. 使用 `React.memo` 缓存子组件
+    只要 props 不变，子组件不会渲染。
+    2. 子组件是“稳定引用的 children”
+    例如：
+    ```jsx
+    <MemoChild> <StaticContent /> </MemoChild>
+    ```
+    只要 children 不变，不会重新渲染。
+    ### 3. 子组件使用 useMemo 包装生成的 JSX
+    （虽然不推荐滥用）
+    > **父变 → 子不一定变；配合 memo / 稳定引用可以阻止渲染。**
