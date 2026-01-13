@@ -29,7 +29,7 @@ export default function HomeClient({ posts }: { posts: Post[] }) {
                 {t('home.latestArticlesDesc')}
               </p>
             </div>
-            <div className="max-h-[50vh] overflow-y-auto pr-2 hide-scrollbar fade-bottom pb-6">
+            <div className="max-h-[50vh] overflow-y-auto pr-2 hide-scrollbar fade-bottom pb-6 overscroll-contain">
               <ArticleList posts={posts} />
             </div>
           </div>

@@ -120,6 +120,11 @@ button:disabled {
 .fade-bottom {
   mask-image: linear-gradient(180deg, #fff 0%, #fff 85%, transparent 100%);
   -webkit-mask-image: linear-gradient(180deg, #fff 0%, #fff 85%, transparent 100%);
+  /* 优化滚动性能，避免白屏闪烁 */
+  will-change: transform;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 .prose a {
