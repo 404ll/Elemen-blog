@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import I18nProvider from "@/provider/I18nProvider";
 import { ThemeProvider } from "@/provider/ThemeProvider";
@@ -15,12 +14,12 @@ const bitcountFont = localFont({
   weight: '100 900', 
 });
 
-// Google 等宽字体（JetBrains Mono）
-const monoFont = JetBrains_Mono({
-  subsets: ['latin'],
+// JetBrains Mono - 本地等宽字体
+const monoFont = localFont({
+  src: './fonts/JetBrains_Mono/fonts/variable/JetBrainsMono[wght].ttf',
   variable: '--font-mono',
   display: 'swap',
-  weight: ['400', '500', '600', '700'],
+  weight: '100 900',
 });
 // Zen Maru Gothic - 日文中文字体（支持中文显示）
 const zenMaruGothicFont = localFont({

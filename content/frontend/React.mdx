@@ -1,0 +1,184 @@
+---
+title: "React渲染与更新全解"
+date: "2026-1-13"
+excerpt: "收集了React渲染与更新机制的核心概念，帮助理解React工作原理"
+category: "frontend"
+---
+## 一、React 渲染与更新的核心目标
+
+React 的渲染与更新机制旨在解决一个问题：
+
+> 当状态变化时，如何以最小代价、可中断的方式计算 UI 变化，并在合适的时机同步更新视图。
+> 
+
+围绕这一目标，React 构建了三层体系：
+
+- 更新触发机制（Update）
+- 渲染计算机制（Render）
+- 提交机制（Commit）
+
+---
+
+## 二、更新触发
+
+### 1. 触发来源
+
+React 中以下行为会触发更新：
+
+- `setState` / `useState` / `useReducer`
+- props 变化
+- context value 变化
+- `forceUpdate`
+
+这些行为的共同点是：向某个 Fiber 节点提交一次更新请求。
+
+---
+
+### 2. 更新的内部表示
+
+一次更新在内部被抽象为一个 **update 对象**，包含：
+
+- 更新内容（payload）
+- 更新优先级（lane）
+
+update 会被加入到对应 Fiber 的 `updateQueue` 中。
+
+---
+
+### 3. 调度请求
+
+更新入队后，React 会：
+
+- 沿 Fiber 的 `return` 指针**向上冒泡**
+- 定位到根 Fiber（HostRoot）
+- 请求一次调度
+
+此阶段仅标记“有更新需要处理”，并不立即进行渲染。
+
+---
+
+## 三、Fiber 架构与渲染模型
+
+### 1. Fiber 的角色
+
+Fiber 是 React 渲染系统中的最小工作单元，是组件的运行时表示。每一个函数组件或类组件实例，都会对应一个 Fiber 节点。
+
+Fiber 同时承担：
+
+- UI 描述节点
+- 更新承载节点
+- 调度与优先级节点
+
+---
+
+### 2. Fiber 的结构特征
+
+```jsx
+const fiber = {
+  type,            // 组件类型（函数 / 类 / 原生标签）
+  memoizedState,   // 当前 fiber 对应的 state / hooks 链表
+  updateQueue,     // 更新队列（setState / hook 更新）
+  child,           // 第一个子 fiber
+  sibling,         // 下一个兄弟 fiber
+  return           // 父 fiber
+}
+```
+
+Fiber 通过以下指针形成一棵可遍历的链表化树：
+
+- `child`：第一个子节点
+- `sibling`：兄弟节点
+- `return`：父节点
+
+该结构使得 React 可以：
+
+- 避免递归调用
+- 在节点之间暂停和恢复渲染
+
+---
+
+## 四、Render 阶段：增量渲染
+
+### 1. Render 阶段的职责
+
+Render 阶段的目标是：计算本次更新所产生的 UI 差异，并生成新的 Fiber 结构。
+
+该阶段具有以下特征：
+
+- 可中断
+- 不产生 DOM 副作用
+- 仅进行计算与标记
+
+---
+
+### 2. current 与 workInProgress Fiber 树
+
+React 在内存中同时维护两棵 Fiber 树：
+
+- **current Fiber 树**：当前已经提交、正在显示的 UI
+- **workInProgress Fiber 树**：本次更新中正在构建的 UI
+
+Render 阶段的工作是：基于 current Fiber 树，构建一棵新的 workInProgress Fiber 树。
+
+---
+
+### 3. Diff 的发生位置
+
+在 Fiber 架构中：
+
+- 不存在独立的 Virtual DOM diff 阶段 - react 16以前
+- diff 过程发生在构建 workInProgress Fiber 的过程中
+- React 依据节点类型、key、props 判断 Fiber 是否复用
+
+差异结果以 flags 的形式记录在 Fiber 节点上。
+
+---
+
+> 增量渲染指的是：Render 阶段的计算过程被拆分为多个 Fiber 工作单元，允许在 Fiber 之间中断与恢复。需要强调的是：
+> 
+> - 增量的是计算过程
+> - 不是 DOM 更新过程
+
+---
+
+## 五、Commit 阶段：同步提交变更
+
+Commit 阶段负责：
+
+- 执行 DOM 插入、更新、删除
+- 执行 ref 处理
+- 执行副作用回调
+
+该阶段的特征是：
+
+- 同步执行
+- 不可中断
+- 一次性完成
+
+这保证了视图更新的一致性。
+
+---
+
+## 六、Hooks 在渲染与更新中的位置
+
+### 1. Hooks 的存储模型
+
+- 一个函数组件对应一个 Fiber
+- Hooks 不对应 Fiber 节点
+- Hooks 以单向链表形式挂载在 Fiber 的 `memoizedState` 上
+
+```
+fiber.memoizedState → hook1 → hook2 → hook3
+```
+
+---
+
+### 2. Hooks 触发更新的本质
+
+`useState` / `useReducer` 的更新本质是：
+
+- 创建 update
+- 将 update 入队到当前 Fiber
+- 触发调度流程
+
+Hooks 仅是更新的使用接口，不改变更新机制本身。
