@@ -23,6 +23,8 @@ export default {
   blog: {
     title: "博客",
     subtitle: "技术、区块链与折腾记录。",
+    searchPlaceholder: "搜索文章...",
+    searchResults: "找到 {{count}} 篇文章",
   },
   
   // 项目页面

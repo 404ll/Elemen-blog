@@ -13,6 +13,7 @@ type BlogPageProps = {
 // 辅助函数：解析 Slug
 async function resolveSlug(paramsPromise: BlogPageProps["params"]) {
   const params = await paramsPromise;
+  console.log('Resolved params:', params);
   if (!params?.slug) return null;
   return Array.isArray(params.slug) ? params.slug.join("/") : params.slug;
 }

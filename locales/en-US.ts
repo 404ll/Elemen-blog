@@ -23,6 +23,8 @@ export default {
   blog: {
     title: "Blog",
     subtitle: "Technology, blockchain, and tinkering records.",
+    searchPlaceholder: "Search articles...",
+    searchResults: "Found {{count}} articles",
   },
   
   // Project page
