@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ArrowLeft, Calendar, Clock, Tag } from "lucide-react"; 
 import { mdxComponents } from "@/components/ui/MdxContent"; 
 
+// ISR: 每小时重新验证，新文章自动生成页面
+export const revalidate = 3600;
 
 type BlogPageProps = {
   params: Promise<{ slug: string[] }>;
