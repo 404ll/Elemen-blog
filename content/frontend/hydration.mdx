@@ -1,0 +1,477 @@
+---
+title: "从钱包重连 Bug 深入理解 SSR、Hydration 与浏览器扩展时序"
+date: "2024-01-15"
+excerpt: "本文基于 vault-minter 项目的真实 bug 修复过程编写,问题涉及：Next.js SSR、React 组件生命周期、浏览器扩展机制"
+category: "frontend"
+---
+> 本文基于一个真实的 Vercel 部署问题：钱包在本地开发时能自动重连，部署后却失效了。
+> 通过层层排查，我发现这个问题涉及 **三层原因**，是一个非常好的学习案例。于是整理大纲后让大模型帮忙补全成文，希望对理解 SSR、Hydration 以及浏览器扩展的工作原理有所帮助。
+
+## 问题背景
+
+### 现象
+
+```
+本地开发 (npm run dev)：刷新页面 → 钱包自动重连 ✅
+Vercel 部署后：        刷新页面 → 钱包不重连 ❌
+```
+
+### 原始代码
+
+```tsx
+// web/app/providers.tsx
+'use client'
+
+export function Providers({ children }) {
+  return (
+    <AptosWalletAdapterProvider
+      autoConnect={true}  // 看起来没问题？
+      dappConfig={dappConfig}
+    >
+      {children}
+    </AptosWalletAdapterProvider>
+  );
+}
+```
+
+### 问题的三层原因
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    问题分层                                  │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  第一层：SSR 水合问题                                          │
+│  └─ autoConnect=true 在服务器执行，但服务器没有 localStorage     │
+│                                                             │
+│  第二层：React 组件状态问题                                    │
+│  └─ wallet-adapter 用 ref 防止重复连接，                       │
+│     autoConnect 从 false→true 不会重新触发                     │
+│                                                             │
+│  第三层：浏览器扩展时序问题                                      │
+│  └─ autoConnect 执行时，钱包扩展可能还没注入完成                 │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+
+```
+
+---
+
+## 第一层：SSR 与 Hydration
+
+### 什么是 SSR？
+
+SSR (Server-Side Rendering) 指 React 组件在**服务器上先执行一次**，生成 HTML 发送给浏览器。
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Next.js SSR 流程                          │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  1. 用户请求页面                                               │
+│     ↓                                                        │
+│  2. 服务器执行 React 组件                                       │
+│     ┌────────────────────────────────────────────┐           │
+│     │  function Providers() {                    │           │
+│     │    // 服务器上执行！                          │             │
+│     │    // 但这里没有 window、localStorage        │             │
+│     │    return <AptosWalletAdapterProvider      │           │
+│     │             autoConnect={true} />          │           │
+│     │  }                                         │           │
+│     └────────────────────────────────────────────┘           │
+│     ↓                                                        │
+│  3. 生成 HTML 发送给浏览器                                      │
+│     ↓                                                        │
+│  4. 浏览器 Hydration（水合）                                   │
+│     └─ React 接管页面，绑定事件，激活交互                         │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### `'use client'` 的误解
+
+**最常见的误解**：`'use client'` = 组件只在浏览器运行
+
+**实际**：`'use client'` 组件**仍会在服务器预渲染**，只是标记为"可交互边界"
+
+```tsx
+'use client'
+
+export function Providers({ children }) {
+  console.log("执行了！", typeof window);
+  // 服务器日志：执行了！undefined
+  // 浏览器日志：执行了！object
+}
+```
+
+### Hydration 水合
+
+Hydration 是让服务器生成的"静态 HTML"变成"可交互应用"的过程。
+
+**关键约束**：服务器渲染的 HTML 必须和浏览器首次渲染的结果**完全一致**，否则报错。
+
+```tsx
+// ❌ Hydration Mismatch
+function Component() {
+  return <div>{window.innerWidth}</div>;
+  // 服务器：undefined
+  // 浏览器：1920
+  // 不一致！报错！
+}
+
+// ✅ 正确做法
+function Component() {
+  const [width, setWidth] = useState(0);  // 初始值一致
+  useEffect(() => {
+    setWidth(window.innerWidth);  // 只在浏览器执行
+  }, []);
+  return <div>{width}</div>;
+}
+```
+
+### 第一次修复尝试
+
+```tsx
+// 用 mounted state 确保 autoConnect 只在浏览器执行
+const [mounted, setMounted] = useState(false);
+useEffect(() => { setMounted(true); }, []);
+
+<AptosWalletAdapterProvider autoConnect={mounted}>
+```
+
+**结果**：还是不行 ❌
+
+---
+
+## 第二层：React 组件状态与 Key
+
+### 问题发现
+
+添加调试日志后发现：
+
+```
+[Wallet Debug] Saved wallet name: Razor Wallet  ← localStorage 有值
+[Wallet Debug] mounted: true                     ← 状态正确
+但钱包就是不重连...
+```
+
+### 深入 wallet-adapter 源码
+
+```jsx
+// @aptos-labs/wallet-adapter-react 内部
+function AptosWalletAdapterProvider({ autoConnect }) {
+  const didAttemptAutoConnectRef = useRef(false);
+
+  useEffect(() => {
+    // 关键：用 ref 确保只尝试一次
+    if (didAttemptAutoConnectRef.current) return;
+    didAttemptAutoConnectRef.current = true;  // 第一次就设为 true
+
+    if (!autoConnect) {
+      return;  // autoConnect=false 时直接返回
+    }
+
+    // 读取 localStorage 尝试重连
+    const walletName = localStorage.getItem("AptosWalletName");
+    if (walletName) connectWallet(walletName);
+  }, [autoConnect]);
+}
+```
+
+### 问题根因
+
+一、**首次渲染（Hydration 阶段）**
+
+- 组件首次渲染时：
+    - `mounted = false`
+    - `autoConnect = false`
+- 此时 **wallet-adapter 内部的 `useEffect` 会先执行**：
+    - 将 `didAttemptAutoConnectRef.current` 标记为 `true`（表示已经尝试过自动连接）
+    - 由于当前 `autoConnect` 为 `false`，直接 `return`，未进行自动连接
+
+> ⚠️ 关键点：“尝试自动连接” 的标记已经被消耗掉了
+
+二、**我们自己的 `useEffect` 执行**
+
+- 在后续的 `useEffect` 中：
+    - 调用 `setMounted(true)`
+    - `autoConnect` 状态由 `false` 变为 `true`
+
+**三、wallet-adapter 的 `useEffect` 再次触发**
+
+- 虽然 `autoConnect` 已经变成 `true`
+- 但此时：
+    - `didAttemptAutoConnectRef.current === true`
+- wallet-adapter 内部逻辑判断 **已经尝试过自动连接**
+- 因此直接 `return`，**不会再次执行自动连接**
+
+**四、最终结果（问题根因）**
+
+- `autoConnect` 的状态变化 **发生得太晚**
+- 自动连接的“唯一机会”已经在第一次 `useEffect` 中被跳过
+- 后续即使 `autoConnect = true`，也无法触发重连
+
+**结论**：`autoConnect` 从 `false` 变成 `true` 时，不会重新尝试连接。
+
+---
+
+### 第二次修复：用 Key 强制重新挂载
+
+```tsx
+<AptosWalletAdapterProvider
+  key={mounted ? "connected" : "initial"}  // key 变化会销毁重建组件
+  autoConnect={mounted}
+>
+```
+
+**原理**：React 中 `key` 变化会导致组件**完全卸载并重新挂载**，所有 ref 和 state 重置。
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Key 变化的效果                            │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  key="initial" 的实例                                        │
+│    didAttemptAutoConnectRef = { current: true }              │
+│                      ↓                                       │
+│             key 变成 "connected"                             │
+│                      ↓                                       │
+│  React 销毁旧实例，创建新实例                                │
+│                      ↓                                       │
+│  key="connected" 的新实例                                    │
+│    didAttemptAutoConnectRef = { current: false }  ← 重置了！ │
+│    autoConnect = true                                        │
+│    → 可以重新尝试连接 ✅                                     │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+
+```
+
+**结果**：本地测试通过，但 Vercel 上还是偶尔失败 ❌
+
+---
+
+## 第三层：浏览器扩展注入时序
+
+### 问题发现
+
+仔细看控制台日志顺序：
+
+```
+[Wallet Debug] mounted: true, autoConnect triggered    ← 先执行
+Razor Wallet Injected Successfully                     ← 后注入
+```
+
+**钱包扩展还没注入完成，autoConnect 就已经执行了！**
+
+### 浏览器扩展的工作原理
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                浏览器扩展注入流程                             │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  1. 页面开始加载                                             │
+│     ↓                                                        │
+│  2. HTML 解析，执行 <script>                                 │
+│     ↓                                                        │
+│  3. React 初始化，组件渲染                                   │
+│     ↓                                                        │
+│  4. useEffect 执行，mounted = true                           │
+│     ↓                                                        │
+│  5. autoConnect 尝试查找钱包                                 │
+│     → 检查 window.aptos / window.razor                       │
+│     → 可能还不存在！ ❌                                      │
+│     ↓                                                        │
+│  ────────────────────────────────────────────                │
+│     ↓ （与此同时，异步进行）                                 │
+│  6. 浏览器扩展的 content script 执行                         │
+│     → 在 window 上注入 window.razor 等对象                   │
+│     → 打印 "Razor Wallet Injected Successfully"              │
+│                                                              │
+│  问题：步骤 5 和 6 存在竞态条件！                            │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+
+```
+
+### 总结
+
+| 场景 | 执行顺序 | 结果 |
+| --- | --- | --- |
+| 本地开发 (HMR) | React 渲染较慢，扩展有时间注入 | 通常成功 |
+| Vercel SSR | Hydration 很快，扩展可能没注入完 | 经常失败 |
+
+SSR 让页面加载更快，反而暴露了这个时序问题。
+
+---
+
+## 完整解决方案
+
+### 最终代码
+
+```tsx
+'use client'
+
+import React from "react";
+import { AptosWalletAdapterProvider } from "@aptos-labs/wallet-adapter-react";
+
+export function Providers({ children }) {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    // 检测钱包扩展是否已注入
+    const checkWalletInjected = () => {
+      return !!(
+        (window as any).aptos ||
+        (window as any).petra ||
+        (window as any).razor ||
+        (window as any).martian
+      );
+    };
+
+    // 如果已经注入，直接挂载
+    if (checkWalletInjected()) {
+      setMounted(true);
+      return;
+    }
+
+    // 否则轮询检测，最多等待 2 秒
+    let attempts = 0;
+    const maxAttempts = 20;
+    const interval = setInterval(() => {
+      attempts++;
+      if (checkWalletInjected() || attempts >= maxAttempts) {
+        clearInterval(interval);
+        setMounted(true);
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <AptosWalletAdapterProvider
+      key={mounted ? "connected" : "initial"}
+      autoConnect={mounted}
+      dappConfig={dappConfig}
+    >
+      {children}
+    </AptosWalletAdapterProvider>
+  );
+}
+```
+
+### 解决方案解析
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    三层问题，三个解决                         │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  第一层：SSR 水合问题                                        │
+│  解决：useState(false) + useEffect 确保初始值一致            │
+│        mounted 初始为 false，服务器和浏览器都渲染相同内容    │
+│                                                              │
+│  第二层：wallet-adapter ref 问题                             │
+│  解决：key={mounted ? "connected" : "initial"}               │
+│        key 变化强制 Provider 重新挂载，ref 重置              │
+│                                                              │
+│  第三层：扩展注入时序问题                                    │
+│  解决：轮询检测 window.aptos/razor 等是否存在                │
+│        确保扩展注入后再触发 autoConnect                      │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 知识总结
+
+### 核心概念
+
+| 概念 | 说明 |
+| --- | --- |
+| **SSR** | 服务器预渲染，组件在服务器执行一次 |
+| **Hydration** | 浏览器接管 SSR 生成的 HTML，绑定事件 |
+| **`'use client'`** | 标记为客户端组件，但**仍会 SSR** |
+| **Hydration Mismatch** | 服务器和浏览器渲染结果不一致的错误 |
+| **React Key** | key 变化会销毁并重建组件实例 |
+| **扩展注入** | 浏览器扩展异步向 window 注入对象 |
+
+### 安全访问浏览器 API 的模式
+
+```tsx
+// 模式 1: useEffect + useState
+const [value, setValue] = useState(defaultValue);
+useEffect(() => {
+  setValue(window.something);
+}, []);
+
+// 模式 2: typeof 检查
+if (typeof window !== 'undefined') {
+  // 浏览器代码
+}
+
+// 模式 3: dynamic import
+const Component = dynamic(() => import('./Component'), { ssr: false });
+
+// 模式 4: key 强制重新挂载
+<Provider key={mounted ? 'ready' : 'initial'}>
+
+// 模式 5: 轮询等待条件满足
+useEffect(() => {
+  const interval = setInterval(() => {
+    if (conditionMet()) {
+      clearInterval(interval);
+      doSomething();
+    }
+  }, 100);
+}, []);
+
+```
+
+### 调试技巧
+
+```tsx
+// 确认代码执行环境
+console.log("Running on:", typeof window === 'undefined' ? 'SERVER' : 'CLIENT');
+
+// 检查钱包扩展
+console.log("Wallets:", {
+  aptos: !!(window as any).aptos,
+  petra: !!(window as any).petra,
+  razor: !!(window as any).razor
+});
+
+// 检查 localStorage
+console.log("Saved wallet:", localStorage.getItem("AptosWalletName"));
+```
+
+### 问题排查流程
+
+```
+钱包不重连？
+    │
+    ├─→ 检查 localStorage 有没有保存钱包名
+    │   └─ 没有 → 先手动连接一次
+    │
+    ├─→ 检查 autoConnect 是否在服务器执行
+    │   └─ 是 → 加 mounted state
+    │
+    ├─→ 检查 mounted 变化后是否触发重连
+    │   └─ 没有 → 加 key 强制重新挂载
+    │
+    └─→ 检查钱包扩展注入时序
+        └─ 注入晚 → 轮询等待扩展注入
+```
+
+---
+
+## 扩展阅读
+
+- [Next.js App Router 渲染机制](https://nextjs.org/docs/app/building-your-application/rendering)
+- [React Hydration 文档](https://react.dev/reference/react-dom/client/hydrateRoot)
+- [浏览器扩展 Content Scripts](https://developer.chrome.com/docs/extensions/mv3/content_scripts/)
+
+---
