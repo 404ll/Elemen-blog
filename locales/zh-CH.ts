@@ -36,7 +36,7 @@ export default {
   about: {
     title: "关于",
     location: "成都",
-    intro: "大家好，我是 Elemen，非常乐意学习新的东西，目前主要方向是区块链合约开发与前端开发。",
+    intro: "大家好，我是 Elemen，目前主要方向是区块链合约开发与前端开发。",
     motto: "笨鸟先飞，希望可以学到更多的东西",
     workExperience: "实习经历",
     skills: "职业技能",

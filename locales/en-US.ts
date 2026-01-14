@@ -36,7 +36,7 @@ export default {
   about: {
     title: "About",
     location: "Chengdu",
-    intro: "Hello, I'm Elemen, very willing to learn new things. Currently focusing on blockchain contract development and frontend development.",
+    intro: "Hello, I'm Elemen. Currently focusing on blockchain contract development and frontend development.",
     motto: "The early bird catches the worm, hoping to learn more",
     workExperience: "Work Experience",
     skills: "Professional Skills",
