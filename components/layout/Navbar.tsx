@@ -32,14 +32,14 @@ export default function Navbar() {
       
       {/* 中间：导航链接 */}
       <div className="flex items-center gap-10">
-        <Link href="/blog" className={`hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 focus:p-2 rounded-lg ${navFontClass}`}>{t('nav.blog')}</Link>
-        <Link href="/project" className={`hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 focus:p-2 rounded-lg ${navFontClass}`}>{t('nav.project')}</Link>
-        <Link href="/about" className={`hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 focus:p-2 rounded-lg ${navFontClass}`}>{t('nav.about')}</Link>
+        <Link href="/blog" className={`hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 rounded-lg p-2 ${navFontClass}`}>{t('nav.blog')}</Link>
+        <Link href="/project" className={`hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 rounded-lg p-2 ${navFontClass}`}>{t('nav.project')}</Link>
+        <Link href="/about" className={`hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 rounded-lg p-2 ${navFontClass}`}>{t('nav.about')}</Link>
       </div>
       
       {/* 右侧：语言切换 + 主题切换 */}
       <div className="flex items-center gap-2">
-        <Link href="https://github.com/404ll/Elemen-blog" target="_blank" className="hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 focus:p-2 rounded-lg">
+        <Link href="https://github.com/404ll/Elemen-blog" target="_blank" className="hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 rounded-lg p-2">
           <GithubIcon className="w-5 h-5 text-black dark:text-white transition-colors"/>
         </Link>
         <LanguageSwitcher />
