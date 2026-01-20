@@ -145,5 +145,67 @@ function ScrollToTop({ threshold }) {
   // ... render ...
 }
 ```
+## Route和Link原理
+
+```jsx
+import React, { useState, useEffect } from 'react';
+
+// 1. 这是一个拦截器：点击时不让浏览器刷新，只改地址栏
+const Link = ({ to, children }) => {
+  const handleClick = (e) => {
+    e.preventDefault(); // 阻止浏览器默认的“全页面跳转”
+    window.history.pushState({}, '', to); // 改变地址栏，但不刷新
+    
+    // 自定义一个事件通知路由：地址变了！
+    const navEvent = new PopStateEvent('popstate');
+    window.dispatchEvent(navEvent);
+  };
+
+  return <a href={to} onClick={handleClick}>{children}</a>;
+};
+
+// 2. 这是一个匹配器：根据当前地址显示内容
+const Route = ({ path, children }) => {
+  // 核心：用状态来驱动 UI 渲染
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+
+  useEffect(() => {
+    const onLocationChange = () => {
+      setCurrentPath(window.location.pathname); // 当地址变了，更新状态触发重绘
+    };
+
+    // 监听浏览器的“前进/后退”或我们手动触发的事件
+    window.addEventListener('popstate', onLocationChange);
+    return () => window.removeEventListener('popstate', onLocationChange);
+  }, []);
+
+  return currentPath === path ? children : null;
+};
+
+// 3. 使用方式
+export default function App() {
+  return (
+    <div>
+      <nav>
+        <Link to="/">首页</Link> | <Link to="/about">关于</Link>
+      </nav>
+
+      <hr />
+
+      <Route path="/">
+        <h2>这是首页内容</h2>
+      </Route>
+      <Route path="/about">
+        <h2>这是关于页面</h2>
+      </Route>
+    </div>
+  );
+}
+```
+
+在实际的 `react-router-dom` 库中，它多做了两件事：
+
+1. **Context 优化**：它不会让每个 `Route` 都去监听一遍 `window`（太浪费性能了）。它会在最外层用一个 `BrowserRouter` 监听一次，然后通过 **Context** 把路径传下去。
+2. **正则匹配**：我们的代码只能匹配静态路径。真实的路由支持 `/user/:id` 这种动态路径，底层是用**正则表达式**去匹配 URL 的。
 
 未完待续…
