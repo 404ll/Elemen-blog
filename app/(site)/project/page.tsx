@@ -1,5 +1,5 @@
 'use client';
-import ProjectCard, { Project } from "@/components/card/ProjectCard";
+// import ProjectCard, { Project } from "@/components/card/ProjectCard";
 import { useTranslation } from "react-i18next";
 
 // const projects: Project[] = [

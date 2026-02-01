@@ -129,7 +129,7 @@ export const mdxComponents = {
    * ==============
    */
 
-  pre: ({ children, ...props }: PreProps) => {
+  pre: ({ children }: PreProps) => {
     // 检查是否有语言类名
     const hasLanguage = React.Children.toArray(children).some(
       (child) =>

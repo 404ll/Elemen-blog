@@ -28,9 +28,6 @@ export default async function BlogCategoryPage({
   }
 
   const posts = getPostsByCategory(categoryKey);
-  const badgeTone = (meta.color in badgeClassName
-    ? meta.color
-    : "gray") as keyof typeof badgeClassName;
 
   return (
     <div className="pt-20 pb-16">
