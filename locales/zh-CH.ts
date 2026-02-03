@@ -1,4 +1,4 @@
-export default {
+const zhCH = {
   // 导航栏
   nav: {
     blog: "博客文章",
@@ -60,3 +60,5 @@ export default {
     note: "笔记",
   },
 };
+
+export default zhCH;

@@ -1,4 +1,4 @@
-export default {
+const enUS = {
   // Navigation
   nav: {
     blog: "Blog",
@@ -60,3 +60,5 @@ export default {
     note: "Note",
   },
 };
+
+export default enUS;

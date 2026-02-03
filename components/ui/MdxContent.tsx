@@ -1,6 +1,7 @@
 // components/ui/mdx-components.tsx
 import { MacCodeBlock } from "@/components/ui/MacCode";
 import React from "react";
+import Image from "next/image";
 
 type BasicProps = { children?: React.ReactNode } & Record<string, unknown>;
 type PreProps = BasicProps;
@@ -170,9 +171,11 @@ export const mdxComponents = {
 
   img: (props: ImgProps) => (
     <figure className="my-8">
-      <img
+      <Image
         className="rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm"
         loading="lazy"
+        alt={props.alt || ""}
+        src={props.src as string}
         {...props}
       />
       {props.alt && (

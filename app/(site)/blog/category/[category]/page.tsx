@@ -3,12 +3,6 @@ import { CATEGORIES } from "@/constant";
 import { getAllPosts } from "@/lib/post";
 import { notFound } from "next/navigation";
 
-const badgeClassName = {
-  blue: "bg-blue-50 text-black border border-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
-  green: "bg-green-50 text-black border border-green-100 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
-  purple: "bg-purple-50 text-black border border-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
-  gray: "bg-gray-100 text-black border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
-} as const;
 
 // 辅助函数：按分类获取文章
 function getPostsByCategory(category: string) {
