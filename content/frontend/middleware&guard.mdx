@@ -1,0 +1,131 @@
+---
+title: "文章标题"
+date: "2026-03-2"
+excerpt: "在现代前端项目中，`Route Guard` 与 `Middleware` 经常同时出现。它们各自有什么样的作用和关联呢"
+category: "frontend"
+---
+
+## 路由守卫 vs Next.js 中间件：如何分工才正确？
+
+在现代前端项目中，`Route Guard` 与 `Middleware` 经常同时出现。它们不是替代关系，而是**分层协作关系**。
+
+| 维度 | 路由守卫 (`Route Guard`) | Next.js 中间件 (middleware.ts) |
+| --- | --- | --- |
+| 运行位置 | 浏览器（Client） | 边缘运行时（Edge） |
+| 触发时机 | 页面渲染/导航阶段 | 请求进入应用的最前面 |
+| 处理对象 | UI 是否展示、是否跳转 | HTTP 请求是否放行、重写、重定向 |
+| 可访问数据 | `State` / `Context` / 本地缓存 | `Cookie` / `Headers` / `URL` |
+| 主要价值 | 体验控制（防闪动、角色 UI） | 入口拦截（登录态、风控、CORS、限流） |
+---
+### 1) 路由守卫是什么？
+```tsx
+'use client'
+
+import { useAuth } from '@/context/auth-context'
+
+export function RoleGuard({
+  allow,
+  children,
+}: {
+  allow: Array<'ADMIN' | 'USER'>
+  children: React.ReactNode
+}) {
+  const { user, isLoading } = useAuth()
+
+  if (isLoading) return <div>Loading...</div>
+  if (!user) return <div>请先登录</div>
+  if (!allow.includes(user.role)) return <div>403 Forbidden</div>
+
+  return <>{children}</>
+}
+```
+`Route Guard` 本质上是组件层逻辑。它擅长做“**细粒度体验控制**”，例如：
+- 用户不是 `ADMIN`，显示 `403` 组件；
+- 用户资料不完整，跳转补全页；
+- 根据订阅等级展示不同 UI。
+
+> 但要注意：客户端守卫不是最终安全边界。
+> 真正的数据访问权限必须在服务端接口再次校验。
+
+---
+
+### 2) Next.js 中间件是什么？
+```tsx
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { verifyToken } from '~/lib/jwtManager'
+
+const ALLOWED_ORIGINS = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000')
+  .split(',')
+  .map((s) => s.trim())
+
+export const config = {
+  matcher: ['/api/:path*', '/user/:path*', '/admin/:path*'],
+}
+
+export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl
+  const origin = req.headers.get('origin')
+  const isApi = pathname.startsWith('/api')
+  const isPreflight = req.method === 'OPTIONS'
+  const isPublicApi = pathname === '/api/health' // 示例：显式公开接口
+
+  // CORS 预检
+  if (isApi && isPreflight) return NextResponse.next()
+
+  // 登录态校验（仅对非公开接口）
+  if (!isPublicApi) {
+    const token = req.cookies.get('auth_token')?.value ?? ''
+    const ok = token ? await verifyToken(token) : false
+    if (!ok) {
+      return isApi
+        ? NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        : NextResponse.redirect(new URL('/login', req.url))
+    }
+  }
+
+  // CORS 白名单（仅浏览器跨域请求）
+  if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+    return NextResponse.json({ error: 'Origin not allowed' }, { status: 403 })
+  }
+
+  const res = NextResponse.next()
+  if (origin) {
+    res.headers.set('Access-Control-Allow-Origin', origin)
+    res.headers.set('Access-Control-Allow-Credentials', 'true')
+  }
+  return res
+}
+```
+middleware.ts 是请求入口拦截层，发生在页面渲染之前。
+它常做：
+- 登录态检查（Cookie/JWT）
+- CORS 策略
+- 限流（Rate Limit）
+- 机器人/地区/UA 策略
+- 重定向与重写
+中间件的优势是“早拦截、少浪费、统一治理”，但它无法直接读取 React `Context` 这类客户端状态。
+---
+### 3) 实战分工建议
+**入口靠中间件，细节靠路由守卫，安全靠服务端接口。**
+- 中间件：先挡住未登录、非法来源、异常请求流量。
+- 路由守卫：决定页面上“看到什么”。
+- API/Server Action：做最终权限判定
+---
+### 4) 生产化建议
+1. **谨慎放行 `GET`**
+    - `OPTIONS` 预检可放行；
+    - `GET` 是否放行要看业务敏感度，很多读接口也需要鉴权。
+2. **CORS ≠ Auth**
+    - CORS 只约束浏览器跨域行为，不能替代身份认证与授权。
+3. **补齐限流和审计**
+    - 建议加 `IP/User` 维度限流、请求日志、错误追踪（如 Sentry）。
+4. **中间件保持轻量**
+    - 避免重型 IO；复杂鉴权可在 API 层二次校验。
+5. **统一错误结构**
+    - `401/403/429` 返回体格式统一，方便前端拦截与观测。
+---
+## 结论
+- `Middleware` 负责“请求入口治理”；
+- `Route Guard` 负责“页面体验治理”；
+- `API` 负责“最终安全治理”。
