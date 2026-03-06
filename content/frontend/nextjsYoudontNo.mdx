@@ -1,0 +1,245 @@
+---
+title: "关于Nextjs初学者应该知道的二三事(持续更新中...)"
+date: "2026-03-06"
+excerpt: "为什么有'use client'? 为什么又有服务器和客户端组件？它们之间的关系是什么？"
+category: "frontend"
+---
+
+## 怎么从这句话理解数据传递限制？
+
+「Instead, since app uses Server Components by default, we can use values like Date, Map, Set, and more without any extra steps.」
+
+在传统的react client component 中，存在一些数据传递限制：如果数据需要 从服务器传到浏览器、或者通过 `getServerSideProp` 、或者API返回 通常需要经过 JSON 序列化
+
+> json只支持： string \ number \ boolean \ null \ array \ object 并不支持 Date \ Map \ Set \ Function \ undefined | class instance
+
+```tsx
+//在传统 React / Next.js Pages Router
+const data = {
+		data ; new Date()
+	}
+	
+JSON.stringify(data) //=>Data会变成字符串
+//{"date":"2026-03-06T12:00:00.000Z"}
+
+//使用时需要转换
+new Date(dateString)
+```
+
+Next.js App Router 默认使用 React Serve Components :
+
+- 在 **服务器执行**
+- **不会发送组件代码到浏览器**
+- 只发送 **渲染结果和数据结构**
+
+> **React Flight协议：**支持更多的类型 Date / Map / Set / Promise / Symbol / BigInt
+
+```tsx
+//所以 rsc 可以这样 -> 不需要额外的转换
+export default function Page() {
+  const now = new Date()
+
+  return <div>{now.toISOString()}</div>
+}
+```
+
+## 为什么 `"use client"` 会让 bundle 变大？
+
+核心原因只有两点：
+
+1️⃣ **Client Component 需要在浏览器运行，所以代码必须被打包到浏览器**
+
+2️⃣ **不仅当前组件会被打包，它依赖的代码（组件、工具库等）也会一起进入 bundle**
+
+3️⃣ **为什么 Server Component 可以 import Client Component 但 Client Component 不能 import Server Component**
+
+### 1 当前组件会被打包
+
+Next.js `app` 目录默认是 **Server Component**。
+
+Server Component：
+
+- 只在服务器运行
+- 不会发送 JS 到浏览器
+
+例如：
+
+```tsx
+export default function Page() {
+  return <div>Hello</div>
+}
+```
+
+浏览器收到：
+
+```html
+<div>Hello</div>
+```
+
+没有 JS bundle。
+
+---
+
+如果写：
+
+```tsx
+"use client"
+
+export default function Button() {
+  return <button>Click</button>
+}
+```
+
+因为需要在浏览器执行（处理点击事件），Next.js 必须把它：
+
+```
+编译 → 打包 → 发送到浏览器
+```
+
+### 2 依赖代码也会被打包
+
+例如：
+
+```tsx
+"use client"
+
+import { formatDate } from "@/utils/date"
+
+export default function Component() {
+  return <div>{formatDate(new Date())}</div>
+}
+```
+
+打包内容会变成：
+
+```
+Component
+utils/date
+```
+
+如果引入大型库：
+
+```tsx
+"use client"
+
+import dayjs from "dayjs"
+```
+
+浏览器 bundle 也会包含：
+
+```
+dayjs
+```
+
+### 3 Client Component 会形成一棵客户端组件树
+
+例如：
+
+```
+Page
+ └── SearchBar
+      └── Button
+```
+
+代码：
+
+Button.tsx
+
+```tsx
+"use client"
+
+export default function Button() {
+  return <button>Click</button>
+}
+```
+
+SearchBar.tsx
+
+```tsx
+import Button from "./Button"
+
+export default function SearchBar() {
+  return <Button />
+}
+```
+
+因为 `Button` 是 Client Component：
+
+```
+SearchBar 也必须在浏览器运行
+```
+
+于是变成：
+
+```
+Client bundle
+├─ Button
+└─ SearchBar
+```
+
+---
+
+### 4 Server Component 的优势
+
+如果组件是 Server Component：
+
+```tsx
+export default async function Page() {
+  const products = await db.product.findMany()
+
+  return <div>{products.length}</div>
+}
+```
+
+这些代码：数据库访问、数据处理、逻辑计算全部只在服务器执行。
+
+浏览器只收到：
+
+```html
+<div>12</div>
+```
+
+JS bundle **几乎为 0**。
+
+---
+
+### 5 推荐的 Next.js 组件结构
+
+Next.js 推荐：
+
+```
+Server Component 负责：
+- 数据获取
+- 页面结构
+- 渲染内容
+
+Client Component 负责：
+- 交互
+- state
+- 事件
+```
+
+示例：
+
+```
+Page (Server)
+ ├─ ProductList (Server)
+ └─ AddToCartButton (Client)
+```
+
+代码：
+
+```tsx
+export default async function Page() {
+  const products = await db.product.findMany()
+
+  return (
+    <>
+      <ProductList products={products} />
+      <AddToCartButton />
+    </>
+  )
+}
+```
+
+只有：AddToCartButton会进入浏览器 bundle。
