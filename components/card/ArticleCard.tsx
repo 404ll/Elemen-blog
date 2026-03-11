@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Post } from "@/types";
 import Image from "next/image";
-import { CATEGORIES } from "@/constant";
+import { CATEGORIES, getColorStyle } from "@/constant";
 
 interface ArticleCardProps {
   post: Post;
@@ -14,15 +14,7 @@ export default function ArticleCard({ post }: ArticleCardProps) {
   const href = `/blog/${slug}`;
   const categoryMeta = category ? CATEGORIES[category as keyof typeof CATEGORIES] : null;
   const categoryLabel = categoryMeta?.name ?? category ?? "随笔";
-  const badgeTone = categoryMeta?.color ?? "gray";
-  const badgeClassName =
-    {
-      blue: "bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-400/40 dark:text-blue-300 dark:border-blue-800",
-      green: "bg-green-50 text-green-700 border border-green-100 dark:bg-green-400/40 dark:text-green-300 dark:border-green-800",
-      purple: "bg-purple-50 text-purple-700 border border-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
-      gray: "bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
-      orange: "bg-orange-50 text-orange-700 border border-orange-100 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
-    }[badgeTone] ?? "bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700";
+  const badgeClassName = getColorStyle(categoryMeta?.color, 'badge');
 
   const displayDate = date
     ? new Date(date).toLocaleDateString("zh-CN", {
