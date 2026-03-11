@@ -1,0 +1,86 @@
+---
+title: "LeetCode - 143.重排链表"
+date: "2026-03-11"
+excerpt: "算法日记"
+category: "algorithm"
+---
+
+## 题目描述
+
+给定一个单链表 L 的头节点 head ，单链表 L 表示为：
+L0 → L1 → … → Ln-1 → Ln
+请将其重新排列后变为：
+L0 → Ln → L1 → Ln-1 → L2 → Ln-2 → …
+
+## 思路
+
+本题可以分为三个步骤：找到链表的中点、反转链表的后半部分再合并两个链表。
+感觉比较简单，主要是链表的操作比较麻烦，但是因为才开始刷算法，所以思路还是在ai的帮助下想出来的
+
+### 涉及方法
+
+1. 快慢指针
+在链表中的快慢指针方法中，快指针每次移动两步，慢指针每次移动一步。当快指针到达链表末尾时，慢指针正好在链表的中点位置。
+```javascript
+let slow = head, fast = head;
+while (fast && fast.next) {
+    slow = slow.next;
+    fast = fast.next.next;
+}
+```
+
+2. 反转链表
+反转链表的常见方法是使用三个指针：prev、curr 和 next。先处理当前节点的 next 指针指向前一个节点，然后依次移动 prev、curr 和 next 指针，直到链表被完全反转。
+```javascript
+let prev = null
+let curr = head
+while(curr){
+    let nextnode = curr.next
+    curr.next = prev
+    prev = curr
+    curr = nextnode
+}
+
+```
+
+3. 合并链表
+合并两个链表的思路是交替连接两个链表的节点。使用两个指针分别指向两个链表的当前节点，依次连接它们，直到其中一个链表被完全连接。
+```javascript
+let list1 = head1
+let list2 = head2
+let prev = null
+
+while(list1 && list2){
+    let next1 = list1.next
+    let next2 = list2.next
+
+    list1.next = list2
+    list2.next = next1
+    
+    prev = list2  // 记录最后处理的节点
+    list1 = next1
+    list2 = next2
+}
+
+// 如果 list2 还有剩余，接到 prev 后面
+if(list2 && prev){
+    prev.next = list2
+}
+// list1 剩余部分已经在 list2.next = next1 时连好了
+
+return head1
+
+```
+
+## 实际处理
+
+实际情况中我没有考虑到的点：
+1. 后半部分链表与前部分忘记分开了，导致后半部分链表被反转后无法正确合并
+```javascript
+let curr = slow.next //后半部分链表
+slow.next = null //断开前半部分
+```
+2. 因为题的一个特点是后半部分一定比前半部分短，所以合并链表的循环条件可以简单实用 `while(list2)`，不需要考虑 list1 的情况了
+总之还是需要多加练习吧
+
+ps：本篇文章是在Vscode的mdx文件中写的，copilot的表现非常好，推测能力非常强大...
