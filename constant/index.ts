@@ -16,4 +16,8 @@ export const CATEGORIES = {
         name: 'Note',
         color: 'gray',
     },
+    algorithm: {
+        name: 'Algorithm',
+        color: 'orange',
+    },
 } as const;

@@ -21,6 +21,7 @@ export default function ArticleCard({ post }: ArticleCardProps) {
       green: "bg-green-50 text-green-700 border border-green-100 dark:bg-green-400/40 dark:text-green-300 dark:border-green-800",
       purple: "bg-purple-50 text-purple-700 border border-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
       gray: "bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
+      orange: "bg-orange-50 text-orange-700 border border-orange-100 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
     }[badgeTone] ?? "bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700";
 
   const displayDate = date
