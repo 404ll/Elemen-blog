@@ -21,6 +21,10 @@ const colorClassMap = {
     bg: 'bg-gray-400 dark:bg-gray-400/40',
     hover: 'hover:translate-y-[-2px] transition-all',
   },
+  orange: {
+    bg: 'bg-orange-400 dark:bg-orange-400/40',
+    hover: 'hover:translate-y-[-2px] transition-all',
+  }
 } as const;
 
 export default function CategoryCard() {
