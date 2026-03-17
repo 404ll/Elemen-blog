@@ -1,0 +1,78 @@
+---
+title: "关于我的博客"
+date: "2026-03-17"
+excerpt: "关于我的博客框架的简单了解"
+category: "frontend"
+---
+
+## 关于我的博客
+我的博客本质上是一个个人知识库，记录我觉得有价值的内容与阶段性总结。
+因此选题会比较多元：既包含前端工程化与性能优化，也会覆盖算法、Web3 等跨领域主题。
+
+## 技术细节
+我的技术栈选择遵循「现代、可维护、构建效率高」的原则：
+
+- **框架**：Next.js（App Router）
+- **构建**：Turbopack（开发阶段启动更快）
+- **内容**：MDX（Markdown + React 组件）
+- **样式**：Tailwind CSS（低心智负担、可复用）
+- **部署**：Vercel（零配置、稳定）
+
+这些工具的组合对个人博客来说足够「轻量 + 现代」，同时也具备持续演进空间。
+
+### 关于 Turbopack
+Turbopack 是由 Vercel 推出的新一代打包器，目标是让大型前端项目在开发阶段拥有更快的启动与增量构建速度。
+我选择它主要有三个原因：
+
+1. **开发反馈快**：热更新响应更快，修改内容后的等待时间更短。
+2. **与 Next.js 生态深度集成**：配置成本低，基本开箱即用。
+3. **面向未来的演进路径**：官方持续投入优化，长期维护更有保障。
+
+**注意**：目前 Turbopack 在部分高级配置（例如自定义 loader/插件生态）上还不如 Webpack 成熟，但对于内容型博客已经足够稳定。
+
+我会在每次发布新文章前跑一次构建，并通过 **Husky + lint** 在 `git commit` 阶段做格式与质量检查，避免把低级错误带进仓库。
+构建完成后会看到类似的输出，我们可以用它来理解 Next.js 的产物形态：
+
+```
+▲ Next.js 16.1.1 (Turbopack)
+- Experiments (use with caution):
+  ✓ mdxRs
+  Creating an optimized production build ...
+✓ Compiled successfully in 1539.8ms
+✓ Finished TypeScript in 1086.2ms    
+✓ Collecting page data using 9 workers in 288.2ms    
+✓ Generating static pages using 9 workers (21/21) in 1131.9ms
+✓ Finalizing page optimization in 6.0ms    
+
+Route (app)                            Revalidate  Expire
+┌ ○ /
+├ ○ /_not-found
+├ ○ /about
+├ ○ /blog                                      1h      1y
+├ ● /blog/[...slug]                            1h      1y
+│ ├ /blog/frontend/iterator&generator          1h      1y
+│ ├ /blog/algorithm/leetcode143                1h      1y
+│ ├ /blog/frontend/nextjsYoudontNo             1h      1y
+│ └ [+11 more paths]
+├ ƒ /blog/category/[category]
+└ ○ /project
+
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand
+
+```
+
+- **Experiments**：代表实验性能力。我开启了 `mdxRs`，这是更高性能的 MDX 解析器。
+- **Compiled successfully**：编译完成。
+- **Finished TypeScript**：类型检查完成。
+
+### 渲染类型速览
+为了更直观理解路由后的标记，这里做一个简要说明：
+
+- **Static**：构建时生成静态资源，请求时不需要服务器渲染，速度快、成本低。
+- **SSG**：构建时生成静态 HTML（通常配合 `generateStaticParams`），适合内容型页面。
+- **Dynamic**：按需服务端渲染，适合登录态、权限校验等动态内容。
+
+**小结**：内容型页面尽量走 Static/SSG，动态能力尽量收敛到少量路由，从而兼顾性能与维护成本。
