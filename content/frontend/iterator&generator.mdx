@@ -1,0 +1,96 @@
+---
+title: "生成器与迭代器"
+date: "2026-03-17"
+excerpt: "整理一下JS中比较重要的两个概念"
+category: "frontend"
+---
+
+## 迭代器
+迭代器是一个可以由任意对象实现的接口，支持连续获取对象产出的每一个值，类似遍历数组打印。
+在 JS 中，迭代器是一个实现了特定接口的对象。任何对象只要包含 [Symbol.iterator] 属性，且该属性是一个返回迭代器对象的函数，它就是“可迭代的”。
+迭代器对象必须包含一个 next() 方法，每次调用返回如下结构：
+{ value: 任何值, done: 布尔值 }
+
+### 自定义迭代器的实现
+采用闭包来实现一个简单的迭代器，当超过当前迭代限制时，返回一个新的迭代器
+
+```javascript
+class MyIterator {
+    constructor(limit) {
+        this.limit = limit;
+    }
+
+    // 部署可迭代接口
+    [Symbol.iterator]() {
+        let count = 0;
+        // 使用箭头函数，确保内部的 this 穿透指向 MyIterator 实例
+        return {
+            next: () => {
+                if (count < this.limit) {
+                    return { value: count++, done: false };
+                } else {
+                    return { value: undefined, done: true };
+                }
+            },
+            // 迭代器也可以通过 return 方法提前结束（比如在 for...of 中 break）
+            return: () => {
+                console.log('迭代被提前终止');
+                return { done: true };
+            }
+        };
+    }
+}
+
+const myIter = new MyIterator(3);
+for (const val of myIter) {
+    console.log(val); // 依次打印: 0, 1, 2
+}
+```
+
+### 迭代器的应用
+- 展开运算符：[...myIter] 会自动调用迭代器消费所有值。
+- 解构赋值：const [a, b] = myIter。
+- 原生数据结构：Array、Map、Set、String、NodeList 默认都实现了迭代器接口。
+
+---
+
+## 生成器
+ES6新增的一个特性「可以在一个函数块内暂停和恢复代码执行」，生成器可以通过yield关键字来暂停函数的执行，
+因为生成器对象实际上也实现了 iterator 接口，所以可以通过next方法来恢复函数的执行，生成器函数会返回一个迭代器对象。
+
+### 生成器的实现
+调用生成器函数不会立刻执行代码，而是返回一个生成器对象，一个比较简单的示例如下
+
+```javascript
+function* myGenerator(){
+    yield 1
+    yield 2
+    yield 3
+}
+const gen = myGenerator()
+console.log(gen.next()) // {value: 1, done: false}
+console.log(gen.next()) // {value: 2, done: false}
+console.log(gen.next()) // {value: 3, done: false}
+console.log(gen.next()) // {value: undefined, done: true}
+```
+
+### 生成器的双向通信（协程基础）
+生成器最强大的地方在于：它不仅能向外 yield（产出）值，外部还能通过 next(参数) 向生成器内部注入值。
+「控制权可以在多个代码块之间来回交替，并且可以互相传递数据。」
+```javascript
+function* chatGenerator() {
+    const question = yield "你好！你叫什么名字？"; // 暂停并传出字符串
+    yield `原来是 ${question} 呀，很高兴认识你！`; // 接收外部传进来的值并再次传出
+}
+
+const chat = chatGenerator();
+console.log(chat.next().value);       // 输出: "你好！你叫什么名字？"
+console.log(chat.next("前端小明").value); // 输出: "原来是 前端小明 呀，很高兴认识你！"
+```
+
+### 生成器的应用
+虽然日常业务中我们更常写 async/await，但 async/await 本质上就是 生成器 (Generator) + Promise 的语法糖。 
+Babel 编译低版本代码时，就是用 Generator 模拟 async 的。
+在处理复杂状态机、或者前端复杂异步流控制（如状态管理库 Redux-Saga）时，Generator 依然是不可替代的利器。
+
+今天就先到这里，关于协程的内容会在学习之后进行总结和补充
