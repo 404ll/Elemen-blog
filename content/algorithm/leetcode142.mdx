@@ -1,0 +1,84 @@
+---
+title: "LeetCode - 142.环形链表II"
+date: "2026-03-19"
+excerpt: "算法日记"
+category: "algorithm"
+---
+
+## 题目描述
+给定一个链表的头节点  head ，返回链表开始入环的第一个节点。 如果链表无环，则返回 null。
+
+## 思路
+我一开始的思路就是使用哈希表来存储访问过的节点，如果再次访问到已经存在的节点，就说明找到了入环的第一个节点。
+对这道题来说，已经足够了。
+但是为了拓展和巩固我之前练习过的知识，因此又采用了快慢指针的方法来解决这个问题。
+这里会引出一个变体题目：「判断是否有环并找到环形链表的首尾节点」，原题比较简单，那我们就以这个变体来做吧。
+
+### 涉及方法
+
+1. 快慢指针
+在环型链表中，可以通过快慢指针是否相遇来判断环的存在，同时我们可以通过数学的推导来得到入环节点的位置：
+```
+设链表头节点到入环节点的距离为 a，入环节点到快慢指针相遇点的距离为 b，快慢指针相遇点到入环节点的距离为 c。
+当快慢指针第一次相遇时，快指针走过的距离是慢指针的n倍，即 2(a + b) = a + b + c + b
+化简后得到 a = c，即链表头节点到入环节点的距离等于相遇点到入环节点的距离。
+因此，我们可以在快慢指针相遇后，让其中一个指针回到链表头节点，另一个指针继续在相遇点出发，每次移动一步，当两个指针再次相遇时，就是入环节点的位置。
+```
+
+## 实际处理
+1. 关于相遇点的判断
+在做题的过程中，我判断错误了只有两个节点的情况：
+```javascript
+    while(true){
+        fast = fast.next
+        slow = slow.next
+         //这里的条件判断应该放在前面
+        if(fast===slow){
+            return fast
+        }
+    }
+```
+更保险一点的做法是
+```javascript
+    while(fast && fast.next){
+        fast = fast.next.next
+        slow = slow.next
+
+        if(fast===slow){
+            let ptr1 = head
+            let ptr2 = fast
+            while(ptr1 !== ptr2){
+                ptr1 = ptr1.next
+                ptr2 = ptr2.next
+            }
+            return ptr1
+        }
+    }
+    return null
+```
+2. 首尾节点
+如果题目要求我们返回首尾节点，我们可以在快慢指针相遇后，继续让快指针走，直到它再次回到相遇点，这时快指针就是首尾节点。
+```javascript
+    while(fast && fast.next){
+        fast = fast.next.next
+        slow = slow.next
+
+        if(fast===slow){
+            let ptr1 = head
+            let ptr2 = fast
+            while(ptr1 !== ptr2){
+                ptr1 = ptr1.next
+                ptr2 = ptr2.next
+            }
+            // 此时ptr1和ptr2都是入环节点
+            // 继续让ptr2走，直到它再次回到入环节点
+            let tail = ptr2
+            do {
+                tail = tail.next
+            } while (tail !== ptr2)
+            return { entry: ptr1, tail: tail }
+        }
+    }
+    return null
+```
+PS:现在已经加快做题的速度了，希望可以在四月初的时候有底气投宇宙厂！！
