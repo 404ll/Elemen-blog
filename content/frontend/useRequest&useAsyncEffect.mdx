@@ -1,0 +1,423 @@
+---
+title: "ahoosks中useRequest和useAsyncEffect的使用与原理解析"
+date: "2026-03-22"
+excerpt: "本篇主要是整理在实习过程中一些提升业务性能的ahooks相关使用经验，主要涉及useRequest和useAsyncEffect，含有大量动手的代码。"
+category: "frontend"
+---
+
+
+
+### useAsyncEffect
+https://ahooks.js.org/zh-CN/hooks/use-async-effect
+对应React hook中的useEffect，其提升点主要是：
+
+#### 1. 解决useEffect中无法直接写 async 的问题
+
+```tsx
+//useEffect的写法(比较冗余)
+useEffect(()={
+	const fetchDataAsync = async() =>{
+	const data = await fetchData();
+	setData(data)
+	}
+	fetchDataAsync()
+},[])
+
+//useAsyncEffect
+useAsyncEffect(async()=>{
+	const data = await fetchData();
+	setData(data)
+}
+```
+
+#### 2. 优化请求竞态问题
+ 
+> **竞态问题**
+> **场景：** 用户在搜索框快速输入 "react"
+> 时间轴：
+> t1: 输入 "r"    → 发起请求A (慢，3秒返回)
+> t2: 输入 "re"   → 发起请求B (快，1秒返回)
+> t3: 输入 "rea"  → 发起请求C (快，1秒返回) 
+> 返回顺序：
+> t4: 请求C返回 → 显示 "rea" 的结果 ✅
+> t5: 请求B返回 → 显示 "re" 的结果 ❌ (覆盖了C)
+> t6: 请求A返回 → 显示 "r" 的结果 ❌ (最终显示错误结果)
+> **问题：** 最后一次请求不是最后返回的，导致显示过时数据！
+
+**传统方案一：使用闭包实现取消标志**
+
+```tsx
+useEffect(()=>{
+	let isCancelled = false;
+	
+	const fetchDataAsync = async() =>{
+		const data = await fetchData(id);
+		//检查是否取消
+		if(!isCancelled){
+			setData(data)
+		}
+	}
+	fetchDataAsync()
+	
+	return ()=>{
+		isCancelled = true
+	}
+},[id])
+```
+
+**传统方案2：使用** **AbortController（更复杂**
+https://developer.mozilla.org/en-US/docs/Web/API/AbortController
+
+```tsx
+ useEffect(() => {
+    const controller = new AbortController(); // 创建控制器
+
+    const fetchData = async () => {
+      try {
+        const result = await fetch(`/api/search?q=${query}`, {
+          signal: controller.signal // 传入 signal
+        });
+        const data = await result.json();
+        setData(data);
+      } catch (error) {
+        if (error.name === 'AbortError') { //需要处理取消错误
+          console.log('Request cancelled');
+        }
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      controller.abort(); // 清理函数取消请求
+    };
+  }, [query]);
+```
+
+**缺点：**
+- 代码更复杂
+- 需要处理 AbortError
+- 不是所有异步操作都支持 AbortController
+
+**传统方案三：请求序列号**
+
+```tsx
+  function SearchComponent() {                                                                                                                                  
+    const [query, setQuery] = useState('');                                                                                                                     
+    const [results, setResults] = useState([]);                                                                                                                 
+    const requestIdRef = useRef(0); // 👈 用 ref 存储全局序列号                                                                                                 
+                                                                                                                                                                
+    useEffect(() => {                                                                                                                                           
+      if (!query) return;                                                                                                                                       
+                                                                                                                                                                
+      // 生成新的请求ID                                                                                                                                         
+      const currentRequestId = ++requestIdRef.current;                                                                                                          
+                                                                                                                                                                
+      fetch(`/api/search?q=${query}`)                                                                                                                           
+        .then(res => res.json())                                                                                                                                
+        .then(data => {                                                                                                                                         
+          // 只处理最新的请求                                                                                                                                   
+          if (currentRequestId === requestIdRef.current) {                                                                                                      
+            setResults(data);                                                                                                                                   
+          }                                                                                                                                                     
+        });                                                                                                                                                     
+    }, [query]);                                                                                                                                                
+  }
+```
+
+使用useAsyncEffect
+
+```tsx
+useAsyncEffect(async(isCancelled)=>{
+	const data = await fetchData(id)
+	
+	if(!isCancelled()) return //自动提供isCancelled函数
+	
+	setData(data)
+},[id])
+
+//更智能的版本
+useAsyncEffect(async () => {
+  const data = await fetchData(query);
+  setData(data); // 自动只保留最后一次的结果
+}, [query], {
+  autoCancel: true // 自动取消过期的更新
+});
+```
+
+#### useAsyncEffect的底层实现
+
+通过以上的特性，我们可以简单的知道 useAsyncEffect 内实现了 useEffect 对异步函数的封装
+
+```tsx
+function useAsynceffect(asyncFn, deps, options = {}){
+	useEffect(()=>{
+		let isCancelled = false
+		
+		const isCancelled = () => cacelled
+		
+		const execute = async () => {
+			try{
+				await asyncFn(isCancelled)
+			}catch(error){
+				if(!cancelled && options.onError){
+					options.onError
+				}
+			}
+		};
+		
+		execute()
+
+	
+	return ()=>{
+		cancelled = true
+	};
+	},deps)
+}
+```
+
+### useRequest
+
+底层代码解析参考：https://developer.aliyun.com/article/1236183
+useRequest内置包装了许多的行为，主要用于管理异步请求
+
+#### useRequest基础用法
+
+1. 基础用法
+
+```tsx
+import { useRequest } from 'ahooks';                                                                                                                          
+                                                                                                                                                                
+  function Demo() {                                                                                                                                             
+    // service: 一个返回 Promise 的函数                                                                                                                         
+    const { data, loading, error } = useRequest(() => {                                                                                                         
+      return fetch('/api/data').then(res => res.json());                                                                                                        
+    });                                                                                                                                                         
+                                                                                                                                                                
+    return (                                                                                                                                                    
+      <div>                                                                                                                                                     
+        {loading && <p>Loading...</p>}                                                                                                                          
+        {error && <p>Error: {error.message}</p>}                                                                                                                
+        {data && <p>Data: {JSON.stringify(data)}</p>}                                                                                                           
+      </div>                                                                                                                                                    
+    );                                                                                                                                                          
+  }   
+```
+
+- data：请求成功后的数据
+- loading：请求是否在进行
+- error：请求失败的错误对象
+
+1. 手动触发请求
+
+```tsx
+  function Demo() {                                                                                                                                             
+    const { data, loading, run } = useRequest(                                                                                                                  
+      (keyword) => {                                                                                                                                            
+        return fetch(`/api/search?q=${keyword}`).then(res => res.json());                                                                                       
+      },                                                                                                                                                        
+      {                                                                                                                                                         
+        manual: true,                                                                                       
+      }                                                                                                                                                         
+    );                                                                                                                                                          
+                                                                                                                                                                
+    return (                                                                                                                                                    
+      <div>       
+        <button onClick={() => run('react')}>搜索 React</button>                                                                                                
+        <button onClick={() => run('vue')}>搜索 Vue</button>                                                                                                    
+        {loading && <p>搜索中...</p>}                                                                                                                           
+        {data && <p>结果: {data.length} 条</p>}                                                                                                                 
+      </div>                                                                                                                                                    
+    );                                                                                                                                                          
+  }                                                                                                                                                                                                                                                                                                                      
+```
+
+- manual: true → 不会自动执行
+- run(params) → 手动触发请求，可以传参数
+
+#### useRequest核心功能
+
+```tsx
+                                                                                                                                                 
+  //返回值                                                                                                                                                              
+  const {                                                                                                                                                       
+    // 数据相关                                                                                                                                                 
+    data,              // 请求成功的数据                                                                                                                        
+    error,             // 请求失败的错误                                                                                                                        
+    loading,           // 是否正在请求                                                                                                                          
+                                                                                                                                                                
+    // 操作方法                                                                                                                                                 
+    run,               // 手动触发请求（会自动管理 loading）                                                                                                    
+    runAsync,          // 手动触发请求（返回 Promise，自己处理 loading）                                                                                        
+    refresh,           // 使用上次的参数重新请求                                                                                                                
+    mutate,            // 直接修改 data（不发请求）                                                                                                             
+    cancel,            // 取消当前请求                                                                                                                          
+                                                                                                                                                                
+    // 额外信息                                                                                                                                                 
+    params,            // 当前请求的参数                                                                                                                        
+  } = useRequest(service, options);                                                                                                                                                                                                                                                                                                                                                                                                
+```
+
+---
+
+```tsx
+  //配置项（Options）                                                                                                                                                                                                                                                                                                         
+  {               
+    // 基础配置                                                                                                                                                 
+    manual: false,                    // 是否手动触发                                                                                                           
+    defaultParams: [],                // 默认参数                                                                                                               
+                                                                                                                                                                
+    // 依赖刷新                                                                                                                                                 
+    refreshDeps: [],                  // 依赖变化时重新请求                                                                                                     
+    refreshDepsAction: () => {},      // 依赖变化时的自定义行为                                                                                                 
+                                                                                                                                                                
+    // 防抖节流                                                                                                                                                 
+    debounceWait: 0,                  // 防抖等待时间（ms）                                                                                                     
+    debounceLeading: false,           // 是否在开始时执行                                                                                                       
+    debounceTrailing: true,           // 是否在结束时执行                                                                                                       
+    throttleWait: 0,                  // 节流等待时间（ms）                                                                                                     
+                                                                                                                                                                
+    // 轮询                                                                                                                                                     
+    pollingInterval: 0,               // 轮询间隔（ms）                                                                                                         
+    pollingWhenHidden: true,          // 页面隐藏时是否继续轮询                                                                                                 
+    pollingErrorRetryCount: -1,       // 轮询错误重试次数                                                                                                       
+                                                                                                                                                                
+    // 缓存                                                                                                                                                     
+    cacheKey: '',                     // 缓存的唯一标识                                                                                                         
+    cacheTime: 5 * 60 * 1000,         // 缓存时间（默认5分钟）                                                                                                  
+    staleTime: 0,                     // 数据新鲜时间                                                                                                           
+                                                                                                                                                                
+    // 屏幕聚焦                                                                                                                                                 
+    refreshOnWindowFocus: false,      // 窗口聚焦时刷新                                                                                                         
+    focusTimespan: 5000,              // 聚焦刷新间隔                                                                                                           
+                                                                                                                                                                
+    // 错误重试                                                                                                                                                 
+    retryCount: 0,                    // 重试次数                                                                                                               
+    retryInterval: 0,                 // 重试间隔（ms）                                                                                                         
+                                                                                                                                                                
+    // Loading                                                                                                                                                  
+    loadingDelay: 0,                  // loading 延迟时间                                                                                                       
+                                                                                                                                                                
+    // 生命周期                                                                                                                                                 
+    onBefore: (params) => {},         // 请求前                                                                                                                 
+    onSuccess: (data, params) => {},  // 请求成功                                                                                                               
+    onError: (error, params) => {},   // 请求失败                                                                                                               
+    onFinally: (params, data, error) => {}, // 请求完成                                                                                                         
+  }
+```
+
+#### useRequest实战案例
+
+1. 实现一个完整的搜索功能
+
+```tsx
+import { useRequest } from 'ahooks';
+import { useState } from 'react'; 
+
+function SearchPage() {
+    const [keyword, setKeyword] = useState('');
+
+    const{
+        data,
+        loading,
+        error,
+        run ,
+        cancel
+    } = useRequest((searchText) => {
+        return fetch(`/api/search?q=${searchText}`).then(res => res.json());
+    },{
+        manual: true, // 手动触发请求
+        debounceWait: 500, // 防抖等待时间
+        loadingDelay: 300, // 加载延迟时间 - 避免闪烁
+        cacheKey: 'search-cache', // 缓存搜索结果
+        staleTime: 5 * 60 * 1000, // 缓存过期时间 - 5分钟
+
+        onSuccess: (data) => {
+            console.log('搜索成功:', data);
+        },
+
+        onError: (error) => {
+            console.error('搜索失败:', error);
+        }
+    });
+
+    const handleSearch = (e) => {
+        const value = e.target.value;
+        setKeyword(value);
+
+        if(value){
+            run(value); // 触发搜索请求
+        }else{
+            cancel(); // 取消请求（不会自动清空 data）
+        }
+    };
+
+    return (      
+      <div>
+        <input                                                                                                                                                  
+          value={keyword}                                                                                                                                       
+          onChange={handleSearch}                                                                                                                               
+          placeholder="搜索..."                                                                                                                                 
+        />                                                                                                                                                      
+  
+        {loading && <p>搜索中...</p>}                                                                                                                           
+        {error && <p>搜索失败: {error.message}</p>}
+                                                                                                                                                                
+        {data && (                                                                                                                                              
+          <ul>                                                                                                                                                  
+            {data.map(item => (                                                                                                                                 
+              <li key={item.id}>{item.title}</li>                                                                                                               
+            ))}                                                                                                                                                 
+          </ul>                                                                                                                                                 
+        )}                                                                                                                                                      
+      </div>                                                                                                                                                    
+    );            
+}  
+
+export default SearchPage;
+```
+
+1. 实现一个订单轮询
+
+```tsx
+function OrderTracking({ orderId }) {
+    const { data, loading, cancel } = useRequest(                                                                                                               
+      () => fetch(`/api/order/${orderId}`).then(res => res.json()),                                                                                             
+      {                                                                                                                                                         
+        pollingInterval: 5000,        // 每5秒轮询一次                                                                                                          
+        pollingWhenHidden: false,     // 页面隐藏时停止                                                                                                         
+                                                                                                                                                                
+        onSuccess: (data) => {                                                                                                                                  
+          // 订单完成后停止轮询                                                                                                                                 
+          if (data.status === 'delivered') {                                                                                                                    
+            cancel();                                                                                                                                           
+            message.success('订单已送达！');                                                                                                                    
+          }                                                                                                                                                     
+        },        
+      }                                                                                                                                                         
+    );            
+                                                                                                                                                                
+    const statusMap = {                                                                                                                                         
+      pending: '待支付',
+      paid: '已支付',                                                                                                                                           
+      shipping: '配送中',                                                                                                                                       
+      delivered: '已送达',                                                                                                                                      
+    };                                                                                                                                                          
+                                                                                                                                                                
+    return (                                                                                                                                                    
+      <div>       
+        <h3>订单 #{orderId}</h3>                                                                                                                                
+        {loading && <Spin />}                                                                                                                                   
+        {data && (                                                                                                                                              
+          <div>                                                                                                                                                 
+            <p>状态: {statusMap[data.status]}</p>                                                                                                               
+            <p>更新时间: {data.updateTime}</p>                                                                                                                  
+            {data.status !== 'delivered' && (                                                                                                                   
+              <Button onClick={cancel}>停止刷新</Button>                                                                                                        
+            )}                                                                                                                                                  
+          </div>                                                                                                                                                
+        )}                                                                                                                                                      
+      </div>      
+    );                                                                                                                                                          
+  }               
+```
