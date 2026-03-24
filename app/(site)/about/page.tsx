@@ -29,7 +29,7 @@ export default function AboutPage() {
           <div className="flex gap-3 flex-wrap text-black dark:text-white">
             <span className="px-3 py-1.5 bg-blue-100 dark:bg-blue-900/50 dark:text-blue-300 text-xs font-bold rounded-full shadow-sm">Web Dev</span>
             <span className="px-3 py-1.5 bg-purple-100 dark:bg-purple-900/50 dark:text-purple-300 text-xs font-bold rounded-full shadow-sm">Blockchain Dev</span>
-            <span className="px-3 py-1.5 bg-green-100 dark:bg-green-900/50 dark:text-green-300 text-xs font-bold rounded-full shadow-sm">Full Stack</span>
+            <span className="px-3 py-1.5 bg-green-100 dark:bg-green-900/50 dark:text-green-300 text-xs font-bold rounded-full shadow-sm">Full Stack（learning）</span>
           </div>
           <p className="text-gray-700 dark:text-gray-300 font-zenmaru mt-2">{t('about.intro')}</p>
           <p className="text-gray-700 dark:text-gray-300 font-zenmaru">{t('about.motto')}</p>

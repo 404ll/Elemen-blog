@@ -28,7 +28,7 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
     <div className="pt-20 pb-16">
       <div className="max-w-5xl mx-auto px-4 space-y-8">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold font-bitcount tracking-[0.2em] text-gray-800 dark:text-gray-400 font-semibold transition-colors">{t('blog.title')}</h1>
+          <h1 className="text-3xl font-bold font-bitcount tracking-[0.2em] text-gray-800 dark:text-gray-400 font-zenmaru font-semibold transition-colors">{t('blog.title')}</h1>
           <p className="text-gray-600 dark:text-gray-400 font-zenmaru transition-colors">
             {t('blog.subtitle')}
           </p>

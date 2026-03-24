@@ -3,7 +3,7 @@ import Link from "next/link";
 export type Project = {
   name: string;
   description: string;
-  repo: string;
+  repo?: string;
   source: string;
   article?: string;
   tags?: string[];
@@ -18,14 +18,16 @@ export default function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <div className="relative h-full group">
-      {/* 整卡点击跳转仓库 */}
-      <Link
-        href={repo}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label={`${name} 的仓库`}
-        className="absolute inset-0 z-0 rounded-2xl"
-      />
+      {/* 整卡点击跳转仓库或项目链接 */}
+      {repo && (
+        <Link
+          href={repo}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`${name} 的${repo.includes('github.com') ? '仓库' : '链接'}`}
+          className="absolute inset-0 z-0 rounded-2xl"
+        />
+      )}
 
       <div className="relative z-10 h-full overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-700 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm shadow-lg transition-all group-hover:-translate-y-1 group-hover:shadow-xl pointer-events-none">
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500/60 via-purple-500/60 to-pink-500/60" />
@@ -39,10 +41,12 @@ export default function ProjectCard({ project }: ProjectCardProps) {
                 {name}
               </h3>
             </div>
-            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-              仓库
-              <span aria-hidden>↗</span>
-            </span>
+            {repo && (
+              <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                {repo.includes('github.com') ? '仓库' : '访问'}
+                <span aria-hidden>↗</span>
+              </span>
+            )}
           </div>
 
           <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{description}</p>
@@ -70,9 +74,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
                 <span aria-hidden>↗</span>
               </Link>
             ) : (
-              <span className="px-2.5 py-1 bg-gray-50 dark:bg-gray-800 text-[11px] font-semibold text-gray-500 dark:text-gray-400 rounded-full">
-                文章待写
-              </span>
+              null
             )}
           </div>
         </div>
