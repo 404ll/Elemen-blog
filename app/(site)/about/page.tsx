@@ -1,9 +1,7 @@
 'use client';
 import Image from 'next/image';
-import { useTranslation } from 'react-i18next';
 
 export default function AboutPage() {
-  const { t } = useTranslation();
   return (
     <div className="pt-20 pb-16">
       <div className="max-w-4xl mx-auto px-4 space-y-8">
@@ -20,19 +18,19 @@ export default function AboutPage() {
             <div>
               <h1 className="text-3xl font-bold text-black dark:text-white font-zenmaru mb-2">Elemen</h1>
               <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400 font-zenmaru">
-                <span>📍 {t('about.location')}</span>
+                <span>📍 成都</span>
                 <a href="mailto:3242388085@qq.com" className="hover:text-blue-600 dark:hover:text-blue-400">✉️ 3242388085@qq.com</a>
               </div>
             </div>
           </div>
-          
+
           <div className="flex gap-3 flex-wrap text-black dark:text-white">
             <span className="px-3 py-1.5 bg-blue-100 dark:bg-blue-900/50 dark:text-blue-300 text-xs font-bold rounded-full shadow-sm">Web Dev</span>
             <span className="px-3 py-1.5 bg-purple-100 dark:bg-purple-900/50 dark:text-purple-300 text-xs font-bold rounded-full shadow-sm">Blockchain Dev</span>
             <span className="px-3 py-1.5 bg-green-100 dark:bg-green-900/50 dark:text-green-300 text-xs font-bold rounded-full shadow-sm">Full Stack（learning）</span>
           </div>
-          <p className="text-gray-700 dark:text-gray-300 font-zenmaru mt-2">{t('about.intro')}</p>
-          <p className="text-gray-700 dark:text-gray-300 font-zenmaru">{t('about.motto')}</p>
+          <p className="text-gray-700 dark:text-gray-300 font-zenmaru mt-2">大家好，我是 Elemen，主要方向是前端开发与区块链合约开发。目前也正在学习AI相关，欢迎一起交流～</p>
+          <p className="text-gray-700 dark:text-gray-300 font-zenmaru">笨鸟先飞，希望可以学到更多的东西</p>
         </div>
 
 
@@ -40,7 +38,7 @@ export default function AboutPage() {
         <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl p-8 shadow-lg">
           <h2 className="text-2xl font-bold text-black dark:text-white font-zenmaru mb-6 flex items-center gap-2">
             <span>💼</span>
-            <span>{t('about.workExperience')}</span>
+            <span>实习经历</span>
           </h2>
           <div className="space-y-6">
             {/* 工作经历 1 */}
@@ -48,16 +46,16 @@ export default function AboutPage() {
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <h3 className="text-lg font-semibold text-black dark:text-white font-zenmaru">
-                    {t('about.company1')}
+                    厦门万狩文化科技有限公司
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400 font-zenmaru">{t('about.position1')}</p>
+                  <p className="text-gray-600 dark:text-gray-400 font-zenmaru">WEB3全栈开发实习生</p>
                 </div>
                 <span className="text-sm text-gray-500 dark:text-gray-400 font-zenmaru">2025.02 - 2025.06</span>
               </div>
               <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 font-zenmaru ml-4">
-                <li>{t('about.work1_1')}</li>
-                <li>{t('about.work1_2')}</li>
-                <li>{t('about.work1_3')}</li>
+                <li>依据产品文档，完善产品需求，编写区块链智能合约并对其进行测试</li>
+                <li>把握产品需求，按照UI设计图实现前端页面，对接智能合约</li>
+                <li>担任组织负责人，分发项目工作，管理项目开发文档，协助规划项目进度</li>
               </ul>
             </div>
 
@@ -66,16 +64,16 @@ export default function AboutPage() {
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <h3 className="text-lg font-semibold text-black dark:text-white font-zenmaru">
-                    {t('about.company2')}
+                    YouMind
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400 font-zenmaru">{t('about.position2')}</p>
+                  <p className="text-gray-600 dark:text-gray-400 font-zenmaru">YouMind前端与增长实习生</p>
                 </div>
                 <span className="text-sm text-gray-500 dark:text-gray-400 font-zenmaru">2025.07 - 2025.09</span>
               </div>
               <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 font-zenmaru ml-4">
-                <li>{t('about.work2_1')}</li>
-                <li>{t('about.work2_2')}</li>
-                <li>{t('about.work2_3')}</li>
+                <li>参与 YouMind 增长体系建设以及运营管理系统核心模块开发，学习并实践 SEO 与 pSEO 策略，开发部分自动化内容生成脚本，提升页面收录效率与产品自然流量</li>
+                <li>为增强产品曝光，独立构思并开发基于 AI 大模型 + Twitter API 的营销网页，通过用户推文生成个性化性格分析报告</li>
+                <li>负责营销页面的设计还原、Prompt 优化、大模型 SDK 对接，实现从数据获取到分析生成的完整流程</li>
               </ul>
             </div>
           </div>
@@ -86,8 +84,8 @@ export default function AboutPage() {
         <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl p-8 shadow-lg">
           <h2 className="text-2xl font-bold text-black dark:text-white font-zenmaru mb-6 flex items-center gap-2">
             <span>🛠️</span>
-            <span>{t('about.skills')}</span>
-          </h2>
+            <span>职业技能</span>
+           </h2>
           <ul className="list-disc list-inside space-y-3 text-gray-700 dark:text-gray-300 font-zenmaru ml-4">
             <li>HTML / CSS / JavaScript / TypeScript / Tailwind CSS</li>
             <li>Next.js / Vite / React</li>

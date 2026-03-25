@@ -2,13 +2,11 @@
 import ArticleList from "@/components/card/ArticleList";
 import { CATEGORIES, getColorStyle } from "@/constant";
 import Link from "next/link";
-import { useTranslation } from "react-i18next";
 import { useState, useMemo } from "react";
 import Fuse from "fuse.js";
 import type { Post } from "@/types";
 
 export default function BlogClient({ posts }: { posts: Post[] }) {
-  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState("");
 
   // 创建 Fuse 实例用于模糊搜索
@@ -28,9 +26,9 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
     <div className="pt-20 pb-16">
       <div className="max-w-5xl mx-auto px-4 space-y-8">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold font-bitcount tracking-[0.2em] text-gray-800 dark:text-gray-400 font-zenmaru font-semibold transition-colors">{t('blog.title')}</h1>
+          <h1 className="text-3xl font-bold font-bitcount tracking-[0.2em] text-gray-800 dark:text-gray-400 font-zenmaru font-semibold transition-colors">博客</h1>
           <p className="text-gray-600 dark:text-gray-400 font-zenmaru transition-colors">
-            {t('blog.subtitle')}
+            技术、区块链与折腾记录。
           </p>
           <div className="flex flex-wrap gap-2 pt-2">
             {Object.entries(CATEGORIES).map(([key, meta]) => (
@@ -50,10 +48,10 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
         <div className="relative">
           <input
             type="text"
-            placeholder={t('blog.searchPlaceholder') || "搜索文章..."}
+            placeholder="搜索文章..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-3 pl-12 rounded-xl border border-gray-200 bg-white/90 backdrop-blur-sm 
+            className="w-full px-4 py-3 pl-12 rounded-xl border border-gray-200 bg-white/90 backdrop-blur-sm
                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
                        dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-400
                        font-zenmaru transition-all"
@@ -80,7 +78,7 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
         {/* 搜索结果计数 */}
         {searchTerm && (
           <p className="text-sm text-gray-500 dark:text-gray-400 font-zenmaru">
-            {t('blog.searchResults', { count: filteredPosts.length }) || `找到 ${filteredPosts.length} 篇文章`}
+            找到 {filteredPosts.length} 篇文章
           </p>
         )}
 

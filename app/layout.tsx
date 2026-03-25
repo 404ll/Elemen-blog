@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import I18nProvider from "@/provider/I18nProvider";
 import { ThemeProvider } from "@/provider/ThemeProvider";
 import Navbar from "@/components/layout/Navbar";
 import ObservabilityClient from "@/components/ui/ObservabilityClient";
 import localFont from "next/font/local";
-// import "@/i18n"; 
 
 // Bitcount Prop Single - 英文像素字体
 const bitcountFont = localFont({
@@ -78,11 +76,9 @@ export default function RootLayout({
         className={`${bitcountFont.variable} ${zenMaruGothicFont.variable} ${monoFont.variable} bg-gradient-bg antialiased container-custom`}
       >
         <ThemeProvider>
-          <I18nProvider>
-            <ObservabilityClient />
-            <Navbar />
-            {children}
-          </I18nProvider>
+          <ObservabilityClient />
+          <Navbar />
+          {children}
         </ThemeProvider>
       </body>
     </html>
