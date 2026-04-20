@@ -1,130 +1,166 @@
-import fs from "fs"
-import path from "path"
-import type { Post } from "@/types"
-const postsDirectory = path.join(process.cwd(), "content")
+import fs from "fs";
+import matter from "gray-matter";
+import path from "path";
+import { z } from "zod";
+import type { Post } from "@/types";
 
-// 递归获取所有 MDX 文件
+const postsDirectory = path.join(process.cwd(), "content");
+
+export const PostFrontmatterSchema = z.object({
+  title: z.string().min(1, "title 不能为空"),
+  subtitle: z.string().optional(),
+  date: z.string().min(1, "date 不能为空"),
+  excerpt: z.string().optional(),
+  category: z.string().optional(),
+  tags: z.union([z.array(z.string()), z.string()]).optional(),
+  cover: z.string().optional(),
+  draft: z.boolean().optional().default(false),
+  updatedAt: z.string().optional(),
+  author: z.string().optional(),
+});
+
+type PostFrontmatter = z.infer<typeof PostFrontmatterSchema>;
+
+export function sortPostsByDate(posts: Post[]): Post[] {
+  return [...posts].sort((a, b) => {
+    const dateA = a.date ? new Date(a.date).getTime() : 0;
+    const dateB = b.date ? new Date(b.date).getTime() : 0;
+    return dateB - dateA;
+  });
+}
+
 function getAllMdxFiles(dir: string, fileList: string[] = []): string[] {
-  const files = fs.readdirSync(dir)
+  const files = fs.readdirSync(dir);
 
   files.forEach((file) => {
-    const filePath = path.join(dir, file)
-    const stat = fs.statSync(filePath)
+    const filePath = path.join(dir, file);
+    const stat = fs.statSync(filePath);
 
     if (stat.isDirectory()) {
-      getAllMdxFiles(filePath, fileList)
-    } else if (file.endsWith(".mdx")) {
-      fileList.push(filePath)
+      getAllMdxFiles(filePath, fileList);
+      return;
     }
-  })
 
-  return fileList
+    if (file.endsWith(".mdx")) {
+      fileList.push(filePath);
+    }
+  });
+
+  return fileList;
 }
 
-// 从文件路径提取 slug（例如：content/hello/HelloWorld.mdx -> hello/HelloWorld）
 function getSlugFromPath(filePath: string): string {
-  const relativePath = path.relative(postsDirectory, filePath)
-  return relativePath.replace(/\.mdx$/, "").replace(/\\/g, "/")
+  const relativePath = path.relative(postsDirectory, filePath);
+  return relativePath.replace(/\.mdx$/, "").replace(/\\/g, "/");
 }
 
-// 解析 frontmatter（简单的 YAML 解析，不依赖 gray-matter）
-function parseFrontmatter(content: string): { frontmatter: Record<string, string>, body: string } {
-  const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/
-  const match = content.match(frontmatterRegex)
+function normalizeDraft(raw: unknown): boolean {
+  if (typeof raw === "boolean") return raw;
+  if (typeof raw === "string") {
+    const lowered = raw.trim().toLowerCase();
+    if (lowered === "true") return true;
+    if (lowered === "false") return false;
+  }
+  return false;
+}
 
-  if (!match) {
-    return { frontmatter: {}, body: content }
+function parseFrontmatter(content: string, filePath: string): { frontmatter: PostFrontmatter; body: string } {
+  const parsed = matter(content);
+  const safeResult = PostFrontmatterSchema.safeParse({
+    ...parsed.data,
+    draft: normalizeDraft(parsed.data.draft),
+  });
+
+  if (!safeResult.success) {
+    const detail = safeResult.error.issues
+      .map((issue) => `${issue.path.join(".") || "root"}: ${issue.message}`)
+      .join("; ");
+    throw new Error(`[content validation] ${filePath} -> ${detail}`);
   }
 
-  const frontmatterText = match[1]
-  const body = match[2]
-
-  // 简单的 frontmatter 解析（支持 title, subtitle, date, excerpt）
-  const frontmatter: Record<string, string> = {}
-  frontmatterText.split("\n").forEach((line) => {
-    const colonIndex = line.indexOf(":")
-    if (colonIndex > 0) {
-      const key = line.substring(0, colonIndex).trim()
-      let value = line.substring(colonIndex + 1).trim()
-      // 移除引号
-      if ((value.startsWith('"') && value.endsWith('"')) || 
-          (value.startsWith("'") && value.endsWith("'"))) {
-        value = value.slice(1, -1)
-      }
-      frontmatter[key] = value
-    }
-  })
-
-  return { frontmatter, body }
+  return {
+    frontmatter: safeResult.data,
+    body: parsed.content,
+  };
 }
 
+function toPost(slug: string, frontmatter: PostFrontmatter): Post {
+  return {
+    slug,
+    title: frontmatter.title,
+    subtitle: frontmatter.subtitle,
+    date: frontmatter.date,
+    excerpt: frontmatter.excerpt,
+    category: frontmatter.category,
+    tags: normalizeTags(frontmatter.tags),
+    cover: frontmatter.cover,
+    draft: frontmatter.draft,
+    updatedAt: frontmatter.updatedAt,
+    author: frontmatter.author,
+  };
+}
 
 export function getAllPosts(): Post[] {
-  // 仅展示位于子文件夹内的文章，过滤掉 content 根目录下的散落 MDX
-  // 相对路径中包含分隔符（/ 或 \）即表示在子目录
   const files = getAllMdxFiles(postsDirectory).filter((filePath) => {
-    const relative = path.relative(postsDirectory, filePath)
-    return /[\\/]/.test(relative)
-  })
+    const relative = path.relative(postsDirectory, filePath);
+    return /[\\/]/.test(relative);
+  });
 
-  const posts = files.map((filePath) => {
-    const fileContent = fs.readFileSync(filePath, "utf-8")
-    const { frontmatter } = parseFrontmatter(fileContent)
-    const slug = getSlugFromPath(filePath)
+  const posts = files
+    .map((filePath) => {
+      const fileContent = fs.readFileSync(filePath, "utf-8");
+      const { frontmatter } = parseFrontmatter(fileContent, filePath);
+      const slug = getSlugFromPath(filePath);
+      return toPost(slug, frontmatter);
+    })
+    .filter((post) => !post.draft);
 
-    return {
-      slug,
-      ...frontmatter,
-    }
-  })
-
-  // 按日期排序（最新的在前）
-  return posts.sort((a, b) => {
-    const dateA = (a as Post).date ? new Date((a as Post).date!).getTime() : 0
-    const dateB = (b as Post).date ? new Date((b as Post).date!).getTime() : 0
-    return dateB - dateA
-  })
+  return sortPostsByDate(posts);
 }
 
-export function getPostBySlug(slug: string): { frontmatter: Record<string, string>, content: string } | null {
-  const filePath = path.join(postsDirectory, `${slug}.mdx`)
-  
+export function getPostBySlug(slug: string): { frontmatter: Post; content: string } | null {
+  const filePath = path.join(postsDirectory, `${slug}.mdx`);
+
   if (!fs.existsSync(filePath)) {
-    return null
+    return null;
   }
 
-  const fileContent = fs.readFileSync(filePath, "utf-8")
-  const { frontmatter, body } = parseFrontmatter(fileContent)
+  const fileContent = fs.readFileSync(filePath, "utf-8");
+  const { frontmatter, body } = parseFrontmatter(fileContent, filePath);
 
-  return { frontmatter, content: body }
+  return {
+    frontmatter: toPost(slug, frontmatter),
+    content: body,
+  };
 }
 
-// 辅助函数：归一化 tags，支持数组、逗号分隔、JSON 数组字符串
 export function normalizeTags(raw: unknown): string[] {
-  const clean = (val: string) =>
-    val.replace(/^["']|["']$/g, "").trim();
+  const clean = (val: string) => val.replace(/^['"]|['"]$/g, "").trim();
 
   if (Array.isArray(raw)) {
-    return raw.map((t) => clean(String(t))).filter(Boolean);
+    return raw.map((tag) => clean(String(tag))).filter(Boolean);
   }
 
   if (typeof raw === "string") {
     const trimmed = raw.trim();
-    // 尝试解析 JSON 数组字符串
+    if (!trimmed) return [];
+
     if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed)) {
-          return parsed.map((t) => clean(String(t))).filter(Boolean);
-        }
-      } catch (_) {
-        // fallback 到逗号分隔解析
-      }
+      return trimmed
+        .slice(1, -1)
+        .split(",")
+        .map((item) => clean(item))
+        .filter(Boolean);
     }
-    return trimmed
-      .split(",")
-      .map((t) => clean(t))
-      .filter(Boolean);
+
+    if (trimmed.includes(",")) {
+      return trimmed
+        .split(",")
+        .map((tag) => clean(tag))
+        .filter(Boolean);
+    }
+
+    return [clean(trimmed)].filter(Boolean);
   }
 
   return [];

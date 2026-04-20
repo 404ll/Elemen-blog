@@ -1,9 +1,14 @@
 export interface Post {
     slug: string
-    title?: string
+    title: string
     subtitle?: string
-    date?: string
+    date: string
     excerpt?: string
     category?: string
-    [key: string]: unknown //索引签名 - 字段可扩展
+    tags?: string[]
+    cover?: string
+    draft?: boolean
+    updatedAt?: string
+    author?: string
+    [key: string]: unknown
   }
