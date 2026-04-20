@@ -3,6 +3,7 @@ import "./globals.css";
 import I18nProvider from "@/provider/I18nProvider";
 import { ThemeProvider } from "@/provider/ThemeProvider";
 import Navbar from "@/components/layout/Navbar";
+import ObservabilityClient from "@/components/ui/ObservabilityClient";
 import localFont from "next/font/local";
 // import "@/i18n"; 
 
@@ -78,6 +79,7 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <I18nProvider>
+            <ObservabilityClient />
             <Navbar />
             {children}
           </I18nProvider>

@@ -4,4 +4,57 @@ subtitle: "这个是副标题 - 也可以是描述性文字"
 date: "2024-01-15"
 excerpt: "blog摘要"
 category: "frontend"
+tags: ["nextjs", "mdx", "writing"]
+cover: "/image/blog-cover-example.jpg"
+draft: false
 ---
+
+# 一篇技术文章应该怎么写得更清晰
+
+先讲结论，再讲背景，然后给出可执行步骤，会让读者更容易吸收。
+
+<Callout type="tip" title="写作建议">
+  每一节尽量围绕一个问题，标题用“问题句”而不是“概念名词”，阅读路径会更自然。
+</Callout>
+
+## 问题背景
+
+这里用 2-3 段讲清楚问题出现的场景、影响范围和约束条件。
+
+<Figure
+  src="/image/cover.jpg"
+  alt="系统调用链路示意图"
+  caption="图 1：请求从前端到后端的处理路径"
+/>
+
+## 解决步骤
+
+<Steps>
+  <Step title="Step 1 · 先定位边界">
+    明确是框架问题、业务问题还是数据问题，避免在错误方向上消耗时间。
+  </Step>
+  <Step title="Step 2 · 最小可复现">
+    用最少代码复现问题，把干扰项去掉，后续排查会快很多。
+  </Step>
+  <Step title="Step 3 · 记录与回归">
+    修复后补回归清单，把“现象-原因-方案”沉淀到文章里。
+  </Step>
+</Steps>
+
+## 关键代码
+
+```tsx
+function resolveSource(source: string) {
+  return source.trim().replace(/\s+/g, " ");
+}
+```
+
+<Callout type="warn" title="注意事项">
+  当文章包含多个代码块时，建议每个代码块前先写一句“这段代码解决什么”。
+</Callout>
+
+## 总结
+
+- 先结论后细节
+- 一节一个问题
+- 图文配合优先解释“为什么”

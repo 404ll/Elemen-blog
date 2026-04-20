@@ -69,6 +69,7 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
           {searchTerm && (
             <button
               onClick={() => setSearchTerm("")}
+              aria-label="清空搜索"
               className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             >
               ✕
