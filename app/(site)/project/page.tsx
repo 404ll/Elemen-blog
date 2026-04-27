@@ -3,6 +3,13 @@ import ProjectCard, { Project } from "@/components/card/ProjectCard";
 
 const projects: Project[] = [
   {
+    name: "vibe-writer",
+    description: "输入一个主题，AI 自动完成搜索、写作、审稿，生成一篇完整的技术博客。多 Agent 协作，WriterAgent 基于 ReAct loop 自主搜索，SSE 实时推流，LangGraph 管理状态与控制流。",
+    repo: "https://github.com/0xelemen/vibe-writer",
+    source: "AI Agent - 学习项目",
+    tags: ["Python", "LangGraph", "FastAPI", "React", "SSE"],
+  },
+  {
     name: "DemoDock",
     description: "黑客松项目展示平台，整合 Walrus 分布式存储与 Seal 加密技术，让优秀 Demo 永久保存、安全共享。",
     repo: "https://github.com/404ll/DemoDock",
