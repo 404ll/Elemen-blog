@@ -1,5 +1,6 @@
 import Image from "next/image";
 import SunCard from "./SunCard";
+import { PROFILE } from "@/config/profile";
 
 export default function SelfCard() {
     return (
@@ -21,12 +22,15 @@ export default function SelfCard() {
                   height={100}
                   className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/50 p-2 rounded-full"
                 />
-                <span className="text-2xl font-bold tracking-tight">Hello, I&#39;m Elemen !</span>
+                <span className="text-2xl font-bold tracking-tight">Hello, I&#39;m {PROFILE.name} !</span>
               </div>
   
               <div className="flex gap-3 flex-wrap">
-                <span className="px-3 py-1.5 bg-blue-100 dark:bg-blue-900/50 dark:text-blue-300 text-xs font-bold rounded-full shadow-sm transition-colors">Web Dev</span>
-                <span className="px-3 py-1.5 bg-purple-100 dark:bg-purple-900/50 dark:text-purple-300 text-xs font-bold rounded-full shadow-sm transition-colors">Blockchain Dev</span>
+                {PROFILE.tags.map((tag) => (
+                  <span key={tag.label} className={`px-3 py-1.5 ${tag.color} text-xs font-bold rounded-full shadow-sm transition-colors`}>
+                    {tag.label}
+                  </span>
+                ))}
               </div>
   
               <ul className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed list-disc list-inside space-y-2 transition-colors">

@@ -1,7 +1,35 @@
 'use client';
 import Image from 'next/image';
+import { useEffect, useState, useRef } from 'react';
+import { PROFILE } from '@/config/profile';
+
+// 打字机 hook：时间驱动，固定速度逐字输出，与网络/数据来源无关
+// indexRef 用 ref 而不是 state，避免每次 tick 都触发 re-render
+function useTypewriter(text: string, speed = 50) {
+  const [displayed, setDisplayed] = useState('');
+  const indexRef = useRef(-1);
+
+  useEffect(() => {
+    // 用 ref 标记"当前轮次"，text 变化时 index 归零由 setInterval 第一次 tick 处理
+    indexRef.current = -1;
+    const timer = setInterval(() => {
+      indexRef.current += 1;
+      if (indexRef.current <= text.length) {
+        setDisplayed(text.slice(0, indexRef.current));
+      } else {
+        clearInterval(timer);
+      }
+    }, speed);
+    return () => clearInterval(timer);
+  }, [text, speed]);
+
+  return displayed;
+}
 
 export default function AboutPage() {
+  const bio = useTypewriter(PROFILE.bio);
+  const isDone = bio.length === PROFILE.bio.length;
+
   return (
     <div className="pt-20 pb-16">
       <div className="max-w-4xl mx-auto px-4 space-y-8">
@@ -16,21 +44,30 @@ export default function AboutPage() {
               className="w-16 h-16 p-2"
             />
             <div>
-              <h1 className="text-3xl font-bold text-black dark:text-white font-zenmaru mb-2">Elemen</h1>
+              <h1 className="text-3xl font-bold text-black dark:text-white font-zenmaru mb-2">{PROFILE.name}</h1>
               <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400 font-zenmaru">
-                <span>📍 成都</span>
-                <a href="mailto:3242388085@qq.com" className="hover:text-blue-600 dark:hover:text-blue-400">✉️ 3242388085@qq.com</a>
+                <span>📍 {PROFILE.location}</span>
+                <a href={`mailto:${PROFILE.email}`} className="hover:text-blue-600 dark:hover:text-blue-400">✉️ {PROFILE.email}</a>
               </div>
             </div>
           </div>
 
           <div className="flex gap-3 flex-wrap text-black dark:text-white">
-            <span className="px-3 py-1.5 bg-blue-100 dark:bg-blue-900/50 dark:text-blue-300 text-xs font-bold rounded-full shadow-sm">Web Dev</span>
-            <span className="px-3 py-1.5 bg-purple-100 dark:bg-purple-900/50 dark:text-purple-300 text-xs font-bold rounded-full shadow-sm">Blockchain Dev</span>
-            <span className="px-3 py-1.5 bg-green-100 dark:bg-green-900/50 dark:text-green-300 text-xs font-bold rounded-full shadow-sm">Full Stack（learning）</span>
+            {PROFILE.tags.map((tag) => (
+              <span key={tag.label} className={`px-3 py-1.5 ${tag.color} text-xs font-bold rounded-full shadow-sm`}>
+                {tag.label}
+              </span>
+            ))}
           </div>
-          <p className="text-gray-700 dark:text-gray-300 font-zenmaru mt-2">大家好，我是 Elemen，主要方向是前端开发与区块链合约开发。目前也正在学习AI相关，欢迎一起交流～</p>
-          <p className="text-gray-700 dark:text-gray-300 font-zenmaru">笨鸟先飞，希望可以学到更多的东西</p>
+          {/* 打字机自我介绍 */}
+          <p className="text-gray-700 dark:text-gray-300 font-zenmaru mt-4 min-h-[3rem]">
+            {bio}
+            <span
+              className={`inline-block w-0.5 h-4 bg-gray-500 ml-0.5 align-middle transition-opacity ${
+                isDone ? 'opacity-0' : 'animate-pulse'
+              }`}
+            />
+          </p>
         </div>
 
 
@@ -41,41 +78,22 @@ export default function AboutPage() {
             <span>实习经历</span>
           </h2>
           <div className="space-y-6">
-            {/* 工作经历 1 */}
-            <div>
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <h3 className="text-lg font-semibold text-black dark:text-white font-zenmaru">
-                    厦门万狩文化科技有限公司
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400 font-zenmaru">WEB3全栈开发实习生</p>
+            {PROFILE.experiences.map((exp, i) => (
+              <div key={exp.company} className={i > 0 ? 'border-t border-gray-200 dark:border-gray-700 pt-6' : ''}>
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h3 className="text-lg font-semibold text-black dark:text-white font-zenmaru">{exp.company}</h3>
+                    <p className="text-gray-600 dark:text-gray-400 font-zenmaru">{exp.role}</p>
+                  </div>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 font-zenmaru">{exp.period}</span>
                 </div>
-                <span className="text-sm text-gray-500 dark:text-gray-400 font-zenmaru">2025.02 - 2025.06</span>
+                <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 font-zenmaru ml-4">
+                  {exp.bullets.map((bullet) => (
+                    <li key={bullet}>{bullet}</li>
+                  ))}
+                </ul>
               </div>
-              <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 font-zenmaru ml-4">
-                <li>依据产品文档，完善产品需求，编写区块链智能合约并对其进行测试</li>
-                <li>把握产品需求，按照UI设计图实现前端页面，对接智能合约</li>
-                <li>担任组织负责人，分发项目工作，管理项目开发文档，协助规划项目进度</li>
-              </ul>
-            </div>
-
-            {/* 工作经历 2 */}
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <h3 className="text-lg font-semibold text-black dark:text-white font-zenmaru">
-                    YouMind
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400 font-zenmaru">YouMind前端与增长实习生</p>
-                </div>
-                <span className="text-sm text-gray-500 dark:text-gray-400 font-zenmaru">2025.07 - 2025.09</span>
-              </div>
-              <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 font-zenmaru ml-4">
-                <li>参与 YouMind 增长体系建设以及运营管理系统核心模块开发，学习并实践 SEO 与 pSEO 策略，开发部分自动化内容生成脚本，提升页面收录效率与产品自然流量</li>
-                <li>为增强产品曝光，独立构思并开发基于 AI 大模型 + Twitter API 的营销网页，通过用户推文生成个性化性格分析报告</li>
-                <li>负责营销页面的设计还原、Prompt 优化、大模型 SDK 对接，实现从数据获取到分析生成的完整流程</li>
-              </ul>
-            </div>
+            ))}
           </div>
         </div>
 
@@ -87,9 +105,9 @@ export default function AboutPage() {
             <span>职业技能</span>
            </h2>
           <ul className="list-disc list-inside space-y-3 text-gray-700 dark:text-gray-300 font-zenmaru ml-4">
-            <li>HTML / CSS / JavaScript / TypeScript / Tailwind CSS</li>
-            <li>Next.js / Vite / React</li>
-            <li>Solidity / Move</li>
+            {PROFILE.skills.map((skill) => (
+              <li key={skill}>{skill}</li>
+            ))}
           </ul>
         </div>
       </div>
