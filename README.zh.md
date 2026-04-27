@@ -31,7 +31,6 @@
 | **UI** | React 19, TailwindCSS v4, Framer Motion |
 | **内容** | MDX, Shiki (代码高亮), Remark GFM |
 | **搜索** | Fuse.js (模糊搜索) |
-| **国际化** | react-i18next (中/英) |
 | **开发体验** | TypeScript, Turbopack, Husky, ESLint |
 
 ---
@@ -40,7 +39,6 @@
 
 - 🔤 **基于 MDX 的文章系统** — 支持组件化写作
 - 🔍 **模糊搜索** — Fuse.js 实现即时文章搜索
-- 🌐 **国际化支持** — 中英双语切换
 - 🌙 **暗黑模式** — 跟随系统主题自动切换
 - ⚡ **ISR 增量静态生成** — 快速构建，内容即时更新
 - 🎮 **复古像素美学** — 自定义字体与 2-bit 风格
@@ -62,7 +60,7 @@ app/
 content/               # MDX 文章
 components/            # 可复用组件
 lib/                   # 工具函数 (MDX, 文章处理)
-locales/               # 国际化翻译
+scripts/               # 开发脚本 (new-post CLI)
 ```
 
 ---
@@ -78,6 +76,9 @@ pnpm dev
 
 # 生产构建
 pnpm build
+
+# 新建文章（交互式 CLI）
+npm run new-post
 ```
 
 ---

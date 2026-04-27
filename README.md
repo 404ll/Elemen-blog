@@ -33,7 +33,6 @@ If it makes me curious → I build & write.
 | **UI** | React 19, TailwindCSS v4, Framer Motion |
 | **Content** | MDX, Shiki (Code Highlighting), Remark GFM |
 | **Search** | Fuse.js (Fuzzy Search) |
-| **i18n** | react-i18next (EN/CN) |
 | **DX** | TypeScript, Turbopack, Husky, ESLint |
 
 ---
@@ -42,7 +41,6 @@ If it makes me curious → I build & write.
 
 - 🔤 **MDX-based article system** — Write with components
 - 🔍 **Fuzzy search** — Instant article search with Fuse.js
-- 🌐 **i18n support** — English & Chinese
 - 🌙 **Dark mode** — System-aware theme switching
 - ⚡ **ISR (Incremental Static Regeneration)** — Fast builds, fresh content
 - 🎮 **Retro pixel aesthetic** — Custom fonts & 2-bit style
@@ -64,7 +62,7 @@ app/
 content/               # MDX articles
 components/            # Reusable components
 lib/                   # Utilities (MDX, post helpers)
-locales/               # i18n translations
+scripts/               # Dev scripts (new-post CLI)
 ```
 
 ---
@@ -80,6 +78,9 @@ pnpm dev
 
 # Build for production
 pnpm build
+
+# Create a new post (interactive CLI)
+npm run new-post
 ```
 
 ---
