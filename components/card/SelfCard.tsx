@@ -20,7 +20,7 @@ export default function SelfCard() {
                 height={100}
                 className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/50 p-2 rounded-full"
               />
-              <span className="text-2xl font-bold tracking-tight">Hello, I&#39;m {PROFILE.name} !</span>
+              <span className="text-xl md:text-2xl font-bold tracking-tight">Hello, I&#39;m {PROFILE.name} !</span>
             </div>
 
             <div className="flex gap-3 flex-wrap">
@@ -31,7 +31,7 @@ export default function SelfCard() {
               ))}
             </div>
 
-            <ul className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed list-disc list-inside space-y-2 transition-colors">
+            <ul className="text-base md:text-lg text-gray-700 dark:text-gray-300 leading-relaxed list-disc list-inside space-y-2 transition-colors">
               <li>Welcome to my blog!</li>
               <li>I am a web developer and a blockchain developer.</li>
               <li>I like to learn new things and share them with others.</li>

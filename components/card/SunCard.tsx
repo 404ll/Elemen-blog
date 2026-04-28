@@ -157,7 +157,8 @@ export default function SunCard() {
     const mouseLocation = gl.getUniformLocation(program, 'u_mouse');
     const resolutionLocation = gl.getUniformLocation(program, 'u_resolution');
 
-    // 调整画布大小
+    // 用 ResizeObserver 监听 canvas 容器的实际尺寸变化
+    // 比 window resize 更准确：初始渲染、flex 布局变化都能捕获到
     function resize() {
       if (!canvas || !gl) return;
       const rect = canvas.getBoundingClientRect();
@@ -166,8 +167,8 @@ export default function SunCard() {
       gl.viewport(0, 0, canvas.width, canvas.height);
     }
 
-    resize();
-    window.addEventListener('resize', resize);
+    const ro = new ResizeObserver(() => resize());
+    ro.observe(canvas);
 
     // 鼠标移动处理
     const handleMouseMove = (e: MouseEvent) => {
@@ -212,7 +213,7 @@ export default function SunCard() {
 
     // 清理
     return () => {
-      window.removeEventListener('resize', resize);
+      ro.disconnect();
       canvas.removeEventListener('mousemove', handleMouseMove);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
