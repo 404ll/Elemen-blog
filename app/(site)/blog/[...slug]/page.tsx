@@ -78,10 +78,10 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
     <div className="mt-20 pb-16 mb-10 shadow-lg font-zenmaru selection:bg-blue-100 dark:selection:bg-blue-900 selection:text-blue-900 dark:selection:text-blue-100 max-w-6xl mx-auto rounded-2xl transition-colors bg-white dark:bg-gray-900 xl:pr-72">
       <ReadingEnhancements headings={headings} />
 
-      <div className="max-w-[72ch] mx-auto px-6 pt-12 mb-8">
+      <div className="max-w-[72ch] mx-auto px-6 pt-8 mb-6">
         <Link
           href="/blog"
-          className="inline-flex items-center gap-2 text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors group mb-8"
+          className="inline-flex items-center gap-2 text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors group mb-5"
         >
           <div className="p-2 rounded-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 shadow-sm group-hover:shadow-md group-hover:border-blue-600 dark:group-hover:border-blue-400 transition-all">
             <ArrowLeft size={16} />
@@ -89,7 +89,7 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
           <span className="text-sm font-semibold font-zenmaru">返回文章列表</span>
         </Link>
 
-        <header className="space-y-6 text-center md:text-left animate-fade-in-up">
+        <header className="space-y-3 text-center md:text-left animate-fade-in-up">
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-gray-700 dark:text-gray-300 font-medium transition-colors">
             {frontmatter.category && (
               <span className="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800 transition-colors">
