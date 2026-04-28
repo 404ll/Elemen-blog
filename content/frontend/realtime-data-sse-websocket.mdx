@@ -1,0 +1,279 @@
+---
+title: "实时数据的四种方案：轮询、长轮询、SSE、WebSocket"
+date: "2026-04-27"
+excerpt: "从最简单的轮询到全双工 WebSocket，梳理四种实时数据方案的原理、格式和选型依据，结合 AI 流式输出的真实场景说明"
+category: "frontend"
+---
+
+## 为什么需要"实时数据"？
+
+HTTP 的默认模型是**请求-响应**：客户端问，服务端答，一问一答，连接关闭。
+
+但很多场景需要服务端主动推送数据：消息通知、股票行情、AI 流式输出……这时候就需要在 HTTP 之上想办法，或者换协议。
+
+四种方案，复杂度和适用场景各不相同。
+
+---
+
+## 方案一：轮询（Polling）
+
+**原理：** 客户端每隔固定时间发一次请求，问服务端"有新数据吗"。
+
+```js
+setInterval(async () => {
+  const res = await fetch('/api/messages');
+  const data = await res.json();
+  render(data);
+}, 3000); // 每 3 秒问一次
+```
+
+**优点：** 实现极简，任何后端都支持。
+
+**缺点：**
+- 有延迟（最多等一个轮询周期）
+- 大量无效请求（没有新数据也要问）
+- 高并发下服务端压力大
+
+**适用：** 对实时性要求不高、数据更新不频繁的场景（比如每分钟刷新一次的数据看板）。
+
+---
+
+## 方案二：长轮询（Long Polling）
+
+**原理：** 客户端发请求后，服务端**不立即响应**，而是挂起连接，等到有新数据时才返回。客户端收到响应后立刻发下一个请求。
+
+```
+客户端 → 请求
+服务端   ← 挂起等待...（有数据了）
+服务端 → 响应
+客户端 → 立刻发下一个请求
+```
+
+```js
+async function longPoll() {
+  const res = await fetch('/api/wait-for-data'); // 服务端会等待
+  const data = await res.json();
+  render(data);
+  longPoll(); // 收到就立刻再问
+}
+longPoll();
+```
+
+**优点：** 延迟低（数据一到就推），比普通轮询省请求。
+
+**缺点：** 每次响应后都要重建连接，服务端需要维护挂起的连接，实现比轮询复杂。
+
+**适用：** 需要低延迟但又不想引入 WebSocket 的场景（早期的即时消息）。
+
+---
+
+## 方案三：SSE（Server-Sent Events）
+
+**原理：** 基于 HTTP，客户端建立一个**持久连接**，服务端通过这个连接持续往客户端推数据。**单向**：只有服务端 → 客户端。
+
+### SSE 的数据格式
+
+SSE 有严格的文本格式，每条消息由若干字段组成，以空行分隔：
+
+```
+data: 这是第一条消息\n\n
+
+id: 42\n
+data: 这是带 ID 的消息\n\n
+
+event: userJoin\n
+data: {"name": "Elemen"}\n\n
+
+: 这是注释，客户端会忽略\n\n
+```
+
+字段说明：
+
+| 字段 | 作用 |
+|------|------|
+| `data` | 消息内容，必填，可多行 |
+| `id` | 消息 ID，断线重连时浏览器会带上 `Last-Event-ID` 头，实现续传 |
+| `event` | 自定义事件类型，默认是 `message` |
+| `retry` | 重连间隔（毫秒） |
+
+### AI 输出的 SSE 格式（以 OpenAI 为例）
+
+```
+data: {"choices":[{"delta":{"content":"你"},"index":0}]}\n\n
+data: {"choices":[{"delta":{"content":"好"},"index":0}]}\n\n
+data: {"choices":[{"delta":{"content":"！"},"index":0}]}\n\n
+data: [DONE]\n\n
+```
+
+每个 chunk 是一个 JSON，`delta.content` 是这次新增的文字片段，`[DONE]` 标识流结束。
+
+### 浏览器原生 EventSource
+
+```js
+const es = new EventSource('/api/stream');
+
+es.onmessage = (e) => {
+  console.log(e.data); // 每次收到 data 字段
+};
+
+es.addEventListener('userJoin', (e) => {
+  console.log('用户加入:', e.data); // 监听自定义事件
+});
+
+es.onerror = () => {
+  // 断线后浏览器会自动重连
+};
+```
+
+**EventSource 自带断线重连**，重连时会带上 `Last-Event-ID`，服务端可以从这个 ID 开始续发，不会丢消息。
+
+### 为什么 AI 应用不用 EventSource，而用 fetch？
+
+`EventSource` 有两个限制：
+1. **只支持 GET 请求**，无法传请求体（prompt 太长放不进 URL）
+2. **不支持自定义 Header**（无法传 `Authorization: Bearer token`）
+
+所以 AI 应用普遍用 `fetch` + `ReadableStream` 手动解析 SSE：
+
+```ts
+const res = await fetch('/api/analysis', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    Accept: 'text/event-stream',
+  },
+  body: JSON.stringify({ userInfo }),
+});
+
+const reader = res.body?.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  const chunk = decoder.decode(value, { stream: true });
+  streamParser.parseChunk(chunk);
+}
+streamParser.flush(); // 处理缓冲区里可能残留的最后一行
+```
+
+注意 `decode(value, { stream: true })`——加上这个参数，TextDecoder 会把跨 chunk 的多字节字符（比如中文）正确拼接，而不是截断乱码。
+
+### 一个容易踩的坑：行缓冲
+
+网络传输时，一个 SSE 消息可能被拆成多个 chunk 到达，也可能一个 chunk 里包含多条消息。所以不能直接 `split('\n')` 处理，需要维护一个行缓冲：
+
+```ts
+class StreamParser {
+  private buffer = '';
+
+  parseChunk(chunk: string) {
+    this.buffer += chunk;
+    const lines = this.buffer.split('\n');
+    // 最后一行可能不完整，留到下次处理
+    this.buffer = lines[lines.length - 1];
+
+    for (const line of lines.slice(0, -1)) {
+      if (line.startsWith('data: ')) {
+        this.parseData(line.slice(6)); // 去掉 'data: ' 前缀
+      }
+    }
+  }
+
+  flush() {
+    // 流结束时处理残留内容
+    if (this.buffer.trim()) this.parseData(this.buffer);
+  }
+}
+```
+
+### 服务端怎么发 SSE
+
+服务端（Next.js Route Handler）返回一个 `ReadableStream`，设置好响应头即可：
+
+```ts
+// app/api/analysis/route.ts
+export async function POST(req: NextRequest) {
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encode = (data: object) =>
+        new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`);
+
+      controller.enqueue(encode({ type: 'status', message: '开始分析...' }));
+
+      // 调用 AI，把每个 chunk 转发出去
+      for await (const chunk of aiStream) {
+        controller.enqueue(encode({
+          type: 'partial_content',
+          content: chunk,
+        }));
+      }
+
+      controller.enqueue(encode({ type: 'complete' }));
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no', // 关掉 Nginx/Cloudflare 的缓冲，否则数据会攒批发送
+    },
+  });
+}
+```
+
+`X-Accel-Buffering: no` 这个头容易被忽略——如果不加，部署到有反向代理的环境后，数据会被缓冲攒批，流式效果消失。
+
+**适用：** 服务端单向推送，AI 输出、消息通知、日志流。
+
+---
+
+## 方案四：WebSocket
+
+**原理：** 基于 TCP 的**全双工**协议。通过 HTTP 握手升级连接后，客户端和服务端可以随时互相发消息，延迟极低。
+
+```
+HTTP 握手：
+  客户端 → Upgrade: websocket
+  服务端 → 101 Switching Protocols
+
+之后：
+  客户端 ↔ 服务端（随时双向发消息）
+```
+
+```js
+const ws = new WebSocket('wss://example.com/ws');
+
+ws.onopen = () => ws.send(JSON.stringify({ type: 'join', room: '123' }));
+ws.onmessage = (e) => render(JSON.parse(e.data));
+ws.onclose = () => reconnect(); // 需要自己实现重连
+```
+
+**需要注意的问题：**
+- **心跳保活**：长时间没有数据时，中间的负载均衡、防火墙可能断开连接，需要定时发 ping/pong
+- **重连逻辑**：断线后需要自己实现重连，SSE 是浏览器内置的
+- **服务端资源**：每个连接是一个持久 TCP 连接，高并发时占用的文件描述符多
+
+**适用：** 需要双向实时通信的场景——在线协作、聊天室、实时游戏、股票行情。
+
+---
+
+## 四种方案对比
+
+| 方案 | 方向 | 协议 | 延迟 | 复杂度 | 典型场景 |
+|------|------|------|------|--------|---------|
+| 轮询 | 客户端拉 | HTTP | 高 | 低 | 定时刷新看板 |
+| 长轮询 | 客户端拉 | HTTP | 低 | 中 | 早期 IM |
+| SSE | 服务端推 | HTTP | 低 | 低 | AI 输出、通知推送 |
+| WebSocket | 双向 | TCP | 极低 | 高 | 聊天室、协同编辑 |
+
+**选型原则很简单：**
+- 只需要服务端推 → SSE，够用且简单
+- 需要双向通信 → WebSocket
+- 不想引入新协议 → 长轮询兜底
+- 实时性要求低 → 轮询
+
+> **一句话记忆：** SSE 是"服务端的广播"，WebSocket 是"服务端和客户端的对话"。

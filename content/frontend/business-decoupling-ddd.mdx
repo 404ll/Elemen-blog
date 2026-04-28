@@ -1,0 +1,153 @@
+---
+title: "从耦合到解耦：一次费控系统重构引发的架构思考"
+date: "2026-04-28"
+excerpt: "从一个真实的实习项目出发，聊聊业务逻辑拆分、OOP工厂模式和DDD领域驱动设计之间的关系"
+category: "frontend"
+---
+
+## 问题的起点：三方视角的错位
+
+在费控系统的付款模块里，有一个让我印象很深的问题。
+
+房租付款（`rent_pay`）和非PO付款（`nonpo_pay`）在早期被耦合在同一套逻辑里。因为它们初期的业务流程确实很像：都要拉取单据头、单据行、发票、附件、审批流，都要区分编辑态和详情态，都要处理批量单据。
+
+但随着业务发展，两者开始出现差异。每次只想给房租加一个特殊逻辑，押金（nonpo）的代码量也跟着涨。可读性越来越差，改一处怕动另一处。
+
+**根本原因是什么？**
+
+我后来想清楚了：是**三方视角的错位**。
+
+- **产品的视角**是树状的：付款 → 房租 / 押金 / 预算。他们认为这是一个大功能下的子场景。
+- **前端的视角**是洋葱形的：一个核心逻辑，各场景往外扩展，整体复用一个大组件。
+- **后端的视角**是平面的：房租和押金是两个完全独立的接口和数据模型，没有继承关系。
+
+前端按照"洋葱"来建模，把两个在后端看来毫不相干的东西耦合在一起，就埋下了这个问题。
+
+---
+
+## 第一层解法：物理拆分
+
+最直接的第一步，是**把两个场景物理隔离**。
+
+```
+nodes/
+  room-rent/      ← 房租付款，独立维护
+  nonpo-pay/      ← 非PO付款，独立维护
+```
+
+入口用一个 `MiddleFactory` 组件做分发：
+
+```tsx
+// middleFactory.tsx
+const RoomRent = React.lazy(() => import('./nodes/room-rent/index'));
+const NonPoPay = React.lazy(() => import('./nodes/nonpo-pay/index'));
+
+const MiddleFactory: React.FC = () => {
+  const { applyNum } = useParams();
+  const [billType, setBillType] = useState<BillType | null>(null);
+
+  useEffect(() => {
+    resolveBillType(applyNum).then(setBillType);
+  }, [applyNum]);
+
+  if (!billType) return <Loading />;
+  if (billType === 'rent') return <RoomRent />;
+  return <NonPoPay />;
+};
+```
+
+这里同时用到了 `React.lazy` 做懒加载——两个场景按需加载，不会互相影响首屏体积。`Suspense` 的 fallback 在 `Loading` 组件里处理。
+
+> **这一步的代价**：两个文件里有大量重复代码（`fetchInitData` 几乎一模一样）。
+>
+> **但这是值得的**：物理隔离之后，两个场景可以独立演进，不再互相干扰。"先让边界清晰，再谈复用"——这个顺序很重要。
+
+---
+
+## 第二层演进：OOP 工厂模式
+
+物理拆分解决了耦合，但引入了重复。下一步是识别**真正稳定的共性**，用 OOP 的思路来管理。
+
+两个场景共享的逻辑其实很清晰：
+- 数据初始化流程（拉头、拉行、拉发票、拉附件、拉审批流）
+- 编辑态 / 详情态的切换逻辑
+- 批量单据的判断逻辑
+
+差异点只有：
+- 埋点的 `orderCode`（`rentPay` vs `nonPoPay`）
+- 详情态渲染的组件不同
+
+这就是工厂模式适合介入的地方。
+
+> **Pattern: Factory Method** — 定义创建对象的接口，让子类决定实例化哪个类。父类处理通用流程，子类注入差异。
+
+伪代码思路：
+
+```ts
+// 抽象基类：定义通用的数据加载流程
+abstract class PayBillBase {
+  abstract get orderCode(): string;
+  abstract renderDetail(data: BillData): React.ReactNode;
+
+  async fetchInitData(applyNum?: string) {
+    // 通用逻辑：拉头、拉行、判断编辑态...
+    // 子类只需要覆盖差异部分
+  }
+}
+
+// 具体场景：只注入差异
+class RentPayBill extends PayBillBase {
+  get orderCode() { return 'rentPay'; }
+  renderDetail(data) { return <RentPayDetail data={data} />; }
+}
+
+class NonPoPayBill extends PayBillBase {
+  get orderCode() { return 'nonPoPay'; }
+  renderDetail(data) { return <NonPoDetail data={data} />; }
+}
+```
+
+在 React 里，这个思路可以用自定义 Hook 来实现——`usePayBill(config)` 接收一个配置对象，返回通用的状态和方法，各场景只传入自己的差异配置。
+
+---
+
+## 更深一层：这其实是在补 DDD 的边界
+
+回头看这整个过程，其实在无意识地实践 **DDD（Domain-Driven Design，领域驱动设计）** 的核心思想。
+
+DDD 的核心不是技术，而是**以业务领域为中心来组织代码**，而不是以技术分层（controller / service / dao）为中心。
+
+它有几个关键概念：
+
+**限界上下文（Bounded Context）**：每个业务域有自己清晰的边界，边界内有自己的语言和模型。边界外的概念不应该渗透进来。
+
+**通用语言（Ubiquitous Language）**：产品、前端、后端用同一套词汇描述业务，减少理解偏差。
+
+**聚合根（Aggregate Root）**：一个上下文的入口对象，外部只能通过它操作内部数据，保证一致性。
+
+---
+
+回到我们的费控系统：
+
+**用 DDD 的视角，房租和押金应该是两个独立的限界上下文。**
+
+判断依据：
+- 它们的业务规则不同（房租有租期逻辑，押金有退还逻辑）
+- 它们的生命周期不同
+- 它们未来的扩展方向不同
+
+初期把它们耦合，本质上是**违反了限界上下文的边界**。我们做的物理拆分，就是在补这个边界。
+
+而三方视角错位的问题，正是缺少**通用语言**造成的——产品、前端、后端对"付款场景"这个词的理解完全不同，导致建模时各说各话。
+
+---
+
+## 总结
+
+这段经历给我最大的收获，不是学会了某个具体的技术，而是理解了一个顺序：
+
+1. **先让边界清晰**（物理拆分，即使有重复代码）
+2. **再识别稳定的共性**（OOP / 工厂模式，提取真正不变的部分）
+3. **用领域语言对齐三方**（DDD，让产品、前端、后端说同一种话）
+
+代码的耦合，往往是认知的耦合在先。

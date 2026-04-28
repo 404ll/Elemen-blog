@@ -36,9 +36,38 @@ category: "frontend"
 
 ### 典型库
 
-- react-window
-- react-virtualized
-- Ant Design ProTable（内部）
+- `react-window`：轻量，适合固定高度，首选
+- `react-virtualized`：功能全，支持不定高、表格，体积较大
+- Ant Design ProTable（内部封装）
+
+### 列表项高度不固定怎么办？
+
+固定高度好处理——直接用 `react-window` 的 `FixedSizeList`，传入 `itemSize` 即可。
+
+不定高（比如评论里有图片、折叠内容）是难点。常见方案：
+
+1. **先用估算高度渲染**，挂载后用 `ResizeObserver` 测量真实高度
+2. **更新高度缓存**，触发重新计算偏移量
+3. `react-virtualized` 的 `CellMeasurer` 就是这个思路的封装
+
+```jsx
+// react-window VariableSizeList 示例
+const getItemSize = (index) => heightCache[index] ?? 80; // 没测到就用估算值
+
+<VariableSizeList
+  height={600}
+  itemCount={list.length}
+  itemSize={getItemSize}
+>
+  {({ index, style }) => (
+    <div style={style} ref={el => measureHeight(el, index)}>
+      <Item data={list[index]} />
+    </div>
+  )}
+</VariableSizeList>
+```
+
+> **核心矛盾**：虚拟列表需要提前知道高度来计算偏移，但不定高内容只有渲染后才知道高度。所以不定高虚拟列表本质上是"先猜、后测、再修正"的过程。
 
 ---
 

@@ -1,0 +1,142 @@
+---
+title: "分页缓存 + 滑动窗口：预算卡片的翻页体验优化"
+date: "2026-04-27"
+excerpt: "从一个真实的预算单卡片需求出发，聊聊如何用分页缓存 + 滑动窗口策略，在不引入虚拟列表的情况下，做到流畅翻页和内存可控"
+category: "frontend"
+---
+
+## 背景
+
+首页有一个"我的预算单"卡片区域，展示当前用户关联的预算单，每页最多 3 张卡片，支持左右翻页。
+
+需求看起来很简单，但有两个体验要求：
+1. **翻页要快**：用户点下一页不能有明显等待
+2. **内存要可控**：预算单可能有几十页，不能把所有数据都缓存在前端
+
+这两个要求是矛盾的——缓存越多翻页越快，但内存会无限增长。解法是**滑动窗口缓存**。
+
+---
+
+## 数据结构设计
+
+用 `Map<pageNo, cards>` 做页级缓存，而不是一个大数组：
+
+```ts
+const [pagesCache, setPagesCache] = useState<Map<number, BaseCard[]>>(new Map());
+const [currentPage, setCurrentPage] = useState(1);
+
+const WINDOW_SIZE = 1; // 前后各保留 1 页
+```
+
+`WINDOW_SIZE = 1` 意味着：当前在第 5 页时，缓存里只保留第 4、5、6 页的数据，其余全部丢弃。
+
+---
+
+## 窗口滑动逻辑
+
+切页时顺手清理窗口外的缓存：
+
+```ts
+const switchPage = (pageNo: number) => {
+  setCurrentPage(pageNo);
+  setPagesCache((prev) => {
+    const next = new Map(prev);
+    for (const key of next.keys()) {
+      if (key < pageNo - WINDOW_SIZE || key > pageNo + WINDOW_SIZE) {
+        next.delete(key); // 超出窗口，释放内存
+      }
+    }
+    return next;
+  });
+};
+```
+
+这样不管用户翻多少页，内存里始终只有最多 3 页的数据。
+
+---
+
+## 预加载：让翻页"感觉瞬间"
+
+只有缓存还不够——第一次翻到某页时还是要等请求。解法是**在用户点下一页的同时，静默预加载下下页**：
+
+```ts
+const handleNext = () => {
+  const nextPageNo = currentPage + 1;
+
+  if (pagesCache.has(nextPageNo)) {
+    switchPage(nextPageNo); // 已缓存，直接切
+  } else if (hasMore) {
+    loadPage(nextPageNo).then(() => switchPage(nextPageNo)); // 等待加载
+  }
+
+  // 静默预加载 N+2 页，用户感知不到
+  const prefetchIndex = nextPageNo + 1;
+  if (!pagesCache.has(prefetchIndex) && hasMore) {
+    loadPage(prefetchIndex, true); // silent=true，不触发 loading 状态
+  }
+};
+```
+
+`silent` 参数控制是否显示 loading——预加载不应该打扰用户当前的操作。
+
+> **这其实是一个经典的"时间换空间"的反向操作**：我们在用户还没翻页的时候就提前把数据取回来，把网络等待时间"挪"到用户无感知的时间段里。
+
+---
+
+## 视图层：Swiper 与数据层解耦
+
+视图层用 Swiper 处理卡片内部的滑动动画，数据层的翻页完全独立：
+
+```tsx
+// Swiper 内部滑到最后一张时，才触发数据层的"下一页"
+const handleClickNext = () => {
+  if (!swiper.isEnd) {
+    swiper.slideNext();       // 还有卡片，Swiper 内部滑动
+  } else if (hasNext) {
+    onNext?.();               // 已到当前页最后，请求下一页数据
+  }
+};
+
+// 换页后重置 Swiper 到第一张
+useEffect(() => {
+  swiper.slideTo(0, 0); // 无动画跳回第一张
+  swiper.update();
+}, [data]);
+```
+
+这里有一个设计决策：**Swiper 的"页"和数据的"页"是两个不同的概念**。Swiper 管理的是当前这批卡片内部的位置，数据层管理的是哪批卡片在展示。两者通过 `onNext` / `onPrev` 回调连接，互不耦合。
+
+---
+
+## 响应式 pageSize
+
+窗口宽度变化时，每页展示的卡片数也会变（1280px 以下显示 2 张，1600px 以上显示 3 张）。这带来一个问题：**pageSize 变了，之前缓存的数据全部失效**。
+
+处理方式是换算用户当前位置，而不是直接跳回第 1 页：
+
+```ts
+useEffect(() => {
+  if (oldPageSize === pageSize) return;
+
+  // 当前页第一条的全局偏移 → 换算到新 pageSize 下的页码
+  const firstItemIndex = (currentPage - 1) * oldPageSize;
+  const targetPage = Math.floor(firstItemIndex / pageSize) + 1;
+
+  setPagesCache(new Map()); // 清空旧缓存
+  setCurrentPage(targetPage);
+  loadPage(targetPage);     // 重新加载
+}, [pageSize]);
+```
+
+---
+
+## 小结
+
+这个方案的核心思路：
+
+- **Map 做页级缓存**，比数组更方便按页增删
+- **滑动窗口**控制缓存大小，内存恒定
+- **预加载**把网络等待挪到用户无感知的时间段
+- **视图层与数据层解耦**，Swiper 只管动画，数据层只管分页
+
+本质上是把"分页"和"缓存"两个概念组合使用——分页控制网络传输量，缓存控制用户体验，滑动窗口平衡两者之间的内存代价。
