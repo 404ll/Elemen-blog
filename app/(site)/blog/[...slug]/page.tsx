@@ -110,6 +110,12 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
             </span>
           </div>
 
+          {frontmatter.title && (
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100 font-zenmaru">
+              {frontmatter.title}
+            </h1>
+          )}
+
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-2 pt-2 justify-center md:justify-start">
               {tags.map((tag: string) => (

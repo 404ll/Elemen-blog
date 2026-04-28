@@ -48,7 +48,7 @@ export const MacCodeBlock = ({ children, hasLanguage = false }: MacCodeBlockProp
   const language = getLanguage();
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-[#0d1117] shadow-lg group">
+    <div className="relative rounded-xl border border-gray-200 dark:border-gray-800 bg-[#0d1117] shadow-lg group">
       {/* 顶部栏 */}
       <div className="flex items-center justify-between px-4 py-3 bg-[#161b22] border-b border-gray-800">
         <div className="flex items-center gap-3">
