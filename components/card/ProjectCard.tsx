@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SketchBorder from "@/components/ui/SketchBorder";
 
 export type Project = {
   name: string;
@@ -18,68 +19,59 @@ export default function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <div className="relative h-full group">
-      {/* 整卡点击跳转仓库或项目链接 */}
       {repo && (
         <Link
           href={repo}
           target="_blank"
           rel="noopener noreferrer"
           aria-label={`${name} 的${repo.includes('github.com') ? '仓库' : '链接'}`}
-          className="absolute inset-0 z-0 rounded-2xl"
+          className="absolute inset-0 z-0 rounded-none"
         />
       )}
 
-      <div className="relative z-10 h-full overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-700 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm shadow-lg transition-all group-hover:-translate-y-1 group-hover:shadow-xl pointer-events-none">
-        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500/60 via-purple-500/60 to-pink-500/60" />
-        <div className="p-5 space-y-4">
+      <SketchBorder className="relative z-10 h-full bg-white/85 dark:bg-gray-900/85 p-5 transition-transform group-hover:-translate-y-1 pointer-events-none">
+        <div className="space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">
-              <span className="px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/50 rounded-full">
-                {source}
+              <span className="font-mono text-xs font-bold tracking-wider border border-black dark:border-white px-2 py-0.5 text-black dark:text-white">
+                {source.toUpperCase()}
               </span>
-              <h3 className="text-xl font-bold text-black dark:text-white font-zenmaru leading-tight">
+              <h3 className="text-lg font-bold text-black dark:text-white font-zenmaru leading-tight mt-1">
                 {name}
               </h3>
             </div>
             {repo && (
-              <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                {repo.includes('github.com') ? '仓库' : '访问'}
-                <span aria-hidden>↗</span>
+              <span className="font-mono text-xs font-bold text-black dark:text-white opacity-50 flex-shrink-0">
+                {repo.includes('github.com') ? 'GH' : '↗'}
               </span>
             )}
           </div>
 
-          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{description}</p>
+          <p className="font-mono text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{description}</p>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {tags.map((tag) => (
               <span
                 key={tag}
-                className="px-2.5 py-1 bg-gray-100 dark:bg-gray-700 text-[11px] font-semibold text-gray-700 dark:text-gray-300 rounded-full"
+                className="font-mono text-xs text-gray-500 dark:text-gray-400"
               >
-                {tag}
+                #{tag}
               </span>
             ))}
           </div>
 
-          <div className="flex items-center gap-2">
-            {article ? (
-              <Link
-                href={article}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="pointer-events-auto inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/50 rounded-full hover:bg-purple-200 dark:hover:bg-purple-800/50 transition-colors"
-              >
-                阅读文章
-                <span aria-hidden>↗</span>
-              </Link>
-            ) : (
-              null
-            )}
-          </div>
+          {article && (
+            <Link
+              href={article}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="pointer-events-auto inline-flex items-center gap-1 font-mono text-xs font-bold text-black dark:text-white border-b border-black dark:border-white hover:opacity-60 transition-opacity"
+            >
+              阅读文章 →
+            </Link>
+          )}
         </div>
-      </div>
+      </SketchBorder>
     </div>
   );
 }
-

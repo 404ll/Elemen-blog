@@ -1,22 +1,21 @@
 'use client';
 import Link from "next/link";
-import { CATEGORIES, getColorStyle } from "@/constant";
+import { CATEGORIES } from "@/constant";
 
 export default function CategoryCard() {
-  const categories = CATEGORIES;
   return (
     <div className="sticky top-24">
-      <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 transition-all shadow-lg hover:shadow-xl dark:bg-gray-800 dark:border dark:border-gray-700">
-        <h2 className="text-2xl font-bold tracking-tight mb-4 text-black font-zenmaru dark:text-white">
-          文章分类
+      <div className="border border-black dark:border-white bg-white/85 dark:bg-gray-900/85 p-5">
+        <h2 className="font-mono text-xs font-bold tracking-widest uppercase text-black dark:text-white mb-4">
+          Categories
         </h2>
-        <div className="flex flex-col gap-3">
-          {Object.entries(categories).map(([key, category]) => (
+        <div className="flex flex-col gap-2">
+          {Object.entries(CATEGORIES).map(([key, category]) => (
             <Link
               key={category.name}
               href={`/blog/category/${key}`}
               aria-label={`查看 ${category.name} 分类`}
-              className={`block px-4 py-3 ${getColorStyle(category.color, 'card')} hover:translate-y-[-2px] text-base font-bold rounded-lg transition-all text-black dark:text-white cursor-pointer shadow-sm hover:shadow-md`}
+              className="block px-3 py-2 border-l-2 border-black dark:border-white font-mono text-sm font-bold text-black dark:text-white hover:opacity-60 hover:-translate-y-0.5 transition-all"
             >
               {category.name}
             </Link>
