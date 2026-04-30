@@ -29,7 +29,7 @@ export default function Navbar() {
         {/* 左侧：Logo */}
         <Link href="/" className="flex items-center gap-2">
           <Image src="/icon/sun.png" alt="logo" className="w-8 h-8 rounded-full" width={100} height={100} />
-          <div className="font-bitcount text-3xl font-semibold">Elemen&#39;s Blog</div>
+          <div className="font-bitcount text-xl md:text-3xl font-semibold">Elemen&#39;s Blog</div>
         </Link>
 
         {/* 中间：桌面端导航链接（移动端隐藏） */}

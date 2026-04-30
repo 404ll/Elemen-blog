@@ -35,7 +35,7 @@ export default function HomeClient({ posts }: { posts: Post[] }) {
           {/* 左侧：文章列表 */}
           <div className="lg:col-span-3">
             <div className="mb-2">
-              <h2 className="text-3xl font-bold text-black mb-2 dark:text-white">
+              <h2 className="text-xl md:text-3xl font-bold text-black mb-2 dark:text-white">
                 最新文章
               </h2>
               <p className="text-gray-600 dark:text-gray-400">

@@ -195,6 +195,15 @@ pre code {
   line-height: 1.7;
 }
 
+/* 防止 prose 的 color 覆盖 shiki 生成的 token 颜色
+   shiki 把颜色写在 --shiki-light / --shiki-dark CSS 变量上，这里把它取出来 */
+.prose [data-rehype-pretty-code-fragment] span {
+  color: var(--shiki-light);
+}
+.dark .prose [data-rehype-pretty-code-fragment] span {
+  color: var(--shiki-dark);
+}
+
 /* line numbers */
 code[data-line-numbers] > [data-line]::before {
   counter-increment: line;

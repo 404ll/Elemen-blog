@@ -51,7 +51,7 @@ export default function ArticleCard({ post }: ArticleCardProps) {
       </div>
 
       {/* 标题 */}
-      <h2 className="text-xl font-bold tracking-tight mb-2 text-black dark:text-white flex items-center gap-2 transition-colors">
+      <h2 className="text-base md:text-xl font-bold tracking-tight mb-2 text-black dark:text-white flex items-center gap-2 transition-colors">
         <Image src="/icon/light.png" alt="light" width={20} height={20} className="flex-shrink-0" />
         <span>{title || "Untitled"}</span>
       </h2>
