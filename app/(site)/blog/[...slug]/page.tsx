@@ -2,7 +2,7 @@ import { renderMDX } from "@/lib/mdx";
 import { getAllPosts, getPostBySlug, normalizeTags } from "@/lib/post";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Calendar, Clock, Tag } from "lucide-react";
+import { ArrowLeft, Calendar, Clock } from "lucide-react";
 import { mdxComponents } from "@/components/ui/MdxContent";
 import ReadingEnhancements from "@/components/ui/ReadingEnhancements";
 import { extractHeadingsFromMdx } from "@/lib/headings";
@@ -75,7 +75,7 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
   const headings = extractHeadingsFromMdx(content);
 
   return (
-    <div className="mt-20 pb-16 mb-10 shadow-lg font-zenmaru selection:bg-blue-100 dark:selection:bg-blue-900 selection:text-blue-900 dark:selection:text-blue-100 max-w-6xl mx-auto rounded-2xl transition-colors bg-white dark:bg-gray-900 xl:pr-72">
+    <div className="mt-20 pb-16 mb-10 font-zenmaru selection:bg-orange-100 dark:selection:bg-orange-900 selection:text-orange-900 dark:selection:text-orange-100 max-w-6xl mx-auto transition-colors bg-white/85 dark:bg-gray-900/85 border-x border-black/10 dark:border-white/10 xl:pr-72">
       <ReadingEnhancements headings={headings} />
 
       <div className="max-w-[72ch] mx-auto px-6 pt-8 mb-6">
@@ -92,7 +92,7 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
         <header className="space-y-3 text-center md:text-left animate-fade-in-up">
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-gray-700 dark:text-gray-300 font-medium transition-colors">
             {frontmatter.category && (
-              <span className="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800 transition-colors">
+              <span className="px-2 py-0.5 font-mono text-xs font-bold tracking-wider border border-black dark:border-white text-black dark:text-white uppercase">
                 {frontmatter.category}
               </span>
             )}
@@ -121,15 +121,29 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
               {tags.map((tag: string) => (
                 <span
                   key={tag}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-xs font-semibold hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
+                  className="font-mono text-xs text-gray-400 dark:text-gray-500"
                 >
-                  <Tag size={12} />
-                  {tag}
+                  #{tag}
                 </span>
               ))}
             </div>
           )}
         </header>
+        <svg
+          className="w-full mt-6"
+          height="6"
+          viewBox="0 0 800 6"
+          preserveAspectRatio="none"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M0,3 Q100,1 200,4 Q300,6 400,3 Q500,0 600,3 Q700,5 800,3"
+            stroke="currentColor"
+            strokeWidth="1"
+            className="text-black/20 dark:text-white/20"
+          />
+        </svg>
       </div>
 
       <main className="max-w-[72ch] mx-auto px-6">
