@@ -31,13 +31,13 @@ export default function ArticleCard({ post }: ArticleCardProps) {
           category ? (
             <Link
               href={`/blog/category/${category}`}
-              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${badgeClassName}`}
+              className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold transition-colors ${badgeClassName}`}
             >
               {categoryLabel}
             </Link>
           ) : (
             <span
-              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${badgeClassName}`}
+              className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold ${badgeClassName}`}
             >
               {categoryLabel}
             </span>

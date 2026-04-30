@@ -44,7 +44,7 @@ export default async function BlogCategoryPage({
         {posts.length > 0 ? (
           <ArticleList posts={posts} />
         ) : (
-          <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-2xl p-10 text-center border border-gray-100 dark:border-gray-800 shadow-sm transition-colors">
+          <div className="bg-white/85 dark:bg-gray-900/85 p-10 text-center border border-black dark:border-white transition-colors">
             <p className="text-gray-600 dark:text-gray-400 font-zenmaru transition-colors">
               这个分类还没有文章，敬请期待。
             </p>
