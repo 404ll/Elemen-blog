@@ -33,7 +33,7 @@
   --radius: 0.5rem;
 
   /* Background Gradient */
-  --gradient-bg: linear-gradient(180deg, #a8d3ff 0%, #fff4df 100%);
+  --gradient-bg: linear-gradient(180deg, #fff4e6 0%, #fafaf8 100%);
 }
 
 .dark {
@@ -49,7 +49,7 @@
   --border: 39 39 42;
   --ring: 96 165 250;
 
-  --gradient-bg: linear-gradient(180deg, #0f172a 0%, #1e1b4b 50%, #1f2937 100%);
+  --gradient-bg: linear-gradient(180deg, #1a0f00 0%, #0f0f0e 100%);
 }
 
 /* =========================================================
