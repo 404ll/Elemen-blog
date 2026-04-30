@@ -75,85 +75,67 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
   const headings = extractHeadingsFromMdx(content);
 
   return (
-    <div className="mt-20 pb-16 mb-10 font-zenmaru selection:bg-orange-100 dark:selection:bg-orange-900 selection:text-orange-900 dark:selection:text-orange-100 max-w-6xl mx-auto transition-colors bg-white/85 dark:bg-gray-900/85 border-x border-black/10 dark:border-white/10 xl:pr-72">
+    <div className="mt-20 pb-16 selection:bg-orange-100 dark:selection:bg-orange-900 selection:text-orange-900 dark:selection:text-orange-100 max-w-4xl mx-auto px-4 xl:max-w-6xl xl:px-6 xl:pr-72">
       <ReadingEnhancements headings={headings} />
 
-      <div className="max-w-[72ch] mx-auto px-6 pt-8 mb-6">
-        <Link
-          href="/blog"
-          className="inline-flex items-center gap-2 text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors group mb-5"
-        >
-          <div className="p-2 rounded-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 shadow-sm group-hover:shadow-md group-hover:border-blue-600 dark:group-hover:border-blue-400 transition-all">
-            <ArrowLeft size={16} />
-          </div>
-          <span className="text-sm font-semibold font-zenmaru">返回文章列表</span>
-        </Link>
+      <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl shadow-lg overflow-hidden">
+        {/* Header */}
+        <div className="px-8 pt-7 pb-6 border-b border-gray-100 dark:border-gray-700">
+          <Link
+            href="/blog"
+            className="inline-flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors group mb-5"
+          >
+            <div className="p-1.5 rounded-full bg-gray-100 dark:bg-gray-700 group-hover:bg-orange-50 dark:group-hover:bg-orange-900/30 transition-colors">
+              <ArrowLeft size={14} />
+            </div>
+            <span className="text-sm">返回文章列表</span>
+          </Link>
 
-        <header className="space-y-3 text-center md:text-left animate-fade-in-up">
-          <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-gray-700 dark:text-gray-300 font-medium transition-colors">
+          <div className="flex flex-wrap items-center gap-3 mb-3">
             {frontmatter.category && (
-              <span className="px-2 py-0.5 font-mono text-xs font-bold tracking-wider border border-black dark:border-white text-black dark:text-white uppercase">
+              <span className="px-3 py-1 rounded-full bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 text-xs font-semibold">
                 {frontmatter.category}
               </span>
             )}
-
             {displayDate && (
-              <span className="flex items-center gap-1.5">
-                <Calendar size={14} />
+              <span className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
+                <Calendar size={12} />
                 {displayDate}
               </span>
             )}
-
-            <span className="flex items-center gap-1.5">
-              <Clock size={14} />
+            <span className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
+              <Clock size={12} />
               {readingMinutes} 分钟阅读
             </span>
           </div>
 
           {frontmatter.title && (
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100 font-zenmaru">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 leading-snug mb-3">
               {frontmatter.title}
             </h1>
           )}
 
           {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 pt-2 justify-center md:justify-start">
+            <div className="flex flex-wrap gap-2">
               {tags.map((tag: string) => (
-                <span
-                  key={tag}
-                  className="font-mono text-xs text-gray-400 dark:text-gray-500"
-                >
+                <span key={tag} className="text-xs text-gray-400 dark:text-gray-500">
                   #{tag}
                 </span>
               ))}
             </div>
           )}
-        </header>
-        <svg
-          className="w-full mt-6"
-          height="6"
-          viewBox="0 0 800 6"
-          preserveAspectRatio="none"
-          fill="none"
-          aria-hidden="true"
-        >
-          <path
-            d="M0,3 Q100,1 200,4 Q300,6 400,3 Q500,0 600,3 Q700,5 800,3"
-            stroke="currentColor"
-            strokeWidth="1"
-            className="text-black/20 dark:text-white/20"
-          />
-        </svg>
-      </div>
+        </div>
 
-      <main className="max-w-[72ch] mx-auto px-6">
-        <article className="prose prose-slate dark:prose-invert prose-headings:font-zenmaru prose-p:font-zenmaru max-w-none text-[17px] leading-[1.9]">
-          <MDXContent components={mdxComponents} />
-        </article>
-      </main>
+        {/* Body */}
+        <main className="px-8 py-8">
+          <article className="prose prose-slate dark:prose-invert max-w-none">
+            <MDXContent components={mdxComponents} />
+          </article>
+        </main>
 
-      <div className="max-w-[72ch] mx-auto px-6 mt-20 pt-10 border-t border-gray-200 dark:border-gray-800 text-center text-gray-600 dark:text-gray-400 text-sm transition-colors">
-        © {new Date().getFullYear()} {frontmatter.author || "Blog Owner"}. All rights reserved.
+        <div className="px-8 py-6 border-t border-gray-100 dark:border-gray-700 text-center text-gray-400 dark:text-gray-500 text-sm">
+          © {new Date().getFullYear()} {frontmatter.author || "Blog Owner"}. All rights reserved.
+        </div>
       </div>
     </div>
   );

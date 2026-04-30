@@ -41,7 +41,7 @@ export const mdxComponents = {
     return (
       <h1
         id={headingId}
-        className="mt-8 mb-4 scroll-m-20 text-4xl font-bold tracking-tight lg:text-5xl text-gray-900 dark:text-gray-100"
+        className="mt-8 mb-4 scroll-m-20 text-2xl font-bold leading-snug tracking-tight text-gray-900 dark:text-gray-100"
         {...props}
       />
     );
@@ -52,7 +52,7 @@ export const mdxComponents = {
     return (
       <h2
         id={headingId}
-        className="mt-8 mb-4 scroll-m-24 border-b border-gray-200/80 dark:border-gray-700/80 pb-2 text-[1.8rem] font-semibold tracking-tight text-gray-900 dark:text-gray-100 first:mt-0"
+        className="mt-8 mb-3 scroll-m-24 border-b border-gray-200/80 dark:border-gray-700/80 pb-2 text-xl font-semibold leading-snug tracking-tight text-gray-900 dark:text-gray-100 first:mt-0"
         {...props}
       />
     );
@@ -63,7 +63,7 @@ export const mdxComponents = {
     return (
       <h3
         id={headingId}
-        className="mt-6 mb-3 scroll-m-24 text-[1.45rem] font-semibold tracking-tight text-gray-900 dark:text-gray-100"
+        className="mt-6 mb-2 scroll-m-24 text-lg font-semibold leading-snug tracking-tight text-gray-900 dark:text-gray-100"
         {...props}
       />
     );
@@ -71,28 +71,28 @@ export const mdxComponents = {
 
   h4: (props: BasicProps) => (
     <h4
-      className="mt-5 mb-2 scroll-m-24 text-xl font-semibold tracking-tight text-gray-900 dark:text-gray-100"
+      className="mt-5 mb-2 scroll-m-24 text-base font-semibold leading-snug tracking-tight text-gray-900 dark:text-gray-100"
       {...props}
     />
   ),
 
   h5: (props: BasicProps) => (
     <h5
-      className="mt-6 mb-3 scroll-m-20 text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-100"
+      className="mt-4 mb-1 scroll-m-20 text-sm font-semibold leading-snug tracking-tight text-gray-900 dark:text-gray-100"
       {...props}
     />
   ),
 
   h6: (props: BasicProps) => (
     <h6
-      className="mt-6 mb-3 scroll-m-20 text-base font-semibold tracking-tight text-gray-900 dark:text-gray-100"
+      className="mt-4 mb-1 scroll-m-20 text-sm font-medium leading-snug tracking-tight text-gray-500 dark:text-gray-400"
       {...props}
     />
   ),
 
   p: (props: BasicProps) => (
     <p
-      className="leading-[1.9] [&:not(:first-child)]:mt-5 text-gray-900 dark:text-gray-100"
+      className="text-base leading-7 [&:not(:first-child)]:mt-4 text-gray-700 dark:text-gray-300"
       {...props}
     />
   ),

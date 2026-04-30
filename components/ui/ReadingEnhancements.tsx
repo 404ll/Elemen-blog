@@ -60,7 +60,7 @@ export default function ReadingEnhancements({ headings }: ReadingEnhancementsPro
     <>
       <div className="fixed top-0 left-0 right-0 z-[60] h-1 bg-transparent">
         <div
-          className="h-full bg-blue-500/80 dark:bg-blue-400/80 transition-[width] duration-100"
+          className="h-full bg-orange-400/80 dark:bg-orange-500/80 transition-[width] duration-100"
           style={{ width: `${progress}%` }}
         />
       </div>
@@ -79,7 +79,7 @@ export default function ReadingEnhancements({ headings }: ReadingEnhancementsPro
                       href={`#${heading.id}`}
                       className={`block rounded-md px-2 py-1.5 text-sm transition ${
                         activeId === heading.id
-                          ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+                          ? "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300"
                           : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
                       } ${heading.level === 3 ? "ml-3 text-[13px]" : ""}`}
                     >
@@ -94,7 +94,7 @@ export default function ReadingEnhancements({ headings }: ReadingEnhancementsPro
       )}
 
       {headings.length > 0 && (
-        <aside className="hidden xl:block fixed right-6 top-28 z-40 w-64 rounded-xl border border-gray-200/80 bg-white/90 p-4 shadow-lg backdrop-blur dark:border-gray-700/80 dark:bg-gray-900/85">
+        <aside className="hidden xl:block fixed right-6 top-28 z-40 w-56 rounded-2xl border border-gray-200/80 bg-white/90 p-4 shadow-lg backdrop-blur-sm dark:border-gray-700/80 dark:bg-gray-800/90">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
             On this page
           </p>
@@ -106,7 +106,7 @@ export default function ReadingEnhancements({ headings }: ReadingEnhancementsPro
                     href={`#${heading.id}`}
                     className={`block rounded-md px-2 py-1.5 text-sm transition ${
                       activeId === heading.id
-                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+                        ? "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300"
                         : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
                     } ${heading.level === 3 ? "ml-3 text-[13px]" : ""}`}
                   >
