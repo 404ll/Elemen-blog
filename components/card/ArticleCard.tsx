@@ -44,8 +44,8 @@ export default function ArticleCard({ post }: ArticleCardProps) {
           )
         )}
         {displayDate && (
-          <span className="inline-flex items-center gap-1">
-            📅 {displayDate}
+          <span className="inline-flex items-center gap-1 font-mono text-xs text-gray-400 dark:text-gray-500">
+            {displayDate}
           </span>
         )}
       </div>
@@ -71,11 +71,11 @@ export default function ArticleCard({ post }: ArticleCardProps) {
       )}
       
       {/* Read more 链接 */}
-      <Link 
+      <Link
         href={href}
-        className="article-read-more"
+        className="inline-flex items-center gap-1 font-mono text-sm font-bold text-black dark:text-white border-b border-black dark:border-white hover:opacity-60 transition-opacity"
       >
-        Read More
+        Read More →
       </Link>
     </article>
   );

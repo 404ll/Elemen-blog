@@ -1,50 +1,62 @@
 import Image from "next/image";
-import SunCard from "./SunCard";
+import SketchBorder from "@/components/ui/SketchBorder";
 import { PROFILE } from "@/config/profile";
 
-export default function SelfCard() {
+interface SelfCardProps {
+  postCount?: number;
+  categoryCount?: number;
+}
+
+export default function SelfCard({ postCount = 0, categoryCount = 0 }: SelfCardProps) {
   return (
-    <div className="w-full">
-      <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-2xl p-8 transition-all shadow-lg hover:shadow-xl">
+    <SketchBorder className="bg-white/85 dark:bg-gray-900/85 p-8">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
 
-        {/* 桌面端：左右排列 / 移动端：垂直排列（文字在上，SunCard 在下） */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-
-          {/* 文字信息 */}
-          <div className="flex flex-col text-black dark:text-white space-y-4 md:max-w-lg transition-colors">
-            <div className="flex items-center gap-2">
-              <Image
-                src="/icon/sun.png"
-                alt="logo"
-                width={100}
-                height={100}
-                className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/50 p-2 rounded-full"
-              />
-              <span className="text-xl md:text-2xl font-bold tracking-tight">Hello, I&#39;m {PROFILE.name} !</span>
-            </div>
-
-            <div className="flex gap-3 flex-wrap">
-              {PROFILE.tags.map((tag) => (
-                <span key={tag.label} className={`px-3 py-1.5 ${tag.color} text-xs font-bold rounded-full shadow-sm transition-colors`}>
-                  {tag.label}
-                </span>
-              ))}
-            </div>
-
-            <ul className="text-base md:text-lg text-gray-700 dark:text-gray-300 leading-relaxed list-disc list-inside space-y-2 transition-colors">
-              <li>Welcome to my blog!</li>
-              <li>I am a web developer and a blockchain developer.</li>
-              <li>I like to learn new things and share them with others.</li>
-            </ul>
+        {/* 左侧：文字信息 */}
+        <div className="flex flex-col text-black dark:text-white space-y-4 md:max-w-lg">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/icon/sun.png"
+              alt="logo"
+              width={40}
+              height={40}
+              className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/50 p-2 rounded-full"
+            />
+            <span className="text-xl md:text-2xl font-bold tracking-tight font-zenmaru">
+              Hello, I&apos;m {PROFILE.name}!
+            </span>
           </div>
 
-          {/* SunCard：桌面端右侧，移动端底部 */}
-          <div className="w-full md:min-w-[200px] md:max-w-[600px]">
-            <SunCard />
+          <div className="flex gap-2 flex-wrap">
+            {PROFILE.tags.map((tag) => (
+              <span
+                key={tag.label}
+                className="px-2 py-1 border border-black dark:border-white font-mono text-xs font-bold tracking-wider"
+              >
+                {tag.label.toUpperCase()}
+              </span>
+            ))}
           </div>
 
+          <div className="border-l-2 border-black dark:border-white pl-3 text-gray-700 dark:text-gray-300 font-zenmaru text-sm leading-relaxed space-y-1">
+            <p>Web developer & blockchain developer.</p>
+            <p>Learning in public, building things.</p>
+          </div>
         </div>
+
+        {/* 右侧：简洁统计 */}
+        <div className="flex md:flex-col gap-6 md:gap-4 md:items-end">
+          <div className="text-center md:text-right">
+            <div className="font-mono text-4xl font-black text-black dark:text-white">{postCount}</div>
+            <div className="font-mono text-xs text-gray-400 dark:text-gray-500 tracking-widest uppercase mt-1">Articles</div>
+          </div>
+          <div className="text-center md:text-right">
+            <div className="font-mono text-4xl font-black text-black dark:text-white">{categoryCount}</div>
+            <div className="font-mono text-xs text-gray-400 dark:text-gray-500 tracking-widest uppercase mt-1">Topics</div>
+          </div>
+        </div>
+
       </div>
-    </div>
+    </SketchBorder>
   );
 }

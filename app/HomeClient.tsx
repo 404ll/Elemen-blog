@@ -3,7 +3,7 @@ import SelfCard from "@/components/card/SelfCard";
 import ArticleList from "@/components/card/ArticleList";
 import CategoryCard from "@/components/card/CategoryCard";
 import Link from "next/link";
-import { CATEGORIES, getColorStyle } from "@/constant";
+import { CATEGORIES } from "@/constant";
 import type { Post } from "@/types";
 
 export default function HomeClient({ posts }: { posts: Post[] }) {
@@ -11,7 +11,7 @@ export default function HomeClient({ posts }: { posts: Post[] }) {
     <div className="pt-20 pb-8">
       {/* Hero 区域 */}
       <div className="max-w-7xl mx-auto px-4 mb-8">
-        <SelfCard />
+        <SelfCard postCount={posts.length} categoryCount={Object.keys(CATEGORIES).length} />
       </div>
 
       {/* 移动端：横向滚动分类 chips（md 以上隐藏，由侧边栏接管） */}
@@ -21,7 +21,7 @@ export default function HomeClient({ posts }: { posts: Post[] }) {
             <Link
               key={key}
               href={`/blog/category/${key}`}
-              className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-bold transition-all shadow-sm ${getColorStyle(category.color, 'badge')}`}
+              className="flex-shrink-0 px-2 py-1 border border-black dark:border-white font-mono text-xs font-bold tracking-wider text-black dark:text-white transition-all"
             >
               {category.name}
             </Link>
