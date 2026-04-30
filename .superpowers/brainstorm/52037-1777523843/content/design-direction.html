@@ -1,0 +1,72 @@
+<h2>整体设计风格方向</h2>
+<p class="subtitle">你的博客已经有不错的基础（Zen Maru 字体 + 蓝天渐变背景）。下面是三种升级方向，选择最接近你审美的一种。</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: linear-gradient(135deg, #e0f2fe 0%, #fef9c3 100%); padding: 20px; font-family: 'Georgia', serif;">
+      <div style="background: white; border-radius: 12px; padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+          <div style="width:32px;height:32px;background:#fef08a;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;">☀️</div>
+          <span style="font-weight:700;font-size:18px;color:#1e293b;">Elemen's Blog</span>
+        </div>
+        <div style="height:6px;background:linear-gradient(90deg,#93c5fd,#fde68a,#86efac);border-radius:3px;margin-bottom:12px;"></div>
+        <div style="font-size:13px;color:#64748b;background:#f8fafc;border-radius:8px;padding:10px;border-left:3px solid #93c5fd;">
+          <strong style="color:#1e293b;">探索 Web 开发的世界</strong><br/>
+          <span style="font-size:12px;">用温暖的笔触记录技术成长</span>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:10px;">
+          <span style="background:#dbeafe;color:#1d4ed8;font-size:11px;padding:3px 8px;border-radius:20px;font-weight:600;">Web Dev</span>
+          <span style="background:#fef3c7;color:#92400e;font-size:11px;padding:3px 8px;border-radius:20px;font-weight:600;">Blockchain</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A · 温暖·轻盈（保留现有风格，精致升级）</h3>
+      <p>在现有蓝天渐变+白卡片基础上深化：增加细腻的阴影层次、彩色标签、渐变边框装饰线。感觉像一本精心设计的手账——温暖但不幼稚。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: #0f172a; padding: 20px; font-family: 'Courier New', monospace;">
+      <div style="background:#1e293b;border-radius:12px;padding:16px;border:1px solid #334155;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <div style="width:8px;height:8px;background:#22d3ee;border-radius:50%;box-shadow:0 0 8px #22d3ee;"></div>
+          <span style="font-weight:700;font-size:16px;color:#e2e8f0;letter-spacing:0.1em;">ELEMEN.DEV</span>
+        </div>
+        <div style="font-size:12px;color:#22d3ee;margin-bottom:8px;">// latest_post</div>
+        <div style="background:#0f172a;border-radius:8px;padding:10px;border:1px solid #1e3a5f;">
+          <div style="color:#7dd3fc;font-size:13px;font-weight:600;">深入理解 Sui Move 所有权模型</div>
+          <div style="color:#94a3b8;font-size:11px;margin-top:4px;">2026.04 · 8 min read</div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:10px;">
+          <span style="background:transparent;color:#22d3ee;font-size:11px;padding:3px 8px;border:1px solid #22d3ee;border-radius:4px;">Blockchain</span>
+          <span style="background:transparent;color:#a78bfa;font-size:11px;padding:3px 8px;border:1px solid #a78bfa;border-radius:4px;">Web3</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B · 极客·暗黑（开发者审美，技术感拉满）</h3>
+      <p>深色主题为主，青色/紫色霓虹点缀，等宽字体标题，代码风格的标签边框。强化"区块链 + Web 开发者"的身份感，有点 terminal 的质感。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: #fafaf8; padding: 20px; font-family: 'Georgia', serif;">
+      <div style="max-width:260px;margin:0 auto;">
+        <div style="font-size:11px;letter-spacing:0.2em;color:#a8a29e;text-transform:uppercase;margin-bottom:16px;">Elemen · 技术随笔</div>
+        <div style="border-left:2px solid #e7e5e4;padding-left:16px;margin-bottom:14px;">
+          <div style="font-size:15px;font-weight:700;color:#1c1917;line-height:1.4;">深入理解 Sui Move<br/>所有权模型</div>
+          <div style="font-size:11px;color:#a8a29e;margin-top:6px;">2026年4月 · Blockchain</div>
+        </div>
+        <div style="font-size:12px;color:#57534e;line-height:1.7;">Move 语言的所有权系统与 Rust 类似，但在资源安全方面走得更彻底...</div>
+        <div style="margin-top:12px;font-size:11px;color:#1c1917;border-bottom:1px solid #1c1917;display:inline-block;padding-bottom:1px;letter-spacing:0.05em;">继续阅读 →</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C · 克制·文字（日系排版，内容优先）</h3>
+      <p>奶白底色，极简排版，强调文字本身的层次与留白。标题用衬线字体，装饰降到最低，整体氛围接近日本技术博客或 Notion 风格。内容即设计。</p>
+    </div>
+  </div>
+
+</div>

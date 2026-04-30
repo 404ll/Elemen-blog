@@ -30,7 +30,7 @@ export default async function BlogCategoryPage({
           <p className="text-3xl font-bold font-bitcount tracking-[0.2em] text-gray-800 dark:text-gray-400 font-semibold transition-colors">
             Category
           </p>
-          <h1 className="text-xl font-bold text-black dark:text-white font-zenmaru transition-colors">
+          <h1 className="text-xl font-bold text-black dark:text-white transition-colors">
             {meta.name}
           </h1>
         
@@ -45,7 +45,7 @@ export default async function BlogCategoryPage({
           <ArticleList posts={posts} />
         ) : (
           <div className="bg-white/85 dark:bg-gray-900/85 p-10 text-center border border-black dark:border-white transition-colors">
-            <p className="text-gray-600 dark:text-gray-400 font-zenmaru transition-colors">
+            <p className="text-gray-600 dark:text-gray-400 transition-colors">
               这个分类还没有文章，敬请期待。
             </p>
           </div>

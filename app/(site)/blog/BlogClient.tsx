@@ -26,8 +26,8 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
     <div className="pt-20 pb-16">
       <div className="max-w-5xl mx-auto px-4 space-y-8">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold font-bitcount tracking-[0.2em] text-gray-800 dark:text-gray-400 font-zenmaru font-semibold transition-colors">博客</h1>
-          <p className="text-gray-600 dark:text-gray-400 font-zenmaru transition-colors">
+          <h1 className="text-3xl font-bold font-bitcount tracking-[0.2em] text-gray-800 dark:text-gray-400 font-semibold transition-colors">博客</h1>
+          <p className="text-gray-600 dark:text-gray-400 transition-colors">
             技术、区块链与折腾记录。
           </p>
           <div className="flex flex-wrap gap-2 pt-2">
@@ -54,7 +54,7 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
             className="w-full px-4 py-3 pl-12 rounded-xl border border-gray-200 bg-white/90 backdrop-blur-sm
                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
                        dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-400
-                       font-zenmaru transition-all"
+                       transition-all"
           />
           <svg
             className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
@@ -77,7 +77,7 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
 
         {/* 搜索结果计数 */}
         {searchTerm && (
-          <p className="text-sm text-gray-500 dark:text-gray-400 font-zenmaru">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             找到 {filteredPosts.length} 篇文章
           </p>
         )}

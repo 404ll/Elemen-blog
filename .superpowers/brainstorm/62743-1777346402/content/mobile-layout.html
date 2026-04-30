@@ -1,0 +1,318 @@
+<h2>移动端布局方案</h2>
+<p class="subtitle">三个主要区域的改动方案，点击选择你喜欢的</p>
+
+<style>
+  .phone {
+    width: 200px;
+    border: 3px solid #334155;
+    border-radius: 24px;
+    overflow: hidden;
+    background: #f8fafc;
+    font-size: 11px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    margin: 0 auto;
+  }
+  .phone-dark { background: #0f172a; color: #e2e8f0; border-color: #475569; }
+  .phone-screen { padding: 0; overflow: hidden; }
+
+  /* Navbar mockups */
+  .nav-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid #e2e8f0;
+    font-weight: 600;
+    font-size: 11px;
+  }
+  .nav-bar-dark {
+    background: rgba(15,23,42,0.85);
+    border-color: #334155;
+    color: #e2e8f0;
+  }
+  .nav-logo { display: flex; align-items: center; gap: 4px; }
+  .nav-sun { width: 14px; height: 14px; background: #fbbf24; border-radius: 50%; }
+  .nav-links { display: flex; gap: 6px; font-size: 9px; color: #64748b; }
+  .nav-icons { display: flex; gap: 6px; align-items: center; }
+  .nav-icon { width: 14px; height: 14px; background: #cbd5e1; border-radius: 3px; }
+  .hamburger { display: flex; flex-direction: column; gap: 2px; padding: 2px; }
+  .hamburger span { display: block; width: 14px; height: 2px; background: #475569; border-radius: 1px; }
+
+  /* Drawer */
+  .drawer {
+    background: white;
+    border-top: 1px solid #e2e8f0;
+    padding: 8px 0;
+  }
+  .drawer-dark { background: #1e293b; border-color: #334155; }
+  .drawer-item {
+    padding: 7px 12px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #374151;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .drawer-item-dark { color: #e2e8f0; border-color: #334155; }
+
+  /* SelfCard mockups */
+  .self-card { padding: 10px; }
+  .sun-canvas { width: 100%; height: 70px; background: linear-gradient(135deg, #1a1a2e, #16213e); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+  .sun-glow { width: 40px; height: 40px; background: radial-gradient(circle, #ff8c00, #ff4500, transparent); border-radius: 50%; box-shadow: 0 0 20px #ff6b00; }
+  .self-name { font-weight: 700; font-size: 12px; margin-bottom: 4px; }
+  .self-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 6px; }
+  .tag { padding: 2px 6px; border-radius: 10px; font-size: 8px; font-weight: 600; }
+  .tag-blue { background: #dbeafe; color: #1d4ed8; }
+  .tag-purple { background: #ede9fe; color: #6d28d9; }
+  .tag-green { background: #dcfce7; color: #15803d; }
+  .self-list { padding-left: 12px; margin: 0; font-size: 9px; color: #64748b; line-height: 1.6; }
+
+  /* Home layout */
+  .home-body { padding: 8px; }
+  .section-title { font-weight: 700; font-size: 11px; margin-bottom: 6px; }
+  .cat-scroll { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 8px; }
+  .cat-scroll::-webkit-scrollbar { display: none; }
+  .cat-chip { padding: 3px 8px; border-radius: 10px; font-size: 8px; font-weight: 600; white-space: nowrap; }
+  .cat-chip-blue { background: #dbeafe; color: #1d4ed8; }
+  .cat-chip-purple { background: #ede9fe; color: #6d28d9; }
+  .cat-chip-green { background: #dcfce7; color: #15803d; }
+  .cat-chip-orange { background: #ffedd5; color: #c2410c; }
+  .article-item { background: white; border-radius: 8px; padding: 8px; margin-bottom: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .article-item-dark { background: #1e293b; }
+  .article-tag { display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 8px; font-weight: 600; background: #dbeafe; color: #1d4ed8; margin-bottom: 4px; }
+  .article-title { font-weight: 600; font-size: 10px; color: #111827; margin-bottom: 3px; }
+  .article-excerpt { font-size: 8px; color: #9ca3af; line-height: 1.4; }
+  .sidebar-card { background: white; border-radius: 8px; padding: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 6px; }
+  .sidebar-title { font-size: 9px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .sidebar-item { display: flex; justify-content: space-between; font-size: 9px; padding: 3px 0; border-bottom: 1px solid #f3f4f6; }
+  .more-dots { text-align: center; color: #9ca3af; font-size: 9px; padding: 4px; }
+</style>
+
+<!-- ===== SECTION 1: NAVBAR ===== -->
+<div class="section">
+  <h3>① Navbar</h3>
+  <p class="subtitle">桌面版导航链接在移动端放不下，选一种处理方式</p>
+
+  <div class="cards">
+
+    <div class="card" data-choice="nav-a" onclick="toggleSelect(this)">
+      <div class="card-image" style="padding: 16px; background: #f8fafc;">
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="nav-bar">
+              <div class="nav-logo"><div class="nav-sun"></div><span>Elemen's Blog</span></div>
+              <div class="nav-icons">
+                <div class="nav-icon" style="background:#fbbf24; border-radius: 50%;"></div>
+                <div class="hamburger"><span></span><span></span><span></span></div>
+              </div>
+            </div>
+            <div class="drawer">
+              <div class="drawer-item">📝 博客文章</div>
+              <div class="drawer-item">🚀 项目合集</div>
+              <div class="drawer-item">👤 关于我</div>
+              <div class="drawer-item">🐙 GitHub</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3>A — 汉堡菜单（抽屉）</h3>
+        <p>点击 ☰ 展开全屏抽屉，链接大字显示，易于点击</p>
+      </div>
+    </div>
+
+    <div class="card" data-choice="nav-b" onclick="toggleSelect(this)">
+      <div class="card-image" style="padding: 16px; background: #f8fafc;">
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="nav-bar">
+              <div class="nav-logo"><div class="nav-sun"></div><span>Elemen's Blog</span></div>
+              <div class="nav-links">
+                <span>博客</span><span>项目</span><span>关于</span>
+              </div>
+              <div class="nav-icons">
+                <div class="nav-icon" style="background:#fbbf24; border-radius: 50%;"></div>
+              </div>
+            </div>
+            <div style="padding: 12px; font-size: 9px; color: #9ca3af; text-align: center;">↑ 文字缩小适配，全部保留</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3>B — 缩短文字保留</h3>
+        <p>导航文字缩短（博客文章→博客），全部保留在一行</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== SECTION 2: SELFCARD ===== -->
+<div class="section">
+  <h3>② SelfCard 首页 Hero</h3>
+  <p class="subtitle">当前左右排列在小屏会溢出，选一种垂直排布方式</p>
+
+  <div class="cards">
+
+    <div class="card" data-choice="self-a" onclick="toggleSelect(this)">
+      <div class="card-image" style="padding: 16px; background: #f8fafc;">
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="self-card">
+              <div class="sun-canvas"><div class="sun-glow"></div></div>
+              <div class="self-name">Hello, I'm Elemen !</div>
+              <div class="self-tags">
+                <span class="tag tag-blue">Web Dev</span>
+                <span class="tag tag-purple">Blockchain</span>
+                <span class="tag tag-green">Full Stack</span>
+              </div>
+              <ul class="self-list">
+                <li>Welcome to my blog!</li>
+                <li>Web & blockchain developer</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3>A — SunCard 顶部（推荐）</h3>
+        <p>WebGL 动画在上，文字信息在下，视觉冲击力强</p>
+      </div>
+    </div>
+
+    <div class="card" data-choice="self-b" onclick="toggleSelect(this)">
+      <div class="card-image" style="padding: 16px; background: #f8fafc;">
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="self-card">
+              <div class="self-name">Hello, I'm Elemen !</div>
+              <div class="self-tags">
+                <span class="tag tag-blue">Web Dev</span>
+                <span class="tag tag-purple">Blockchain</span>
+              </div>
+              <ul class="self-list">
+                <li>Welcome to my blog!</li>
+                <li>Web & blockchain developer</li>
+              </ul>
+              <div class="sun-canvas" style="margin-top: 8px; margin-bottom: 0;"><div class="sun-glow"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3>B — SunCard 底部</h3>
+        <p>文字信息优先，动画作为装饰收在底部</p>
+      </div>
+    </div>
+
+    <div class="card" data-choice="self-c" onclick="toggleSelect(this)">
+      <div class="card-image" style="padding: 16px; background: #f8fafc;">
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="self-card">
+              <div class="self-name">Hello, I'm Elemen !</div>
+              <div class="self-tags">
+                <span class="tag tag-blue">Web Dev</span>
+                <span class="tag tag-purple">Blockchain</span>
+                <span class="tag tag-green">Full Stack</span>
+              </div>
+              <ul class="self-list">
+                <li>Welcome to my blog!</li>
+                <li>Web & blockchain developer</li>
+              </ul>
+              <div style="text-align:center; font-size:8px; color:#9ca3af; margin-top: 6px; padding: 4px; border: 1px dashed #e2e8f0; border-radius: 6px;">SunCard 隐藏（移动端不渲染 WebGL）</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3>C — 移动端隐藏 SunCard</h3>
+        <p>WebGL 在移动端耗电，直接隐藏，保留文字信息</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== SECTION 3: HOME LAYOUT ===== -->
+<div class="section">
+  <h3>③ 首页主体（文章列表 + 分类）</h3>
+  <p class="subtitle">桌面 4 列 grid 在移动端的处理方式</p>
+
+  <div class="cards">
+
+    <div class="card" data-choice="home-a" onclick="toggleSelect(this)">
+      <div class="card-image" style="padding: 16px; background: #f8fafc;">
+        <div class="phone">
+          <div class="phone-screen">
+            <div style="background: linear-gradient(180deg, #a8d3ff 0%, #fff4df 100%); padding: 8px;">
+              <!-- selfcard placeholder -->
+              <div style="background:white; border-radius:8px; padding:8px; margin-bottom:8px; box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+                <div style="height:40px; background:linear-gradient(135deg,#1a1a2e,#16213e); border-radius:6px; margin-bottom:6px;"></div>
+                <div style="font-size:9px; font-weight:700;">Hello, I'm Elemen !</div>
+              </div>
+              <!-- category chips -->
+              <div class="cat-scroll">
+                <span class="cat-chip cat-chip-blue">Frontend</span>
+                <span class="cat-chip cat-chip-purple">Web3</span>
+                <span class="cat-chip cat-chip-orange">Algorithm</span>
+                <span class="cat-chip" style="background:#f3f4f6; color:#6b7280;">Note</span>
+              </div>
+              <!-- articles -->
+              <div style="font-size:10px; font-weight:700; margin-bottom:4px;">最新文章</div>
+              <div class="article-item">
+                <div class="article-tag">Frontend</div>
+                <div class="article-title">React 性能优化实践</div>
+                <div class="article-excerpt">深入探讨 memo、useMemo...</div>
+              </div>
+              <div class="article-item">
+                <div class="article-tag" style="background:#ede9fe;color:#6d28d9;">Web3</div>
+                <div class="article-title">Sui Move 合约入门</div>
+                <div class="article-excerpt">Move 语言的所有权模型...</div>
+              </div>
+              <div class="more-dots">···</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3>A — 分类横向滚动 chips（推荐）</h3>
+        <p>分类变成可滑动的标签行，文章列表全宽显示</p>
+      </div>
+    </div>
+
+    <div class="card" data-choice="home-b" onclick="toggleSelect(this)">
+      <div class="card-image" style="padding: 16px; background: #f8fafc;">
+        <div class="phone">
+          <div class="phone-screen">
+            <div style="background: linear-gradient(180deg, #a8d3ff 0%, #fff4df 100%); padding: 8px;">
+              <div style="background:white; border-radius:8px; padding:8px; margin-bottom:8px; box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+                <div style="height:40px; background:linear-gradient(135deg,#1a1a2e,#16213e); border-radius:6px; margin-bottom:6px;"></div>
+                <div style="font-size:9px; font-weight:700;">Hello, I'm Elemen !</div>
+              </div>
+              <!-- sidebar on top -->
+              <div class="sidebar-card" style="margin-bottom:8px;">
+                <div class="sidebar-title">分类</div>
+                <div class="sidebar-item"><span>Frontend</span><span style="color:#3b82f6;">8</span></div>
+                <div class="sidebar-item"><span>Web3</span><span style="color:#8b5cf6;">5</span></div>
+                <div class="sidebar-item"><span>Algorithm</span><span style="color:#f97316;">4</span></div>
+              </div>
+              <div style="font-size:10px; font-weight:700; margin-bottom:4px;">最新文章</div>
+              <div class="article-item">
+                <div class="article-tag">Frontend</div>
+                <div class="article-title">React 性能优化实践</div>
+              </div>
+              <div class="more-dots">···</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3>B — 侧边栏移到文章列表上方</h3>
+        <p>分类卡片整块移到文章列表前面，保留原有样式</p>
+      </div>
+    </div>
+
+  </div>
+</div>

@@ -35,10 +35,10 @@ export default function HomeClient({ posts }: { posts: Post[] }) {
           {/* 左侧：文章列表 */}
           <div className="lg:col-span-3">
             <div className="mb-2">
-              <h2 className="text-3xl font-bold text-black font-zenmaru mb-2 dark:text-white">
+              <h2 className="text-3xl font-bold text-black mb-2 dark:text-white">
                 最新文章
               </h2>
-              <p className="text-gray-600 font-zenmaru dark:text-gray-400">
+              <p className="text-gray-600 dark:text-gray-400">
                 探索 Web 开发和区块链的见解、教程和思考
               </p>
             </div>

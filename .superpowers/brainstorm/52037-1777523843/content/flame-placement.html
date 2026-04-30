@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>火焰元素散布方案</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Georgia, serif;
+    background: #fafaf8;
+    color: #111;
+    padding: 24px;
+  }
+
+  h1 { font-size: 22px; font-weight: 900; margin-bottom: 6px; }
+  .subtitle { font-size: 14px; color: #888; margin-bottom: 32px; font-family: monospace; }
+
+  /* ── 两列网格 ── */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .panel {
+    background: white;
+    border: 1.8px solid #111;
+    border-radius: 2px;
+    padding: 20px;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .panel:hover { transform: translateY(-2px); box-shadow: 3px 3px 0 #111; }
+  .panel.selected { background: #fff8f0; box-shadow: 3px 3px 0 #f97316; border-color: #f97316; }
+  .panel-label {
+    font-size: 10px;
+    font-family: monospace;
+    letter-spacing: 0.15em;
+    color: #aaa;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+  .panel-title { font-size: 15px; font-weight: 800; margin-bottom: 6px; }
+  .panel-desc { font-size: 12px; color: #666; line-height: 1.7; font-family: monospace; }
+  .panel-ref { font-size: 10px; color: #f97316; font-family: monospace; margin-top: 8px; }
+
+  /* ════════════════════════════════
+     各方案的迷你 mockup
+  ════════════════════════════════ */
+
+  /* 共用手绘边框 */
+  .sketch-box {
+    position: relative;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+  }
+  .sketch-box svg.border {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    overflow: visible;
+  }
+
+  /* ── 方案 1：Navbar 火焰下划线 ── */
+  .navbar-mock {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; background: white;
+    border: 1.5px solid #eee; border-radius: 4px; margin-bottom: 12px;
+  }
+  .navbar-logo { display: flex; align-items: center; gap: 8px; }
+  .navbar-logo-circle {
+    width: 26px; height: 26px; background: #fef08a;
+    border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: 13px;
+    border: 1.5px solid #fbbf24;
+  }
+  .navbar-logo-text { font-family: monospace; font-size: 13px; font-weight: 900; }
+  .nav-links { display: flex; gap: 14px; }
+  .nav-link { font-size: 11px; font-family: monospace; color: #333; position: relative; }
+  .nav-link.active { font-weight: 800; }
+  .nav-link.active::after { content: ''; display: block; }
+
+  /* ── 方案 2：文章卡片左侧火焰竖线 ── */
+  .article-mock { margin-bottom: 8px; }
+  .article-row {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 10px 0; border-bottom: 1px dashed #e5e5e5;
+  }
+  .article-row:last-child { border-bottom: none; }
+  .article-meta { font-size: 9px; color: #aaa; font-family: monospace; letter-spacing: 0.1em; margin-bottom: 3px; }
+  .article-title { font-size: 12px; font-weight: 700; line-height: 1.4; color: #111; }
+
+  /* ── 方案 3：Section 标题装饰 ── */
+  .section-mock { }
+  .section-heading {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 16px; font-weight: 900; margin-bottom: 12px;
+  }
+
+  /* ── 方案 4：阅读进度条 ── */
+  .progress-mock {
+    background: #f5f5f5; border-radius: 4px; overflow: hidden;
+    height: 4px; margin-bottom: 14px; position: relative;
+  }
+
+  /* ── 方案 5：标签 hover 火焰 ── */
+  .tags-mock { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .tag {
+    font-size: 10px; font-family: monospace;
+    padding: 3px 10px; border: 1.5px solid #111;
+    letter-spacing: 0.08em; background: white;
+    display: flex; align-items: center; gap: 4px;
+    cursor: pointer;
+  }
+
+  /* ── 方案 6：404 / 空页面 ── */
+  .empty-mock {
+    text-align: center; padding: 16px 0;
+  }
+
+  /* selected check */
+  .check {
+    position: absolute; top: 10px; right: 10px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #f97316; display: none;
+    align-items: center; justify-content: center;
+    color: white; font-size: 11px; font-weight: 900;
+  }
+  .panel.selected .check { display: flex; }
+
+  .selection-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #111; color: white;
+    padding: 12px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: monospace; font-size: 12px;
+    transform: translateY(100%);
+    transition: transform 0.2s;
+    z-index: 100;
+  }
+  .selection-bar.visible { transform: translateY(0); }
+  .selection-bar span { opacity: 0.6; }
+  .selection-bar strong { color: #f97316; }
+</style>
+</head>
+<body>
+
+<h1>🔥 火焰元素出现在哪里？</h1>
+<p class="subtitle">// 可多选 — 点击方案查看细节，火焰不只是 logo 装饰</p>
+
+<div class="grid">
+
+  <!-- 方案 1：Navbar 活跃链接下划线 -->
+  <div class="panel" onclick="togglePanel(this, '1')">
+    <div class="check">✓</div>
+    <div class="panel-label">方案 01 · Navbar</div>
+
+    <div class="navbar-mock">
+      <div class="navbar-logo">
+        <div class="navbar-logo-circle">☀️</div>
+        <span class="navbar-logo-text">Elemen's Blog</span>
+      </div>
+      <div class="nav-links">
+        <div class="nav-link" style="position:relative;">
+          博客文章
+          <!-- 活跃状态：手绘火焰悬在文字下方 -->
+          <svg width="52" height="14" viewBox="0 0 52 14" style="position:absolute;bottom:-12px;left:50%;transform:translateX(-50%);">
+            <!-- 3 个小火苗 -->
+            <path d="M10,12 C7,10 6,7 8,4 C8,6 9,7 10,5 C11,3 10,1 12,0 C12,3 13,5 14,7 C15,9 14,11 10,12Z" fill="none" stroke="#f97316" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+            <path d="M24,12 C22,10 21,7 23,5 C23,7 24,7 25,6 C26,4 25,2 27,1 C27,3 28,5 29,7 C30,9 29,11 25,12Z" fill="none" stroke="#f97316" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+            <path d="M38,12 C36,10 35,7 37,5 C37,7 38,7 39,6 C40,4 39,2 41,1 C41,3 42,5 43,7 C44,9 43,11 39,12Z" fill="none" stroke="#f97316" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="nav-link" style="color:#bbb;">项目合集</div>
+        <div class="nav-link" style="color:#bbb;">关于我</div>
+      </div>
+    </div>
+
+    <div class="panel-title">导航活跃状态 = 燃起小火苗</div>
+    <div class="panel-desc">当前页面的导航链接下方，出现 3 个手绘小火焰作为"活跃"指示器，替代传统的下划线或高亮色块。鼠标 hover 时也会触发。</div>
+    <div class="panel-ref">参考灵感：cassie.codes — SVG 描边替代传统 UI 状态指示</div>
+  </div>
+
+  <!-- 方案 2：文章列表左侧"热度"火焰 -->
+  <div class="panel" onclick="togglePanel(this, '2')">
+    <div class="check">✓</div>
+    <div class="panel-label">方案 02 · 文章列表</div>
+
+    <div class="article-mock">
+      <div class="article-row">
+        <!-- 火焰 = 热门/精选标记 -->
+        <svg width="12" height="18" viewBox="0 0 12 18" style="flex-shrink:0;margin-top:2px;">
+          <path d="M6,16 C2,13 1,9 3,5 C3,8 5,8 6,6 C7,4 6,1 8,0 C8,3 10,5 10,8 C11,11 10,14 6,16Z" fill="none" stroke="#f97316" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+          <path d="M6,13 C5,10 5,8 6,5" fill="none" stroke="#fbbf24" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+        </svg>
+        <div>
+          <div class="article-meta">BLOCKCHAIN · APR 2026 · 8 MIN</div>
+          <div class="article-title">深入理解 Sui Move 所有权模型</div>
+        </div>
+      </div>
+      <div class="article-row" style="opacity:0.5;">
+        <div style="width:12px;flex-shrink:0;"></div>
+        <div>
+          <div class="article-meta">WEB DEV · MAR 2026</div>
+          <div class="article-title">Next.js App Router 深度实践</div>
+        </div>
+      </div>
+      <div class="article-row" style="opacity:0.5;">
+        <div style="width:12px;flex-shrink:0;"></div>
+        <div>
+          <div class="article-meta">BLOCKCHAIN · FEB 2026</div>
+          <div class="article-title">Sui 智能合约安全审计实践</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-title">精选文章左侧火焰标记</div>
+    <div class="panel-desc">特别推荐的文章左侧出现手绘小火焰（类似 ★ 精选），普通文章没有。视觉层次自然建立，火焰稀少时才有价值。</div>
+    <div class="panel-ref">参考灵感：maggieappleton.com — 成熟度标签系统</div>
+  </div>
+
+  <!-- 方案 3：首页 Section 大标题旁 -->
+  <div class="panel" onclick="togglePanel(this, '3')">
+    <div class="check">✓</div>
+    <div class="panel-label">方案 03 · Section 标题</div>
+
+    <div class="section-mock">
+      <div class="section-heading">
+        <!-- 手绘大火焰装饰 section 标题 -->
+        <svg width="22" height="32" viewBox="0 0 22 32" style="flex-shrink:0;">
+          <path d="M11,30 C4,25 2,18 5,11 C6,8 4,4 7,2 C7,6 9,8 11,5 C12,3 11,0 14,0 C14,4 16,7 18,10 C20,15 19,23 11,30Z" fill="none" stroke="#f97316" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+          <path d="M11,26 C8,21 8,15 11,10" fill="none" stroke="#fbbf24" stroke-width="1.3" stroke-linecap="round" opacity="0.65"/>
+          <!-- 底部小火星 -->
+          <circle cx="7" cy="29" r="1.2" fill="none" stroke="#f97316" stroke-width="1"/>
+          <circle cx="15" cy="30" r="0.9" fill="none" stroke="#f97316" stroke-width="1"/>
+        </svg>
+        <span>最新文章</span>
+      </div>
+      <div style="font-size:11px;color:#999;font-family:monospace;border-left:2px solid #f5f5f5;padding-left:10px;line-height:1.8;">
+        探索 Web 开发和区块链的见解、<br/>教程和思考
+      </div>
+    </div>
+
+    <div class="panel-title">Section 标题左侧大火焰</div>
+    <div class="panel-desc">首页"最新文章"、"关于我"等 section 标题旁放一个较大的手绘火焰。带底部小火星散落效果，有温度感，像在笔记本上画的章节装饰。</div>
+    <div class="panel-ref">参考灵感：手绘插画博客的章节分隔设计</div>
+  </div>
+
+  <!-- 方案 4：阅读进度条变成火焰路径 -->
+  <div class="panel" onclick="togglePanel(this, '4')">
+    <div class="check">✓</div>
+    <div class="panel-label">方案 04 · 阅读进度</div>
+
+    <div style="position:relative;margin-bottom:16px;">
+      <!-- 模拟阅读进度条区域 -->
+      <div style="background:#f0f0f0;height:3px;border-radius:0;position:relative;overflow:visible;">
+        <div style="background:#f97316;height:100%;width:60%;position:relative;">
+          <!-- 进度条末端的小火焰 -->
+          <svg width="16" height="22" viewBox="0 0 16 22" style="position:absolute;right:-5px;bottom:-4px;">
+            <path d="M8,20 C3,16 2,11 4,7 C4,10 6,10 7,8 C8,6 7,3 9,2 C9,5 11,7 12,10 C13,13 12,17 8,20Z" fill="none" stroke="#f97316" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+            <path d="M8,17 C6,13 6,10 8,7" fill="none" stroke="#fbbf24" stroke-width="1.1" stroke-linecap="round" opacity="0.6"/>
+          </svg>
+        </div>
+      </div>
+      <div style="font-size:9px;color:#aaa;font-family:monospace;margin-top:8px;letter-spacing:0.1em;">60% · 正在阅读</div>
+    </div>
+
+    <!-- 文章内容预览 -->
+    <div style="border-left:1.5px solid #111;padding-left:12px;">
+      <div style="font-size:12px;font-weight:700;margin-bottom:4px;">深入理解 Sui Move 所有权</div>
+      <div style="font-size:10px;color:#888;font-family:monospace;line-height:1.8;">Move 语言的所有权系统<br/>与 Rust 类似...</div>
+    </div>
+
+    <div class="panel-title">进度条末端燃烧的火焰</div>
+    <div class="panel-desc">顶部阅读进度条的最前端是一个跟随滚动的手绘小火焰，像火把在文章里"燃烧前进"。读完时火焰到达终点熄灭。这是你原本就有进度条的功能，改成火焰版。</div>
+    <div class="panel-ref">参考灵感：brunosimon.com — 游戏化进度指示器</div>
+  </div>
+
+  <!-- 方案 5：标签 chip 上的火焰 -->
+  <div class="panel" onclick="togglePanel(this, '5')">
+    <div class="check">✓</div>
+    <div class="panel-label">方案 05 · 分类标签</div>
+
+    <div class="tags-mock">
+      <div class="tag" style="border-color:#f97316;color:#f97316;">
+        <svg width="8" height="12" viewBox="0 0 8 12">
+          <path d="M4,11 C1,9 0,6 2,3 C2,5 3,5 4,4 C5,3 4,1 5,0 C5,2 7,4 7,6 C7,8 6,10 4,11Z" fill="none" stroke="#f97316" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+        </svg>
+        Blockchain
+      </div>
+      <div class="tag">Web Dev</div>
+      <div class="tag">随笔</div>
+    </div>
+
+    <div style="font-size:10px;color:#aaa;font-family:monospace;margin-bottom:12px;">↑ hover / 选中时点亮火焰</div>
+
+    <!-- 卡片：手绘边框 + 类目火焰 -->
+    <div style="position:relative;padding:10px 12px;">
+      <svg style="position:absolute;inset:0;width:100%;height:100%;" viewBox="0 0 240 60" preserveAspectRatio="none">
+        <path d="M3,3 Q120,1 238,3 Q240,30 238,57 Q120,59 2,57 Q0,30 3,3Z" fill="none" stroke="#111" stroke-width="1.5"/>
+      </svg>
+      <div style="font-size:9px;color:#888;font-family:monospace;margin-bottom:4px;letter-spacing:0.1em;">BLOCKCHAIN · APR 2026</div>
+      <div style="font-size:12px;font-weight:700;">深入理解 Sui Move 所有权模型</div>
+    </div>
+
+    <div class="panel-title">Blockchain 标签自带火焰图标</div>
+    <div class="panel-desc">Blockchain / Web3 类别的标签永远带一个小手绘火焰前缀（因为区块链就是🔥热门赛道）。选中/hover 时橙色点亮，未选中时描边灰色。</div>
+    <div class="panel-ref">参考灵感：maggieappleton.com — 语义化图标标签系统</div>
+  </div>
+
+  <!-- 方案 6：空页面 / 404 大火焰 -->
+  <div class="panel" onclick="togglePanel(this, '6')">
+    <div class="check">✓</div>
+    <div class="panel-label">方案 06 · 404 页面</div>
+
+    <div class="empty-mock">
+      <svg width="56" height="76" viewBox="0 0 56 76" style="margin:0 auto 12px;">
+        <!-- 大手绘火焰 -->
+        <path d="M28,72 C10,62 6,44 12,28 C14,22 10,14 16,8 C16,18 20,22 24,16 C26,10 23,3 28,0 C28,10 34,16 38,22 C44,32 42,52 28,72Z" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+        <!-- 内焰 -->
+        <path d="M28,64 C22,52 22,40 28,28" fill="none" stroke="#fbbf24" stroke-width="1.5" stroke-linecap="round" opacity="0.65"/>
+        <!-- 火花散落 -->
+        <circle cx="14" cy="66" r="2" fill="none" stroke="#f97316" stroke-width="1.3"/>
+        <circle cx="42" cy="70" r="1.5" fill="none" stroke="#f97316" stroke-width="1.3"/>
+        <circle cx="8" cy="55" r="1.2" fill="none" stroke="#fbbf24" stroke-width="1"/>
+        <circle cx="48" cy="50" r="1" fill="none" stroke="#fbbf24" stroke-width="1"/>
+      </svg>
+      <div style="font-size:32px;font-weight:900;font-family:monospace;color:#111;line-height:1;">404</div>
+      <div style="font-size:11px;color:#aaa;font-family:monospace;margin-top:6px;letter-spacing:0.15em;">页面不存在，但火还在燃烧</div>
+    </div>
+
+    <div class="panel-title">404 / 空状态页大火焰插画</div>
+    <div class="panel-desc">404 页面、搜索无结果页用一个大手绘火焰插画（带火花散落）替代无聊的错误提示。把"找不到内容"变成一个有个性的时刻。</div>
+    <div class="panel-ref">参考灵感：获奖网站的趣味错误页设计</div>
+  </div>
+
+</div>
+
+<!-- 底部选择指示器 -->
+<div class="selection-bar" id="selectionBar">
+  <span id="selectionText">已选择 <strong id="selectedCount">0</strong> 个方案</span>
+  <span>在终端告诉我你的选择 →</span>
+</div>
+
+<script>
+  const selected = new Set();
+
+  function togglePanel(el, id) {
+    if (selected.has(id)) {
+      selected.delete(id);
+      el.classList.remove('selected');
+    } else {
+      selected.add(id);
+      el.classList.add('selected');
+    }
+    const bar = document.getElementById('selectionBar');
+    const count = document.getElementById('selectedCount');
+    count.textContent = selected.size;
+    if (selected.size > 0) {
+      bar.classList.add('visible');
+    } else {
+      bar.classList.remove('visible');
+    }
+    // record to events
+    try {
+      const choices = Array.from(selected).join(',');
+      fetch('/event', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({type:'click', choice: choices, text: '方案 ' + Array.from(selected).join(', ')})
+      });
+    } catch(e) {}
+  }
+</script>
+
+</body>
+</html>

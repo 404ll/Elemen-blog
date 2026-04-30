@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Before vs After</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Georgia, serif; background: #f0ede8; color: #111; padding: 24px; }
+
+h1 { font-size: 18px; font-weight: 900; margin-bottom: 4px; font-family: monospace; }
+.sub { font-size: 11px; color: #888; font-family: monospace; margin-bottom: 24px; }
+
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; max-width: 960px; margin-left: auto; margin-right: auto; }
+.col-label { font-size: 10px; font-family: monospace; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 10px; }
+.col-label.before { color: #aaa; }
+.col-label.after { color: #f97316; }
+
+/* ── BEFORE 风格 (现在的样子) ── */
+.before-card {
+  background: rgba(255,255,255,0.9);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  margin-bottom: 10px;
+}
+
+/* ── AFTER 风格 (新方向) ── */
+/* 不规则边框用 SVG filter + clip，或直接用 border-radius 随机值模拟 */
+.after-card {
+  background: #fff;
+  padding: 20px;
+  margin-bottom: 10px;
+  position: relative;
+}
+.after-card .sketch-border {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none;
+}
+
+/* 标签样式对比 */
+.before-tag {
+  display: inline-flex; align-items: center;
+  padding: 4px 12px; border-radius: 9999px;
+  font-size: 11px; font-weight: 700;
+  background: #dbeafe; color: #1d4ed8;
+  margin-right: 6px;
+}
+.after-tag {
+  display: inline-flex; align-items: center;
+  padding: 3px 10px;
+  font-size: 11px; font-weight: 700; font-family: monospace;
+  border: 1.5px solid #111;
+  margin-right: 6px;
+  background: white;
+  letter-spacing: 0.05em;
+}
+
+/* 按钮对比 */
+.before-btn {
+  display: inline-block;
+  background: #05468d; color: white;
+  padding: 4px 10px; border-radius: 4px;
+  font-size: 13px; font-weight: 700; font-family: monospace;
+}
+.after-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 700; font-family: monospace;
+  color: #111; letter-spacing: 0.05em;
+  border-bottom: 1.5px solid #111;
+  padding-bottom: 1px;
+}
+
+/* 分类卡片 */
+.before-category {
+  padding: 10px 14px; border-radius: 8px;
+  background: #dbeafe; font-size: 13px; font-weight: 700;
+  margin-bottom: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.after-category {
+  padding: 8px 12px;
+  font-size: 12px; font-weight: 700; font-family: monospace;
+  margin-bottom: 6px; position: relative;
+  border-left: 2px solid #111; background: white;
+  letter-spacing: 0.05em;
+}
+
+/* Navbar 对比 */
+.before-nav {
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(8px);
+  padding: 12px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-radius: 8px; margin-bottom: 10px;
+}
+.after-nav {
+  padding: 12px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid #111; margin-bottom: 10px;
+  background: #fafaf8;
+}
+
+.section-title { font-size: 13px; font-weight: 900; margin-bottom: 12px; font-family: monospace; letter-spacing: 0.1em; color: #555; }
+
+/* 页面背景对比 */
+.before-bg {
+  background: linear-gradient(180deg, #a8d3ff 0%, #fff4df 100%);
+  padding: 12px; border-radius: 8px; margin-bottom: 6px;
+}
+.after-bg {
+  background: #fafaf8;
+  padding: 12px; border-radius: 0; margin-bottom: 6px;
+  border: 1px solid #e5e5e5;
+}
+
+.divider { height: 1px; background: #e5e5e5; margin: 20px 0; }
+</style>
+</head>
+<body>
+
+<h1>Before → After 全站对比</h1>
+<p class="sub">// 左边是现在，右边是新方向 — 简洁 + 不规则手绘边</p>
+
+<div style="max-width:960px;margin:0 auto;">
+
+<!-- ── 1. 页面背景 ── -->
+<div class="section-title">① 页面背景</div>
+<div class="compare" style="margin-bottom:24px;">
+  <div>
+    <div class="col-label before">Before</div>
+    <div class="before-bg">
+      <div style="font-size:11px;color:#555;font-family:monospace;">linear-gradient(#a8d3ff → #fff4df)<br/>蓝天渐变，固定背景</div>
+    </div>
+  </div>
+  <div>
+    <div class="col-label after">After</div>
+    <div class="after-bg">
+      <div style="font-size:11px;color:#555;font-family:monospace;">#fafaf8 纯米白，无渐变<br/>内容更突出，不抢眼</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 2. Navbar ── -->
+<div class="section-title">② 导航栏</div>
+<div class="compare" style="margin-bottom:24px;">
+  <div>
+    <div class="col-label before">Before</div>
+    <div style="background:linear-gradient(180deg,#a8d3ff,#c5dff8);padding:8px;border-radius:6px;">
+      <div class="before-nav">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:26px;height:26px;background:#fef08a;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;">☀️</div>
+          <span style="font-family:monospace;font-size:14px;font-weight:900;">Elemen's Blog</span>
+        </div>
+        <div style="display:flex;gap:14px;">
+          <span style="font-size:12px;font-weight:600;">博客文章</span>
+          <span style="font-size:12px;font-weight:600;">项目合集</span>
+          <span style="font-size:12px;font-weight:600;">关于我</span>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:10px;color:#aaa;font-family:monospace;margin-top:4px;">backdrop-blur + 半透明白，浮在渐变背景上</p>
+  </div>
+  <div>
+    <div class="col-label after">After</div>
+    <div style="background:#fafaf8;padding:8px;border:1px solid #e5e5e5;border-radius:2px;">
+      <div class="after-nav">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:26px;height:26px;background:#fef08a;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;">☀️</div>
+          <span style="font-family:monospace;font-size:14px;font-weight:900;">Elemen's Blog</span>
+        </div>
+        <div style="display:flex;gap:14px;">
+          <span style="font-size:12px;font-weight:700;font-family:monospace;border-bottom:1.5px solid #111;padding-bottom:1px;">博客文章</span>
+          <span style="font-size:12px;font-family:monospace;color:#888;">项目合集</span>
+          <span style="font-size:12px;font-family:monospace;color:#888;">关于我</span>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:10px;color:#aaa;font-family:monospace;margin-top:4px;">底部单线分隔，活跃链接下划线，无玻璃效果</p>
+  </div>
+</div>
+
+<!-- ── 3. 文章卡片 ── -->
+<div class="section-title">③ 文章卡片</div>
+<div class="compare" style="margin-bottom:24px;">
+  <div>
+    <div class="col-label before">Before</div>
+    <div class="before-card">
+      <div style="margin-bottom:8px;">
+        <span class="before-tag">Blockchain</span>
+        <span style="font-size:11px;color:#888;">📅 2026年4月</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+        <img src="/icon/light.png" style="width:16px;height:16px;" onerror="this.style.display='none'"/>
+        <span style="font-size:16px;font-weight:700;">深入理解 Sui Move 所有权模型</span>
+      </div>
+      <p style="font-size:12px;color:#666;line-height:1.7;margin-bottom:10px;">Move 语言的所有权系统与 Rust 类似，但在资源安全方面走得更彻底...</p>
+      <span class="before-btn">Read More</span>
+    </div>
+    <p style="font-size:10px;color:#aaa;font-family:monospace;margin-top:4px;">白色圆角卡片 + 大阴影，悬浮感强</p>
+  </div>
+  <div>
+    <div class="col-label after">After</div>
+    <!-- 不规则边框卡片 -->
+    <div class="after-card">
+      <svg class="sketch-border" viewBox="0 0 340 140" preserveAspectRatio="none">
+        <path d="M4,4 Q85,2 170,3 Q255,1 336,4 Q338,35 337,70 Q338,105 336,136 Q255,138 170,137 Q85,139 4,136 Q2,105 3,70 Q2,35 4,4Z"
+          fill="none" stroke="#111" stroke-width="1.5"/>
+      </svg>
+      <div style="margin-bottom:8px;">
+        <span class="after-tag">BLOCKCHAIN</span>
+        <span style="font-size:10px;color:#aaa;font-family:monospace;letter-spacing:0.08em;">APR 2026</span>
+      </div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:6px;line-height:1.4;">深入理解 Sui Move 所有权模型</div>
+      <p style="font-size:12px;color:#666;line-height:1.7;margin-bottom:12px;font-family:monospace;">Move 语言的所有权系统与 Rust 类似，但在资源安全方面走得更彻底...</p>
+      <span class="after-btn">Read More →</span>
+    </div>
+    <p style="font-size:10px;color:#aaa;font-family:monospace;margin-top:4px;">SVG 不规则手绘边框，无阴影，标签改为方形等宽字</p>
+  </div>
+</div>
+
+<!-- ── 4. SelfCard (Hero) ── -->
+<div class="section-title">④ 首页 Hero 卡片</div>
+<div class="compare" style="margin-bottom:24px;">
+  <div>
+    <div class="col-label before">Before</div>
+    <div class="before-card" style="padding:16px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <div style="width:30px;height:30px;background:#fef08a;border-radius:50%;font-size:15px;display:flex;align-items:center;justify-content:center;">☀️</div>
+        <span style="font-size:16px;font-weight:700;">Hello, I'm Elemen !</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+        <span style="background:#dbeafe;color:#1d4ed8;font-size:11px;padding:3px 10px;border-radius:9999px;font-weight:700;">Web Developer</span>
+        <span style="background:#fef3c7;color:#92400e;font-size:11px;padding:3px 10px;border-radius:9999px;font-weight:700;">Blockchain</span>
+      </div>
+      <ul style="font-size:12px;color:#555;list-style:disc;padding-left:18px;line-height:2;">
+        <li>Welcome to my blog!</li>
+        <li>I am a web developer and a blockchain developer.</li>
+      </ul>
+    </div>
+    <p style="font-size:10px;color:#aaa;font-family:monospace;margin-top:4px;">圆角大卡片 + 圆形彩色标签</p>
+  </div>
+  <div>
+    <div class="col-label after">After</div>
+    <div class="after-card" style="padding:16px;">
+      <svg class="sketch-border" viewBox="0 0 340 130" preserveAspectRatio="none">
+        <path d="M4,5 Q170,2 336,5 Q338,65 336,125 Q170,128 4,125 Q2,65 4,5Z"
+          fill="none" stroke="#111" stroke-width="1.5"/>
+      </svg>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <div style="width:30px;height:30px;background:#fef08a;border-radius:50%;font-size:15px;display:flex;align-items:center;justify-content:center;border:1.5px solid #fbbf24;">☀️</div>
+        <div>
+          <div style="font-size:16px;font-weight:900;font-family:monospace;letter-spacing:0.05em;">Elemen</div>
+          <div style="font-size:9px;color:#aaa;font-family:monospace;letter-spacing:0.2em;">WEB · BLOCKCHAIN</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+        <span class="after-tag">WEB DEV</span>
+        <span class="after-tag">BLOCKCHAIN</span>
+      </div>
+      <div style="font-size:12px;color:#555;font-family:monospace;line-height:1.9;border-left:2px solid #111;padding-left:10px;">
+        Web developer & blockchain developer.<br/>
+        Learning in public, building things.
+      </div>
+    </div>
+    <p style="font-size:10px;color:#aaa;font-family:monospace;margin-top:4px;">不规则大边框 + 方形等宽标签 + 左竖线引用块</p>
+  </div>
+</div>
+
+<!-- ── 5. 分类侧边栏 ── -->
+<div class="section-title">⑤ 分类侧边栏</div>
+<div class="compare" style="margin-bottom:24px;">
+  <div>
+    <div class="col-label before">Before</div>
+    <div class="before-card" style="padding:16px;">
+      <div style="font-size:16px;font-weight:700;margin-bottom:10px;">文章分类</div>
+      <div class="before-category">Web 开发</div>
+      <div class="before-category" style="background:#fef3c7;">区块链</div>
+      <div class="before-category" style="background:#f3e8ff;">随笔</div>
+    </div>
+    <p style="font-size:10px;color:#aaa;font-family:monospace;margin-top:4px;">圆角彩色块，有阴影</p>
+  </div>
+  <div>
+    <div class="col-label after">After</div>
+    <div style="padding:16px;border:1.5px solid #111;background:white;position:relative;">
+      <div style="font-size:11px;font-weight:900;font-family:monospace;letter-spacing:0.15em;margin-bottom:12px;text-transform:uppercase;">Categories</div>
+      <div class="after-category">Web 开发</div>
+      <div class="after-category">区块链</div>
+      <div class="after-category">随笔</div>
+    </div>
+    <p style="font-size:10px;color:#aaa;font-family:monospace;margin-top:4px;">方形边框容器，左竖线列表，无彩色</p>
+  </div>
+</div>
+
+<!-- ── 6. 文章详情页 header ── -->
+<div class="section-title">⑥ 文章详情页 Header</div>
+<div class="compare" style="margin-bottom:24px;">
+  <div>
+    <div class="col-label before">Before</div>
+    <div style="background:white;border-radius:12px;padding:16px;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+        <span style="background:#dbeafe;color:#1d4ed8;padding:3px 10px;border-radius:9999px;font-size:11px;font-weight:700;">blockchain</span>
+        <span style="font-size:11px;color:#555;display:flex;align-items:center;gap:4px;">📅 2026年4月1日</span>
+        <span style="font-size:11px;color:#555;">🕐 8 分钟阅读</span>
+      </div>
+      <div style="font-size:22px;font-weight:700;line-height:1.3;margin-bottom:8px;">深入理解 Sui Move 所有权模型</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <span style="background:#e5e7eb;font-size:11px;padding:3px 8px;border-radius:4px;">#Move</span>
+        <span style="background:#e5e7eb;font-size:11px;padding:3px 8px;border-radius:4px;">#Sui</span>
+      </div>
+    </div>
+    <p style="font-size:10px;color:#aaa;font-family:monospace;margin-top:4px;">圆角白卡片，emoji 元数据，灰色 tag chip</p>
+  </div>
+  <div>
+    <div class="col-label after">After</div>
+    <div style="background:white;padding:16px;border-bottom:1.5px solid #111;">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+        <span style="border:1.5px solid #111;padding:2px 8px;font-size:10px;font-weight:700;font-family:monospace;letter-spacing:0.1em;">BLOCKCHAIN</span>
+        <span style="font-size:10px;color:#888;font-family:monospace;">APR 2026</span>
+        <span style="font-size:10px;color:#888;font-family:monospace;">8 MIN READ</span>
+      </div>
+      <div style="font-size:22px;font-weight:700;line-height:1.3;margin-bottom:10px;">深入理解 Sui Move 所有权模型</div>
+      <!-- 手绘下划线分隔 -->
+      <svg width="100%" height="6" viewBox="0 0 300 6" preserveAspectRatio="none" style="display:block;margin-bottom:10px;">
+        <path d="M0,3 Q75,1 150,4 Q225,6 300,3" fill="none" stroke="#111" stroke-width="1.2" opacity="0.3"/>
+      </svg>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <span style="font-size:10px;font-family:monospace;color:#888;">#Move</span>
+        <span style="font-size:10px;font-family:monospace;color:#888;">#Sui</span>
+        <span style="font-size:10px;font-family:monospace;color:#888;">#Blockchain</span>
+      </div>
+    </div>
+    <p style="font-size:10px;color:#aaa;font-family:monospace;margin-top:4px;">底部单线，方形标签，等宽元数据，手绘波浪分隔</p>
+  </div>
+</div>
+
+<!-- ── 总结 ── -->
+<div style="background:white;border:1.5px solid #111;padding:16px;max-width:960px;">
+  <div style="font-size:11px;font-family:monospace;font-weight:900;letter-spacing:0.15em;margin-bottom:10px;">SUMMARY — 改动原则</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:11px;font-family:monospace;line-height:2;color:#555;">
+    <div>
+      <div style="color:#aaa;font-weight:700;margin-bottom:4px;">去掉</div>
+      <div>· 所有 box-shadow</div>
+      <div>· 渐变背景色</div>
+      <div>· 圆角 pill 标签</div>
+      <div>· backdrop-blur</div>
+      <div>· emoji 装饰</div>
+      <div>· hover:shadow-xl</div>
+    </div>
+    <div>
+      <div style="color:#111;font-weight:700;margin-bottom:4px;">加入</div>
+      <div>· SVG 不规则边框（卡片）</div>
+      <div>· 纯米白背景 #fafaf8</div>
+      <div>· 方形等宽字体标签</div>
+      <div>· 底部/左侧单线分隔</div>
+      <div>· 手绘波浪分隔线</div>
+      <div>· hover:translate 保留（微动效）</div>
+    </div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

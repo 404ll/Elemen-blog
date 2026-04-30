@@ -1,0 +1,117 @@
+<h2>更多设计风格方向</h2>
+<p class="subtitle">你喜欢手绘涂鸦或二进制像素风——这里是 4 种更有个性的方向，可以多选</p>
+
+<div class="cards" data-multiselect>
+
+  <div class="card" data-choice="d" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#fffef0;padding:20px;font-family:'Comic Sans MS',cursive;">
+      <div style="position:relative;background:#fffef7;border-radius:4px;padding:16px;border:2px solid #333;box-shadow:3px 3px 0 #333;">
+        <!-- 手绘感装饰线 -->
+        <svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none" viewBox="0 0 260 160" preserveAspectRatio="none">
+          <path d="M4,4 Q6,2 8,4 Q130,0 252,3 Q255,5 254,8 Q256,80 254,154 Q252,157 250,156 Q130,159 8,157 Q5,155 4,152 Q2,80 4,4Z" fill="none" stroke="#333" stroke-width="1.5" stroke-dasharray="4,2"/>
+        </svg>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <svg width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="#fef08a" stroke="#333" stroke-width="1.5"/><path d="M9,14 Q14,8 19,14 Q14,20 9,14Z" fill="#fbbf24" stroke="#333" stroke-width="1"/></svg>
+          <span style="font-size:16px;font-weight:800;color:#1a1a1a;letter-spacing:-0.5px;text-decoration:underline wavy #fbbf24;">Elemen's Blog</span>
+        </div>
+        <div style="font-size:12px;color:#444;line-height:1.8;border-bottom:2px dashed #aaa;padding-bottom:8px;margin-bottom:8px;">
+          ✏️ <strong>最新文章</strong><br/>
+          <span style="background:linear-gradient(transparent 60%,#bfdbfe 60%);padding:0 2px;">深入理解 Sui Move 所有权</span>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <span style="background:#fef9c3;border:1.5px solid #333;font-size:11px;padding:2px 8px;border-radius:3px;transform:rotate(-1deg);display:inline-block;">Web Dev 🖊</span>
+          <span style="background:#dcfce7;border:1.5px solid #333;font-size:11px;padding:2px 8px;border-radius:3px;transform:rotate(1deg);display:inline-block;">Blockchain ⛓</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>D · 手绘涂鸦风（Sketchy / Doodle）</h3>
+      <p>不规则手绘边框、铅笔纹理、歪歪斜斜的标签、荧光笔高亮文字。像在笔记本上随手画的感觉，亲切且有温度。配合 Zen Maru 字体绝配。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="e" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0a0a0a;padding:20px;font-family:'Courier New',monospace;image-rendering:pixelated;">
+      <div style="background:#111;border:2px solid #333;padding:0;border-radius:0;">
+        <!-- 像素标题栏 -->
+        <div style="background:#1a1a2e;padding:6px 10px;display:flex;align-items:center;gap:6px;border-bottom:2px solid #333;">
+          <div style="width:8px;height:8px;background:#ff5f57;"></div>
+          <div style="width:8px;height:8px;background:#ffbd2e;"></div>
+          <div style="width:8px;height:8px;background:#28ca41;"></div>
+          <span style="color:#6272a4;font-size:10px;margin-left:6px;letter-spacing:0.1em;">ELEMEN.EXE</span>
+        </div>
+        <div style="padding:14px;">
+          <div style="color:#50fa7b;font-size:12px;margin-bottom:6px;letter-spacing:0.05em;">█▀█ █▀▀ █░░ █▀▀ █▀▄▀█ █▀▀ █▄░█</div>
+          <div style="color:#6272a4;font-size:10px;margin-bottom:10px;">ELE M EN · B L O G · v2.0</div>
+          <div style="background:#1e1e2e;border-left:3px solid #50fa7b;padding:8px;margin-bottom:8px;">
+            <div style="color:#f8f8f2;font-size:11px;font-weight:600;">深入理解 Sui Move</div>
+            <div style="color:#6272a4;font-size:10px;margin-top:2px;">▓▓▓▓▓▓▒░░ 2026.04</div>
+          </div>
+          <div style="display:flex;gap:4px;">
+            <span style="background:#50fa7b;color:#0a0a0a;font-size:10px;padding:2px 6px;font-weight:800;">[WEB]</span>
+            <span style="background:#bd93f9;color:#0a0a0a;font-size:10px;padding:2px 6px;font-weight:800;">[WEB3]</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>E · 像素 / Retro Terminal</h3>
+      <p>像素字体、方块装饰、进度条风格元素、Dracula 配色。像 90 年代 BBS 或早期 DOS 系统，但经过现代重新诠释。极其适合区块链开发者的身份。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="f" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f5f0e8;padding:20px;font-family:Georgia,serif;">
+      <div style="position:relative;">
+        <!-- 纸张纹理效果 -->
+        <div style="background:#faf6ed;border-radius:2px;padding:16px;box-shadow:2px 2px 8px rgba(0,0,0,0.15),inset 0 0 30px rgba(0,0,0,0.03);border:1px solid #e8dfc8;">
+          <div style="font-size:10px;letter-spacing:0.3em;color:#9c8b6e;text-transform:uppercase;margin-bottom:12px;border-bottom:1px solid #e0d5c0;padding-bottom:8px;">✦ Elemen · Field Notes ✦</div>
+          <div style="display:flex;gap:3px;margin-bottom:10px;">
+            <span style="background:#d4a853;color:white;font-size:10px;padding:2px 7px;border-radius:1px;letter-spacing:0.05em;">BLOCKCHAIN</span>
+          </div>
+          <div style="font-size:14px;font-weight:700;color:#2c1810;line-height:1.5;margin-bottom:8px;">深入理解 Sui Move<br/>所有权模型</div>
+          <div style="font-size:11px;color:#7a6548;line-height:1.8;font-style:italic;">Move 语言的所有权系统与 Rust 类似，但在资源安全方面走得更彻底...</div>
+          <div style="margin-top:12px;font-size:10px;color:#9c8b6e;letter-spacing:0.1em;">APR 2026 · 8 MIN</div>
+        </div>
+        <!-- 便签纸角 -->
+        <div style="position:absolute;bottom:-4px;right:-4px;width:0;height:0;border-style:solid;border-width:0 0 16px 16px;border-color:transparent transparent #c8b89a transparent;"></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>F · 纸质笔记本（Field Notes / Moleskine）</h3>
+      <p>米白纸张底色、做旧质感、印章式标签、手写感细节。像一本随身携带的工程师笔记本，很适合"探索者"的叙事感。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="g" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#fafafa;padding:20px;">
+      <div style="background:white;border-radius:0;padding:16px;border:1px solid #e5e5e5;">
+        <!-- 像素网格 logo -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <div style="display:grid;grid-template-columns:repeat(5,6px);grid-template-rows:repeat(5,6px);gap:1px;">
+            <div style="background:#000"></div><div style="background:#000"></div><div style="background:#000"></div><div style="background:#000"></div><div style="background:#000"></div>
+            <div style="background:#000"></div><div style="background:transparent"></div><div style="background:transparent"></div><div style="background:transparent"></div><div style="background:#000"></div>
+            <div style="background:#000"></div><div style="background:transparent"></div><div style="background:#000"></div><div style="background:transparent"></div><div style="background:#000"></div>
+            <div style="background:#000"></div><div style="background:transparent"></div><div style="background:transparent"></div><div style="background:transparent"></div><div style="background:#000"></div>
+            <div style="background:#000"></div><div style="background:#000"></div><div style="background:#000"></div><div style="background:#000"></div><div style="background:#000"></div>
+          </div>
+          <span style="font-weight:900;font-size:15px;letter-spacing:0.15em;color:#000;font-family:'Courier New',monospace;">ELEMEN</span>
+        </div>
+        <div style="height:1px;background:repeating-linear-gradient(90deg,#000 0px,#000 4px,transparent 4px,transparent 8px);margin-bottom:12px;"></div>
+        <div style="font-family:'Courier New',monospace;">
+          <div style="font-size:13px;font-weight:700;color:#000;margin-bottom:4px;">深入理解 Sui Move 所有权</div>
+          <div style="font-size:10px;color:#666;letter-spacing:0.05em;">01001100 · BLOCKCHAIN · 2026.04</div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:4px;">
+          <span style="border:1.5px solid #000;font-size:10px;padding:2px 7px;font-family:monospace;color:#000;">WEB</span>
+          <span style="background:#000;font-size:10px;padding:2px 7px;font-family:monospace;color:white;">WEB3</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>G · 像素 × 手绘混合（Binary Doodle）</h3>
+      <p>像素化图标 + 手绘风边框的融合体。点阵 logo、二进制装饰元素、但整体保持白底干净。你说的两个方向的结合——既有手绘的温度，又有 binary 的酷感。</p>
+    </div>
+  </div>
+
+</div>

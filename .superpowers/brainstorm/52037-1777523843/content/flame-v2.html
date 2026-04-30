@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>火焰设计 v2 — 基于真实参考</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Georgia, serif;
+    background: #fafaf8;
+    color: #111;
+    padding: 24px 24px 60px;
+  }
+  h1 { font-size: 20px; font-weight: 900; margin-bottom: 4px; }
+  .sub { font-size: 12px; color: #888; font-family: monospace; margin-bottom: 28px; }
+
+  .section { margin-bottom: 40px; }
+  .section-label {
+    font-size: 10px; font-family: monospace; letter-spacing: 0.2em;
+    color: #aaa; text-transform: uppercase; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-label::after { content:''; flex:1; height:1px; background:#e5e5e5; }
+
+  .mockup-frame {
+    background: white;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 3px;
+    padding: 20px;
+    margin-bottom: 10px;
+  }
+  .note {
+    font-size: 11px; color: #888; font-family: monospace;
+    line-height: 1.7; padding-left: 4px;
+  }
+</style>
+</head>
+<body>
+
+<h1>火焰元素 v2 — 基于你的参考图</h1>
+<p class="sub">// 顶端有内卷小钩，多舌错落，外橙内黄，底部有基底连接</p>
+
+<!-- ══════════════════════════════════
+     01 · Navbar 活跃指示器
+══════════════════════════════════ -->
+<div class="section">
+  <div class="section-label">方案 01 · Navbar 活跃链接下方</div>
+  <div class="mockup-frame">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px;">
+      <!-- Logo -->
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:30px;height:30px;background:#fef08a;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;border:1.5px solid #fbbf24;">☀️</div>
+        <span style="font-family:monospace;font-size:15px;font-weight:900;">Elemen's Blog</span>
+      </div>
+      <!-- Nav -->
+      <div style="display:flex;gap:20px;align-items:flex-end;">
+        <!-- 活跃页：下方有火焰群 -->
+        <div style="position:relative;padding-bottom:18px;">
+          <span style="font-family:monospace;font-size:12px;font-weight:800;">博客文章</span>
+          <!-- 3 个错落火舌，带内卷顶端 -->
+          <svg width="58" height="20" viewBox="0 0 58 20" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);" fill="none">
+            <!-- 左火舌（较矮） -->
+            <path d="M10,18 C7,17 5,14 6,10 C7,8 6,6 7,4 C8,7 9,7 10,6 C10,8 11,10 10,12 C11,14 12,17 10,18Z" stroke="#f97316" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
+            <path d="M9,16 C8,13 9,10 10,8" stroke="#fbbf24" stroke-width="0.9" stroke-linecap="round" opacity="0.7"/>
+            <!-- 中火舌（最高） -->
+            <path d="M29,18 C25,16 23,12 25,7 C26,4 24,2 26,0 C27,3 28,4 29,3 C30,1 29,0 31,0 C31,3 33,5 33,8 C34,12 33,16 29,18Z" stroke="#f97316" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+            <path d="M29,15 C27,11 27,8 29,5" stroke="#fbbf24" stroke-width="1" stroke-linecap="round" opacity="0.7"/>
+            <!-- 右火舌（中等） -->
+            <path d="M48,18 C45,17 43,14 44,10 C45,7 44,5 46,3 C46,6 47,7 48,5 C49,7 50,10 49,13 C50,15 51,17 48,18Z" stroke="#f97316" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
+            <path d="M47,16 C46,13 47,10 48,8" stroke="#fbbf24" stroke-width="0.9" stroke-linecap="round" opacity="0.7"/>
+            <!-- 底部基底连接线 -->
+            <path d="M4,18 Q15,16 29,18 Q43,20 54,18" stroke="#f97316" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/>
+          </svg>
+        </div>
+        <div style="font-family:monospace;font-size:12px;color:#bbb;padding-bottom:2px;">项目合集</div>
+        <div style="font-family:monospace;font-size:12px;color:#bbb;padding-bottom:2px;">关于我</div>
+      </div>
+    </div>
+  </div>
+  <p class="note">活跃页下方燃起 3 个错落火舌 + 底部基底。hover 其他链接时也会短暂出现（可加 CSS transition 动效）。</p>
+</div>
+
+<!-- ══════════════════════════════════
+     03 · Section 标题旁
+══════════════════════════════════ -->
+<div class="section">
+  <div class="section-label">方案 03 · 首页 Section 标题</div>
+  <div class="mockup-frame">
+    <!-- 标题行 -->
+    <div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:14px;">
+      <!-- 竖排 3 舌火焰，紧贴标题左侧 -->
+      <svg width="32" height="42" viewBox="0 0 32 42" fill="none" style="flex-shrink:0;margin-bottom:2px;">
+        <!-- 左小火舌 -->
+        <path d="M8,38 C5,36 4,30 6,24 C7,21 5,18 7,16 C8,20 9,21 10,19 C10,22 11,26 10,30 C11,33 10,37 8,38Z" stroke="#f97316" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+        <path d="M8,34 C7,29 8,25 9,22" stroke="#fbbf24" stroke-width="1" stroke-linecap="round" opacity="0.65"/>
+        <!-- 中主火舌（最高） -->
+        <path d="M16,40 C11,36 9,28 12,20 C13,15 11,10 14,7 C14,13 16,15 17,12 C18,9 17,5 20,4 C20,9 22,13 23,17 C24,23 22,34 16,40Z" stroke="#f97316" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        <path d="M16,35 C13,28 13,21 16,15" stroke="#fbbf24" stroke-width="1.3" stroke-linecap="round" opacity="0.65"/>
+        <!-- 右小火舌 -->
+        <path d="M24,37 C22,35 21,29 23,24 C24,21 23,18 25,16 C25,20 26,21 27,19 C27,23 28,27 27,31 C28,34 27,36 24,37Z" stroke="#f97316" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+        <path d="M24,33 C23,28 24,24 25,21" stroke="#fbbf24" stroke-width="0.9" stroke-linecap="round" opacity="0.6"/>
+        <!-- 底部基底 -->
+        <path d="M2,40 Q10,38 16,40 Q22,42 30,40" stroke="#f97316" stroke-width="1.3" stroke-linecap="round" opacity="0.45"/>
+        <!-- 火花 -->
+        <circle cx="5" cy="22" r="1.2" stroke="#f97316" stroke-width="1"/>
+        <circle cx="27" cy="18" r="1" stroke="#fbbf24" stroke-width="1"/>
+      </svg>
+      <div>
+        <h2 style="font-size:22px;font-weight:900;letter-spacing:-0.5px;line-height:1;">最新文章</h2>
+        <p style="font-size:11px;color:#999;font-family:monospace;margin-top:4px;">探索 Web 开发和区块链的见解、教程和思考</p>
+      </div>
+    </div>
+
+    <!-- 文章列表预览 -->
+    <div style="border-left:1.5px solid #111;padding-left:14px;">
+      <div style="margin-bottom:10px;">
+        <div style="font-size:9px;color:#aaa;font-family:monospace;letter-spacing:0.12em;margin-bottom:3px;">BLOCKCHAIN · APR 2026 · 8 MIN</div>
+        <div style="font-size:13px;font-weight:700;">深入理解 Sui Move 所有权模型</div>
+      </div>
+      <div style="opacity:0.5;">
+        <div style="font-size:9px;color:#aaa;font-family:monospace;letter-spacing:0.12em;margin-bottom:3px;">WEB DEV · MAR 2026</div>
+        <div style="font-size:13px;font-weight:700;">Next.js App Router 深度实践</div>
+      </div>
+    </div>
+  </div>
+  <p class="note">火焰紧贴"最新文章"左侧，三舌错落 + 底部基底 + 两颗火花散落。Section 标题专属，不滥用。</p>
+</div>
+
+<!-- ══════════════════════════════════
+     04 · 阅读进度条
+══════════════════════════════════ -->
+<div class="section">
+  <div class="section-label">方案 04 · 阅读进度条火焰前端</div>
+  <div class="mockup-frame" style="padding:28px 20px;">
+
+    <!-- 进度条 50% -->
+    <div style="margin-bottom:20px;">
+      <div style="font-size:10px;font-family:monospace;color:#aaa;letter-spacing:0.1em;margin-bottom:6px;">50% 进度</div>
+      <div style="height:3px;background:#f0f0f0;position:relative;border-radius:0;">
+        <div style="height:100%;width:50%;background:linear-gradient(90deg,#fbbf24,#f97316);position:relative;">
+          <!-- 进度条末端：一个火舌向上冒 -->
+          <svg width="16" height="24" viewBox="0 0 16 24" fill="none" style="position:absolute;right:-4px;bottom:-2px;">
+            <path d="M8,22 C4,18 3,13 5,8 C6,5 4,3 6,1 C6,5 7,6 8,5 C9,3 8,1 10,0 C10,4 12,6 12,10 C13,14 12,19 8,22Z" stroke="#f97316" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+            <path d="M8,19 C6,14 6,10 8,7" stroke="#fbbf24" stroke-width="1.1" stroke-linecap="round" opacity="0.7"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- 进度条 90% -->
+    <div style="margin-bottom:20px;">
+      <div style="font-size:10px;font-family:monospace;color:#aaa;letter-spacing:0.1em;margin-bottom:6px;">90% 进度（快燃尽了）</div>
+      <div style="height:3px;background:#f0f0f0;position:relative;">
+        <div style="height:100%;width:90%;background:linear-gradient(90deg,#fbbf24,#f97316,#dc2626);position:relative;">
+          <svg width="16" height="24" viewBox="0 0 16 24" fill="none" style="position:absolute;right:-4px;bottom:-2px;">
+            <path d="M8,22 C4,18 3,13 5,8 C6,5 4,3 6,1 C6,5 7,6 8,5 C9,3 8,1 10,0 C10,4 12,6 12,10 C13,14 12,19 8,22Z" stroke="#dc2626" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+            <path d="M8,19 C6,14 6,10 8,7" stroke="#f97316" stroke-width="1.1" stroke-linecap="round" opacity="0.7"/>
+            <!-- 快燃尽，多一颗火花 -->
+            <circle cx="13" cy="8" r="1.2" stroke="#f97316" stroke-width="1"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- 进度条 100% -->
+    <div>
+      <div style="font-size:10px;font-family:monospace;color:#aaa;letter-spacing:0.1em;margin-bottom:6px;">100% — 读完，火焰消散</div>
+      <div style="height:3px;background:linear-gradient(90deg,#fbbf24,#f97316);width:100%;opacity:0.3;"></div>
+      <div style="font-size:10px;font-family:monospace;color:#f97316;margin-top:6px;letter-spacing:0.1em;">✦ 读完了，你很棒</div>
+    </div>
+  </div>
+  <p class="note">火焰跟随阅读进度移动。接近 100% 时火焰变红 + 散出火花（更紧迫感）。读完后火焰消散，留下完成提示。</p>
+</div>
+
+<!-- ══════════════════════════════════
+     06 · 404 页面
+══════════════════════════════════ -->
+<div class="section">
+  <div class="section-label">方案 06 · 404 / 空状态页</div>
+  <div class="mockup-frame" style="text-align:center;padding:36px 20px;">
+
+    <!-- 大火焰群，模拟参考图的多舌横向铺开 -->
+    <svg width="160" height="100" viewBox="0 0 160 100" fill="none" style="margin:0 auto 16px;display:block;">
+      <!-- 底部基底 -->
+      <path d="M0,90 Q20,86 40,90 Q60,94 80,90 Q100,86 120,90 Q140,94 160,90" stroke="#f97316" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+
+      <!-- 左小火舌 -->
+      <path d="M22,88 C16,83 14,73 17,60 C18,54 16,48 19,44 C20,50 22,52 23,48 C24,52 25,60 24,68 C25,76 24,84 22,88Z" stroke="#f97316" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M22,82 C20,72 20,64 22,56" stroke="#fbbf24" stroke-width="1.1" stroke-linecap="round" opacity="0.65"/>
+
+      <!-- 左中火舌（中等高） -->
+      <path d="M50,90 C44,84 41,72 44,58 C46,50 43,43 46,38 C47,45 49,47 51,43 C52,47 54,55 53,65 C54,74 53,84 50,90Z" stroke="#f97316" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M50,84 C47,74 47,63 50,54" stroke="#fbbf24" stroke-width="1.2" stroke-linecap="round" opacity="0.65"/>
+
+      <!-- 中央主火舌（最高，顶端内卷） -->
+      <path d="M80,92 C72,84 68,68 72,50 C74,40 70,30 74,22 C75,32 78,36 80,30 C82,24 80,16 84,14 C84,24 88,30 89,38 C91,48 90,68 84,82 C83,87 82,91 80,92Z" stroke="#f97316" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M80,86 C76,72 76,57 80,44" stroke="#fbbf24" stroke-width="1.4" stroke-linecap="round" opacity="0.65"/>
+
+      <!-- 右中火舌 -->
+      <path d="M110,90 C104,84 102,72 105,58 C107,50 104,43 107,38 C108,45 110,47 112,43 C113,47 115,55 114,65 C115,74 114,84 110,90Z" stroke="#f97316" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M110,84 C108,74 108,63 110,54" stroke="#fbbf24" stroke-width="1.2" stroke-linecap="round" opacity="0.65"/>
+
+      <!-- 右小火舌 -->
+      <path d="M138,88 C132,83 130,73 133,60 C134,54 132,48 135,44 C136,50 138,52 139,48 C140,52 141,60 140,68 C141,76 140,84 138,88Z" stroke="#f97316" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M138,82 C136,72 136,64 138,56" stroke="#fbbf24" stroke-width="1.1" stroke-linecap="round" opacity="0.65"/>
+
+      <!-- 火花散落 -->
+      <circle cx="12" cy="52" r="2" stroke="#f97316" stroke-width="1.3"/>
+      <circle cx="35" cy="38" r="1.5" stroke="#fbbf24" stroke-width="1.2"/>
+      <circle cx="148" cy="44" r="1.8" stroke="#f97316" stroke-width="1.3"/>
+      <circle cx="62" cy="30" r="1.2" stroke="#fbbf24" stroke-width="1"/>
+      <circle cx="98" cy="26" r="1.4" stroke="#f97316" stroke-width="1"/>
+    </svg>
+
+    <div style="font-size:48px;font-weight:900;font-family:monospace;color:#111;line-height:1;letter-spacing:-2px;">404</div>
+    <div style="font-size:12px;color:#aaa;font-family:monospace;margin-top:10px;letter-spacing:0.15em;">页面不存在</div>
+    <div style="font-size:11px;color:#f97316;font-family:monospace;margin-top:4px;opacity:0.8;">但火还在燃烧 🔥</div>
+    <div style="margin-top:16px;display:inline-flex;align-items:center;gap:6px;border:1.5px solid #111;padding:6px 16px;font-size:11px;font-family:monospace;cursor:pointer;">
+      ← 回到首页
+    </div>
+  </div>
+  <p class="note">5 个错落火舌（模拟你参考图的横向铺开感）+ 火花散落 + 底部基底弧线。外橙内黄双层描边。</p>
+</div>
+
+</body>
+</html>

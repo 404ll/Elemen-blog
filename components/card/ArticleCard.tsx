@@ -25,19 +25,19 @@ export default function ArticleCard({ post }: ArticleCardProps) {
     : null;
 
   return (
-    <article className="font-zenmaru">
+    <article className="">
       <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-3">
         {categoryLabel && (
           category ? (
             <Link
               href={`/blog/category/${category}`}
-              className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold transition-colors ${badgeClassName}`}
+              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${badgeClassName}`}
             >
               {categoryLabel}
             </Link>
           ) : (
             <span
-              className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold ${badgeClassName}`}
+              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${badgeClassName}`}
             >
               {categoryLabel}
             </span>
@@ -51,14 +51,14 @@ export default function ArticleCard({ post }: ArticleCardProps) {
       </div>
 
       {/* 标题 */}
-      <h2 className="text-2xl font-bold tracking-tight mb-2 text-black dark:text-white font-zenmaru flex items-center gap-2 transition-colors">
+      <h2 className="text-xl font-bold tracking-tight mb-2 text-black dark:text-white flex items-center gap-2 transition-colors">
         <Image src="/icon/light.png" alt="light" width={20} height={20} className="flex-shrink-0" />
         <span>{title || "Untitled"}</span>
       </h2>
       
       {/* 副标题 */}
       {subtitle && (
-        <p className="text-lg text-gray-700 dark:text-gray-300 mb-3 transition-colors">
+        <p className="text-base text-gray-700 dark:text-gray-300 mb-3 transition-colors">
           {subtitle}
         </p>
       )}
@@ -73,9 +73,9 @@ export default function ArticleCard({ post }: ArticleCardProps) {
       {/* Read more 链接 */}
       <Link
         href={href}
-        className="inline-flex items-center gap-1 font-mono text-sm font-bold text-black dark:text-white border-b border-black dark:border-white hover:opacity-60 transition-opacity"
+        className="article-read-more"
       >
-        Read More →
+        Read More
       </Link>
     </article>
   );

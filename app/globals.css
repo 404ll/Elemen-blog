@@ -63,7 +63,7 @@ html {
 @layer base {
   body {
     min-height: 100vh;
-    font-family: var(--font-bitcount);
+    font-family: var(--font-zenmaru);
     background: var(--gradient-bg);
     background-attachment: fixed;
     color: rgb(var(--foreground));
