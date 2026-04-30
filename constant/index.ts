@@ -1,24 +1,24 @@
 // 统一颜色配置 - Tailwind 需要完整类名
 export const COLOR_STYLES = {
   blue: {
-    badge: "bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-400/40 dark:text-blue-300 dark:border-blue-800",
-    card: "bg-blue-400 dark:bg-blue-400/40",
+    badge: "border border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-300 font-mono text-xs tracking-wider",
+    card: "border-l-2 border-blue-600 dark:border-blue-400",
   },
   green: {
-    badge: "bg-green-50 text-green-700 border border-green-100 dark:bg-green-400/40 dark:text-green-300 dark:border-green-800",
-    card: "bg-green-400 dark:bg-green-400/40",
+    badge: "border border-green-600 text-green-700 dark:border-green-400 dark:text-green-300 font-mono text-xs tracking-wider",
+    card: "border-l-2 border-green-600 dark:border-green-400",
   },
   purple: {
-    badge: "bg-purple-50 text-purple-700 border border-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
-    card: "bg-purple-400 dark:bg-purple-400/40",
+    badge: "border border-purple-600 text-purple-700 dark:border-purple-400 dark:text-purple-300 font-mono text-xs tracking-wider",
+    card: "border-l-2 border-purple-600 dark:border-purple-400",
   },
   gray: {
-    badge: "bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
-    card: "bg-gray-400 dark:bg-gray-400/40",
+    badge: "border border-gray-500 text-gray-600 dark:border-gray-400 dark:text-gray-300 font-mono text-xs tracking-wider",
+    card: "border-l-2 border-gray-500 dark:border-gray-400",
   },
   orange: {
-    badge: "bg-orange-50 text-orange-700 border border-orange-100 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
-    card: "bg-orange-400 dark:bg-orange-400/40",
+    badge: "border border-orange-600 text-orange-700 dark:border-orange-400 dark:text-orange-300 font-mono text-xs tracking-wider",
+    card: "border-l-2 border-orange-600 dark:border-orange-400",
   },
 } as const;
 

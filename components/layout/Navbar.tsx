@@ -2,6 +2,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { SunIcon, MoonIcon, GithubIcon, MenuIcon, XIcon } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -14,6 +15,7 @@ const NAV_LINKS = [
 
 export default function Navbar() {
   const { setTheme, resolvedTheme } = useTheme();
+  const pathname = usePathname();
   const [mounted] = useState(true);
   // 控制移动端抽屉开关
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -23,7 +25,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="w-full flex items-center justify-between p-4 text-black dark:text-white fixed top-0 left-0 right-0 z-50 backdrop-blur-sm bg-white/10 dark:bg-black/10 transition-colors duration-300">
+      <nav className="w-full flex items-center justify-between p-4 text-black dark:text-white fixed top-0 left-0 right-0 z-50 backdrop-blur-sm bg-[#fff4e6]/80 dark:bg-[#1a0f00]/80 border-b border-orange-200/60 dark:border-orange-900/40 transition-colors duration-300">
         {/* 左侧：Logo */}
         <Link href="/" className="flex items-center gap-2">
           <Image src="/icon/sun.png" alt="logo" className="w-8 h-8 rounded-full" width={100} height={100} />
@@ -36,7 +38,11 @@ export default function Navbar() {
             <Link
               key={link.href}
               href={link.href}
-              className="hover:opacity-70 transition-opacity text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#38bdf8]/50 focus:ring-offset-2 rounded-lg p-2 font-zenmaru"
+              className={`text-xl font-semibold font-zenmaru transition-opacity focus:outline-none rounded-lg p-2 hover:opacity-60 ${
+                pathname === link.href || pathname.startsWith(link.href + '/')
+                  ? 'border-b-2 border-black dark:border-white opacity-100'
+                  : 'opacity-70'
+              }`}
             >
               {link.label}
             </Link>
