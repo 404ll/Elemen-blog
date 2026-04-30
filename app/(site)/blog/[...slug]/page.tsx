@@ -80,7 +80,7 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
 
       <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl shadow-lg overflow-hidden">
         {/* Header */}
-        <div className="px-8 pt-7 pb-6 border-b border-gray-100 dark:border-gray-700">
+        <div className="px-4 md:px-8 pt-7 pb-6 border-b border-gray-100 dark:border-gray-700">
           <Link
             href="/blog"
             className="inline-flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors group mb-5"
@@ -127,13 +127,13 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
         </div>
 
         {/* Body */}
-        <main className="px-8 py-8">
-          <article className="prose prose-slate dark:prose-invert max-w-none">
+        <main className="px-4 md:px-8 py-8 min-w-0">
+          <article className="prose prose-slate dark:prose-invert max-w-none min-w-0 overflow-hidden">
             <MDXContent components={mdxComponents} />
           </article>
         </main>
 
-        <div className="px-8 py-6 border-t border-gray-100 dark:border-gray-700 text-center text-gray-400 dark:text-gray-500 text-sm">
+        <div className="px-4 md:px-8 py-6 border-t border-gray-100 dark:border-gray-700 text-center text-gray-400 dark:text-gray-500 text-sm">
           © {new Date().getFullYear()} {frontmatter.author || "Blog Owner"}. All rights reserved.
         </div>
       </div>

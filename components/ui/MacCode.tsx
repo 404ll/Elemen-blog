@@ -90,7 +90,7 @@ export const MacCodeBlock = ({ children, hasLanguage = false }: MacCodeBlockProp
       {/* 代码内容 */}
       <div
         ref={codeRef}
-        className="overflow-x-auto p-4 text-sm leading-relaxed font-mono [&_code]:block [&_code]:min-w-full [&_code]:whitespace-pre [&_code]:break-words [&_code]:leading-relaxed"
+        className="overflow-x-auto p-4 text-sm leading-relaxed font-mono [&_code]:block [&_code]:min-w-full [&_code]:whitespace-pre [&_code]:leading-relaxed"
         style={{
           fontFamily: "var(--font-mono), 'JetBrains Mono','Fira Code','SF Mono','Cascadia Code','Menlo','Consolas','Liberation Mono','monospace'",
         }}

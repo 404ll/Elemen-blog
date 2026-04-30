@@ -182,7 +182,7 @@ export const mdxComponents = {
     if (!className || !className.startsWith("language-")) {
       return (
         <code
-          className="relative rounded bg-gray-100 dark:bg-gray-800 px-[0.15rem] py-[0.2rem] font-mono text-sm font-semibold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"
+          className="relative rounded bg-orange-50 dark:bg-gray-700 px-1.5 py-0.5 font-mono text-[0.85em] text-orange-800 dark:text-orange-200"
           {...props}
         >
           {children}
