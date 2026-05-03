@@ -1,0 +1,276 @@
+---
+title: "Claude Code 内部架构：从 Agent Loop 到多 Agent 团队"
+date: "2026-05-03"
+excerpt: "深入 learn-claude-code 十二讲——Claude Code 怎么用 while True 循环 + 工具分发表构建出完整的 AI Agent 系统。"
+category: "ai"
+tags: ["AI", "Claude Code", "Agent", "架构"]
+draft: false
+---
+
+> 基于 [learn-claude-code](https://github.com/anthropics/learn-claude-code) 仓库的学习笔记。这个仓库用十二讲代码揭示了 Claude Code 的内部设计哲学。
+
+如果你同时在学 OpenClaw 的架构，可以对照这篇一起看：[claw0 十讲学习笔记](/blog/claw0-agent-notes)。两个系统在工具分发、上下文压缩、技能加载等设计上几乎是同构的——因为它们解决的是同一类问题。
+
+---
+
+## 贯穿全课的核心规律
+
+在看具体章节之前，先理解四条贯穿始终的规律：
+
+1. **Tool 是模型与世界的唯一接口**——模型能做什么，完全取决于 harness 注册了哪些工具
+2. **messages 是信息注入的唯一通道**——harness 通过控制往里塞什么来控制模型的注意力
+3. **模型决策，harness 执行**——`stop_reason == "tool_use"` 是两者之间唯一的协议边界
+4. **循环本身从未改变**——s01 的 while loop 在 s12 依然是同一个结构
+
+> 与 claw0 的对应：claw0 里的"LLM 只返回意图，代码查表执行"说的是同一件事。
+
+---
+
+## 软约束 vs 硬约束
+
+理解这个区别，能帮你看懂很多设计决策：
+
+| | 软约束 | 硬约束 |
+|---|---|---|
+| 实现方式 | system prompt 引导 | 代码逻辑强制 |
+| 例子 | "高风险操作先提交计划" | subagent 没有 `task` 工具（物理上无法递归）|
+| 可靠性 | 依赖模型理解和遵守 | 代码保证，模型无法绕过 |
+
+**模型对 harness 是黑盒**：模型感知不到 subagent 背后有完整的 agent loop，感知不到后台线程，感知不到收件箱文件——它只看到工具调用和 tool_result。
+
+---
+
+## 十二讲速览
+
+| 章节 | 引入机制 | 解决的问题 |
+|------|----------|------------|
+| s01 | Agent Loop | 模型无法触达真实世界 |
+| s02 | Tool Dispatch | 工具扩展不改循环 |
+| s03 | TodoWrite + Nag | 模型在多步任务中迷失 |
+| s04 | Subagent | 子任务噪音污染主 context |
+| s05 | Skill Loading | system prompt 塞太多知识 |
+| s06 | Context Compact | context 窗口被撑爆 |
+| s07 | Task Graph | 任务无依赖关系、不持久化 |
+| s08 | Background Tasks | 慢命令阻塞 agent |
+| s09 | Agent Teams | 单 agent 无法协作分工 |
+| s10 | Team Protocols | agent 间缺乏结构化协调 |
+| s11 | Autonomous Agents | 领导无法扩展地手动分配任务 |
+| s12 | Worktree Isolation | 并行 agent 共享目录互相污染 |
+
+---
+
+## s01 — Agent Loop
+
+**核心：** `while True` + `stop_reason`
+
+```python
+def agent_loop(messages):
+    while True:
+        response = client.messages.create(...)
+        messages.append({"role": "assistant", "content": response.content})
+
+        if response.stop_reason != "tool_use":
+            return  # 模型不再调用工具，结束
+
+        # 执行工具，把结果塞回 messages
+        results = [...]
+        messages.append({"role": "user", "content": results})
+```
+
+退出条件是模型主动决定停止（`stop_reason != "tool_use"`），不是外部控制。
+
+> **与 claw0 对应：** 完全相同的结构。claw0 s01 的 agent_loop 和这里是同构的。
+
+---
+
+## s02 — Tool Dispatch
+
+**核心：** Dispatch Map 模式，加工具不改循环
+
+```python
+TOOL_HANDLERS = {
+    "bash":       lambda **kw: run_bash(kw["command"]),
+    "read_file":  lambda **kw: run_read(kw["path"]),
+    "write_file": lambda **kw: run_write(kw["path"], kw["content"]),
+}
+
+handler = TOOL_HANDLERS.get(block.name)
+output = handler(**block.input) if handler else f"Unknown tool: {block.name}"
+```
+
+`block.input` 是 dict，`**block.input` 直接解包传给 handler，参数名由 schema 的 `properties` 定义。
+
+> **与 claw0 对应：** claw0 的 `TOOL_HANDLERS` 是完全相同的模式。
+
+---
+
+## s03 — TodoWrite
+
+**核心：** 两个机制解决模型"迷失"的问题
+
+### TodoManager：模型可写入的状态容器
+
+不是主动管理任务的 manager，而是**由模型写入、由 harness 持有**的状态容器。模型每次调用 `todo` 工具必须传**完整的 items 数组**，harness 整体替换，不做增量 diff。
+
+### Nag Reminder：harness 主动干预
+
+连续 3 轮没调用 `todo`，强制注入提醒：
+
+```python
+if rounds_since_todo >= 3:
+    results.append({"type": "text", "text": "<reminder>Update your todos.</reminder>"})
+```
+
+这是**代码层面的行为约束**，不依赖 prompt。
+
+---
+
+## s04 — Subagent
+
+**核心：** 隔离子任务的 context，只把摘要返回给 parent
+
+```
+Parent context（保持干净）
+    ↓ 调用 task 工具
+Subagent（全新的 messages=[]）
+    执行工具链...
+    ↓ 返回最后一轮的文本摘要
+Parent 收到摘要作为 tool_result
+```
+
+**关键设计：subagent 没有 `task` 工具**，防止递归派生（硬约束）。
+
+**隔离的是 messages，共享的是文件系统**——subagent 的文件改动 parent 可以看到，但对话历史完全独立。
+
+> **与 claw0 s04 对应：** claw0 里没有 subagent 概念，但 Lane 系统（s10）解决了类似的上下文隔离问题。
+
+---
+
+## s05 — Skill Loading
+
+**核心：** 不把所有知识塞进 system prompt，按需加载
+
+```
+Layer 1（启动时，~100 tokens/skill）：
+  system prompt 里只有 skill 名称 + 描述
+
+Layer 2（模型调用 load_skill 时）：
+  完整 skill body 通过 tool_result 注入进 messages
+```
+
+skill 加载后留在 messages 里，不是用完就丢——是推迟注入时机，不是临时注入。
+
+> **与 claw0 s06 对应：** claw0 的 SkillsManager 在启动时缓存所有 SKILL.md，同样是"固定内容启动时加载，装了新 skill 需要重启"的设计。
+
+---
+
+## s06 — Context Compact
+
+**核心：** 三层压缩，激进程度递增
+
+**Layer 1 — micro_compact（每轮自动）**
+把超过 3 轮的旧 tool_result 替换为占位符，轻量无感知。
+
+**Layer 2 — auto_compact（token 超阈值自动触发）**
+新建模型实例对原对话做摘要，用摘要替换全部 messages。
+
+**Layer 3 — compact 工具（模型主动触发）**
+和 Layer 2 完全相同，区别只是触发时机是模型主动判断。
+
+> **与 claw0 s03 对应：** claw0 的 ContextGuard 三阶段保护是同一个思路，但粒度不同。claw0 在 API 调用时触发，这里是每轮循环都检查。
+
+---
+
+## s07 — Task System
+
+**核心：** 把扁平清单升级为持久化的任务图（DAG）
+
+```
+.tasks/
+  task_1.json  {"status": "completed"}
+  task_2.json  {"blockedBy": [1], "status": "pending"}
+  task_3.json  {"blockedBy": [1], "status": "pending"}
+  task_4.json  {"blockedBy": [2,3], "status": "pending"}
+```
+
+task 1 完成 → 自动解锁 task 2 和 3（可并行）→ 都完成 → 解锁 task 4。
+
+这个任务图是 s08、s09、s11、s12 的协调骨架。
+
+---
+
+## s08 — Background Tasks
+
+**核心：** 耗时命令丢后台，主线程继续工作
+
+```
+主线程：spawn A → spawn B → 继续其他工作 → [收到 A、B 结果] → 继续
+后台：  [A 在跑]   [B 在跑]
+```
+
+结果注入时机：每轮 LLM 调用之前，先排空通知队列。
+
+**agent loop 本身还是单线程**，"并行"是 harness 用线程实现的，不是模型的能力。
+
+---
+
+## s09 — Agent Teams
+
+**核心：** 有身份、有生命周期、能持续通信的持久 teammate
+
+| | s04 Subagent | s09 Teammate |
+|---|---|---|
+| 身份 | 无 | 有名字、有角色 |
+| 生命周期 | 调用即销毁 | 线程持续存活 |
+| 通信 | 无 | JSONL 收件箱 |
+
+**收件箱是 drain-on-read**：消息读完立刻清空，只能被消费一次。整体可类比 **Actor 模型**。
+
+---
+
+## s10 — Team Protocols
+
+**核心：** 请求-响应协议解决两个问题
+
+**关机握手**：防止直接杀线程留下写了一半的文件
+**计划审批**：高风险变更先过审，批准才执行
+
+两个协议用同一个状态机：`pending → approved / rejected`。`req_id` 把请求和响应关联起来。
+
+---
+
+## s11 — Autonomous Agents
+
+**核心：** Agent 自己扫描任务看板、自己认领、做完找下一个
+
+认领条件：`pending` 状态 + 无 owner + `blockedBy` 为空。s07 的任务图天然防止认领未解锁的任务。
+
+**身份重注入**：context 压缩后 agent 可能"忘了自己是谁"，检测 messages 长度，过短就在开头重新插入身份块。这是两个章节机制叠加产生的副作用。
+
+---
+
+## s12 — Worktree Task Isolation
+
+**核心：** 用 Git worktree 给每个任务分配独立目录和分支
+
+```
+控制平面（.tasks/）       执行平面（.worktrees/）
+  管"做什么"         <-->   管"在哪做"
+  任务状态、依赖           独立目录、独立分支
+```
+
+没有自动合并——s12 解决的是写入冲突（并行改同一文件），不是合并冲突。分支合并留给人工。
+
+> **与 claw0 s10 对应：** claw0 的 Lane 系统通过独立的 messages[] 隔离上下文；s12 通过独立的 worktree 隔离文件系统。两种隔离解决的是不同层面的冲突。
+
+---
+
+## 设计哲学：简单模式的叠加
+
+整个课程的核心洞察只有一句话：
+
+> **复杂的 agent 系统，是简单模式的组合叠加，循环本身从未改变。**
+
+s01 的 `while True + stop_reason` 是整个系统的骨架。每一讲都是在这个骨架上加一层机制，而不是替换它。
+
+这和 claw0 的结论完全一致——两个系统的设计者都得出了同样的答案。
