@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Calendar, Clock } from "lucide-react";
 import { mdxComponents } from "@/components/ui/MdxContent";
 import ReadingEnhancements from "@/components/ui/ReadingEnhancements";
+import CodeCopyButton from "@/components/ui/CodeCopyButton";
 import { extractHeadingsFromMdx } from "@/lib/headings";
 
 export const revalidate = 3600;
@@ -77,6 +78,7 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
   return (
     <div className="mt-20 pb-16 selection:bg-orange-100 dark:selection:bg-orange-900 selection:text-orange-900 dark:selection:text-orange-100 max-w-4xl mx-auto px-4 xl:max-w-6xl xl:px-6 xl:pr-72">
       <ReadingEnhancements headings={headings} />
+      <CodeCopyButton />
 
       <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl shadow-lg overflow-hidden">
         {/* Header */}
@@ -128,7 +130,7 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
 
         {/* Body */}
         <main className="px-4 md:px-8 py-8 min-w-0">
-          <article className="prose prose-slate dark:prose-invert max-w-none min-w-0 overflow-hidden">
+          <article className="prose prose-slate dark:prose-invert max-w-none">
             <MDXContent components={mdxComponents} />
           </article>
         </main>

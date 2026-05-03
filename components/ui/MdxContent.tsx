@@ -1,5 +1,4 @@
 // components/ui/mdx-components.tsx
-import { MacCodeBlock } from "@/components/ui/MacCode";
 import React from "react";
 import Image from "next/image";
 import { slugify } from "@/lib/slugify";
@@ -163,26 +162,27 @@ export const mdxComponents = {
     />
   ),
 
-  pre: ({ children }: PreProps) => {
-    const hasLanguage = React.Children.toArray(children).some(
-      (child) =>
-        React.isValidElement<{ className?: string }>(child) &&
-        typeof child.props.className === "string" &&
-        child.props.className.startsWith("language-")
-    );
-
-    return (
-      <div className="my-10">
-        <MacCodeBlock hasLanguage={hasLanguage}>{children}</MacCodeBlock>
-      </div>
-    );
+  figure: ({ children, ...props }: BasicProps) => {
+    const isCodeBlock = (props as Record<string, unknown>)["data-rehype-pretty-code-figure"] !== undefined;
+    if (isCodeBlock) {
+      return (
+        <figure className="not-prose" {...props}>
+          {children}
+        </figure>
+      );
+    }
+    return <figure {...props}>{children}</figure>;
   },
+
+  pre: ({ children, ...props }: PreProps) => (
+    <pre {...props}>{children}</pre>
+  ),
 
   code: ({ className, children, ...props }: CodeProps) => {
     if (!className || !className.startsWith("language-")) {
       return (
         <code
-          className="relative rounded bg-orange-50 dark:bg-gray-700 px-1.5 py-0.5 font-mono text-[0.85em] text-orange-800 dark:text-orange-200"
+          className="font-mono text-[0.9em] text-orange-700 dark:text-orange-300"
           {...props}
         >
           {children}

@@ -11,10 +11,7 @@ type PrettyNode = {
 };
 
 const rehypePrettyCodeOptions = {
-  theme: {
-    dark: "github-dark-dimmed",
-    light: "github-light",
-  },
+  theme: "one-dark-pro",
   keepBackground: false,
   defaultLang: "plaintext",
   onVisitLine(node: PrettyNode) {

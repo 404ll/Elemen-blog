@@ -52,4 +52,8 @@ export const CATEGORIES = {
     name: 'Algorithm',
     color: 'orange' as ColorKey,
   },
+  ai: {
+    name: 'AI',
+    color: 'purple' as ColorKey,
+  },
 } as const;
