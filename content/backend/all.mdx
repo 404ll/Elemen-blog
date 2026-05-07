@@ -1,0 +1,164 @@
+---
+title: "后端框架综述"
+subtitle: "Node 后端框架的演进及各自的核心理念场景"
+date: "2026-05-07"
+excerpt: "最近在学习后端，了解到有很多的框架。本文探讨了 Node 体系下 Express、Koa、Fastify 到 NestJS 的演进与框架分类。"
+category: "backend"
+tags: ["node", "express", "koa", "fastify", "nestjs"]
+draft: false
+---
+
+# 后端框架综述
+
+后端框架本质是在解决 HTTP 服务开发中的重复问题：routing、body parsing、cookie/session、鉴权、错误处理、日志、数据库连接、缓存等。没有框架时，需要直接基于 Node `http.createServer` 手写整个请求处理链路，因此后端框架本质上是“服务端基础设施抽象”。
+
+Node 后端框架的演化，本质上是：
+
+```
+简单可用 → 异步现代化 → 工程化 → 企业架构化 → Runtime 多样化
+```
+
+---
+
+## 框架分类
+
+从“解决什么问题”的角度看，Node 后端框架大致可以分成三类：
+
+- 极简框架（Express.js、Koa、Hono）强调轻量、自由与快速启动，适合小项目、独立开发与 API 服务；
+- 工程化框架（Fastify）强调 schema、typed、plugin isolation 与高性能，适合现代 API、AI Backend、SaaS 与 BFF；
+- 企业框架（NestJS）强调 DI、IOC、模块化与架构约束，适合大型团队与复杂系统。
+
+---
+
+现代 Node 后端真正的趋势并不是“哪个框架获胜”，而是：
+
+```
+类型化 → schema 化 → runtime 多样化 → BFF 化
+```
+
+过去是 JavaScript Backend，现在开始变成 Type-safe Backend；过去接口是“随便写”，现在接口越来越接近“schema 驱动”；过去 Node.js 几乎等于后端，现在 Bun、Deno、Workers、Edge Runtime 开始崛起；过去后端强调 MVC Monolith，现在大量 Web 产品已经开始转向：
+
+```
+API orchestration + AI + streaming + queue
+```
+
+因此很多现代产品实际上已经可以通过：
+
+```
+Next.js + API Route
+```
+
+完成大量业务，而不再需要传统重后端。
+
+---
+
+### Express
+
+[https://expressjs.com/](https://expressjs.com/)
+
+Express.js 解决的是 Node 原生 HTTP 开发成本过高的问题，它通过 **middleware pipeline** 第一次建立了 Node Web 的统一开发模型：
+
+```
+req → middleware → route → response
+```
+
+Express 的核心价值是“极简”和“自由”，开发者几乎可以不受约束地组织项目，因此它迅速成为 Node Web 生态基础。但这种自由在大型项目中会逐渐演变为 middleware 地狱、全局污染、目录失控和类型缺失，因此 Express 更像“Node Web 基础层”，而不是完整工程方案。
+
+---
+
+### Koa
+
+[https://koajs.com/](https://koajs.com/)
+
+Koa 解决的问题已经从“HTTP 怎么写”转向“异步流程如何现代化”。它基于 `async/await` 重构了 middleware 模型，并引入 Onion Model：
+
+```
+进入 → next() → 返回
+```
+
+这种模型天然适合 logging、auth、transaction、error boundary 等场景。Koa 的问题在于“太轻”，它只提供最核心的 middleware 能力，大量工程能力仍需自行拼装，因此它更像现代化 Web 内核，而不是完整后端框架。
+
+---
+
+### Fastify
+
+[https://fastify.dev/](https://fastify.dev/)
+
+Fastify 开始真正解决 Node 后端长期缺少工程化能力的问题。它的核心思想是 Schema First：接口不再是“随便写 req.body”，而是要求请求与响应必须符合 schema，因此可以自动获得 validation、type inference、OpenAPI docs 与 serialization optimization。Fastify 本质上是在推动：「接口工程化」
+
+与此同时，它通过 plugin encapsulation 解决 Express 常见的全局污染问题，因此在“轻量、性能、工程化”之间取得了很好的平衡。现在大量 AI Backend、BFF、SaaS、API 平台都开始偏向 Fastify。
+
+---
+
+### NestJS
+
+[https://nextjs.org/](https://nextjs.org/)
+
+NestJS 解决的已经不是“如何开发 API”，而是“多人长期协作的大型系统如何组织”。它把 Angular/Spring Boot 的思想带入 Node，引入：
+
+- Controller
+- Service
+- Module
+- Provider
+- DI（Dependency Injection）
+- IOC
+
+因此 NestJS 的本质是：「企业架构约束」
+
+它最大的特点不是性能，而是“统一”。框架强制规定项目结构、依赖关系与生命周期管理，因此特别适合大型团队、复杂业务、微服务系统与长生命周期项目，但代价是抽象层更多、学习成本更高，小项目容易出现过度设计。
+
+---
+
+### Hono
+
+Hono 的意义则不在于“替代 Express”，而在于：「Node.js 不再是唯一服务端 Runtime」
+
+过去默认：后端 = Node Server
+
+现在开始出现：
+
+- Bun
+- Deno
+- Cloudflare Workers
+- Edge Runtime
+
+这些运行时共同特点是更接近 Web Platform API，即：
+
+- fetch
+- Request
+- Response
+- Streams
+
+因此 Hono 的核心价值是：
+
+```
+Web Standard First
+```
+
+它并不绑定 Node API，因此天然跨 Runtime。后端也开始从“单一 Node Server”逐渐演化为“多 Runtime 分布式执行环境”。
+
+---
+
+### 我们怎么学
+
+前端转后端时，最重要的不是先学某个框架，而是先理解：
+
+- HTTP
+- REST
+- middleware
+- cookie/session
+- JWT
+- 数据流
+- 请求生命周期
+
+因此最适合的学习顺序通常是：
+
+```
+Express/Fastify → SQL/Postgres → Prisma/Redis → Queue/WebSocket → NestJS/微服务
+```
+
+否则很容易变成：
+
+```
+只有概念，没有工程痛感
+```
