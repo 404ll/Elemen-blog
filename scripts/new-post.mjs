@@ -19,10 +19,11 @@ const CONTENT_DIR = path.join(__dirname, "../content");
 // 分类列表和对应的子目录名，和 constant/index.ts 保持一致
 const CATEGORIES = [
   { name: "Frontend", value: "frontend" },
+  { name: "Backend",  value: "backend"   },
   { name: "Algorithm", value: "algorithm" },
   { name: "Web3",     value: "web3"      },
+  { name: "AI",       value: "ai"        },
   { name: "Note",     value: "note"      },
-  { name: "Backend",  value: "backend"   },
 ];
 
 // inquirer.prompt 接收一个"问题数组"，每个问题是一个对象
