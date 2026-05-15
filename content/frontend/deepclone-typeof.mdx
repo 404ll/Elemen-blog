@@ -1,0 +1,141 @@
+---
+title: "深拷贝相关"
+date: "2026-05-15"
+excerpt: "关于深拷贝的一些知识，同时对类型判断有所扩展"
+category: "frontend"
+tags: ["javascript"]
+draft: false
+---
+
+## 深拷贝是什么
+
+**定义**：深拷贝会创建一个一模一样的新对象，新对象与原对象不共享内存。修改新对象不会影响原对象，属于“值拷贝”，而不是“引用”。
+
+## 常见实现方式
+
+### JSON 序列化
+
+**原理**：`JSON.parse(JSON.stringify(obj))` 利用 JSON 的序列化/反序列化完成深拷贝。
+
+**缺点**：
+
+- 丢失 `undefined`、`Symbol` 和函数
+- `Date` 会被转成字符串，`RegExp` 会变成 `{}`
+- 无法处理循环引用（会报错）
+
+**示例**：
+
+```js
+const obj = { a: 1, b: { c: 2 }, d: undefined };
+const clone = JSON.parse(JSON.stringify(obj));
+
+console.log(clone); // { a: 1, b: { c: 2 } } —— d 丢失了
+```
+
+### 标准 API：structuredClone
+
+**原理**：`structuredClone()` 是标准 API，支持更多数据类型，且能处理循环引用。
+
+**缺点**：
+
+- 不支持函数和 `Symbol`
+- 不支持原型链上的属性
+
+**示例**：
+
+```js
+const obj = { a: 1, b: { c: 2 }, d: undefined, e: Symbol("sym") };
+const clone = structuredClone(obj);
+```
+
+### 第三方库：lodash 的 _.cloneDeep
+
+**特点**：功能强大，支持多种数据类型和循环引用。
+
+**缺点**：
+
+- 体积较大，可能引入不必要的代码
+- 性能较低，尤其是对大对象
+
+**示例**：
+
+```js
+const _ = require("lodash");
+const obj = { a: 1, b: { c: 2 }, d: undefined, e: Symbol("sym") };
+const clone = _.cloneDeep(obj);
+```
+
+## 手写深拷贝（递归 + WeakMap）
+
+**要点**：
+
+- 处理基本类型
+- 处理 `Date`、`RegExp`
+- 处理循环引用（`WeakMap` 记忆）
+
+**手撕最简实现**：
+
+```js
+function deepClone(target, cache = new WeakMap()) {
+	// 处理原始类型
+	if (target === null || typeof target !== "object") return target;
+
+	// 处理日期和正则
+	if (target instanceof Date) return new Date(target);
+	if (target instanceof RegExp) return new RegExp(target);
+
+	// 处理循环引用
+	if (cache.has(target)) return cache.get(target);
+
+	// 创建新的容器
+	const cloneTarget = Array.isArray(target) ? [] : {};
+	cache.set(target, cloneTarget);
+
+	// 递归遍历
+	for (const key in target) {
+		if (Object.prototype.hasOwnProperty.call(target, key)) {
+			cloneTarget[key] = deepClone(target[key], cache);
+		}
+	}
+
+	return cloneTarget;
+}
+```
+
+## 类型判断补充
+
+### typeof
+
+**返回**：`"undefined"`、`"string"`、`"number"`、`"boolean"`、`"symbol"`、`"bigint"`、`"function"`、`"object"`。
+
+**适用场景**：判断基本数据类型（除了 `null`）。
+
+**缺点**：
+
+- `typeof null === "object"`（历史遗留问题）
+- 无法区分对象细节（数组、普通对象、正则等都返回 `"object"`）
+
+### instanceof
+
+**原理**：判断构造函数的 `prototype` 是否出现在对象的原型链上。
+
+**适用场景**：判断引用类型（对象、数组、自定义类）。
+
+**缺点**：
+
+- 无法检测基本类型（`123 instanceof Number` 为 `false`）
+- 多窗口/iframe 环境下可能失效（原型链不共享）
+
+### 精准类型判断
+
+**推荐**：`Object.prototype.toString.call(obj)`。
+
+```js
+function getTrueType(obj) {
+	return Object.prototype.toString.call(obj).slice(8, -1).toLowerCase();
+}
+
+console.log(getTrueType([])); // "array"
+console.log(getTrueType(null)); // "null"
+console.log(getTrueType(new Date())); // "date"
+```
