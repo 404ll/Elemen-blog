@@ -1,0 +1,265 @@
+---
+title: "js数组方法手撕"
+date: "2026-05-14"
+excerpt: "集中整理一下散装的js数组方法，主要是面向前端面试相关"
+category: "frontend"
+tags: ["javascript", "手撕"]
+draft: false
+---
+
+## 不改变原数组（返回新数组）的方法
+
+### flat
+**原理**：递归地把数组里的数组拿出来拼接
+
+`Array.prototype.flat(depth=1)`是用来扁平化嵌套数组的方法。它接受一个可选的参数`depth`，表示要扁平化的层级，默认为1。
+同时会默认忽略数组中的空位，如果需要保留空位，可以使用`Array.prototype.flatMap()`方法。
+
+**示例**：
+
+```js
+// 完全展开
+const arr = [1, [2, [3, [4]]]];
+console.log(arr.flat(Infinity)); // [1, 2, 3, 4]
+
+// 自动忽略空位
+const arr2 = [1, , 2, [3, , 4]];
+console.log(arr2.flat()); // [1, 2, 3, 4]
+```
+
+**手撕最简实现**：
+
+```js
+const arr = [1, [2, 3], 4, [5, [6]]];
+
+Array.prototype.myflat = function (depth = 1) {
+  let res = [];
+  for (const p of this) {
+    if (Array.isArray(p) && depth >= 0) {
+      res = res.concat(p.myflat(depth - 1));
+    } else {
+      res.push(p);
+    }
+  }
+  return res;
+};
+
+console.log(arr.myflat(2));
+```
+
+### map
+**原理**：用来对数组的每个元素进行处理，并返回一个「新的数组」。它接受一个回调函数作为参数，该函数会在数组的每个元素上被调用。
+`arr.map((item, index, array) => {})`回调函数可以接受三个参数：当前元素的值（item）、当前元素索引值（index）和原数组（array）。
+
+**示例**：
+
+```js
+const arr = [1, 2, 3];
+
+const res = arr.map((item) => item * 2);
+
+console.log(res); // [2, 4, 6]
+```
+
+**手撕最简实现**：
+
+```js
+Array.prototype.myMap = function (callback, thisArg) {
+  if (typeof callback !== "function") {
+    throw new TypeError(callback + " is not a function");
+  }
+
+  const res = [];
+  const len = this.length;
+
+  for (let i = 0; i < len; i++) {
+    // 跳过数组空槽
+    if (i in this) {
+      const value = callback.call(thisArg, this[i], i, this);
+      res.push(value);
+    }
+  }
+
+  return res;
+};
+
+const arr = [1, 2, 3];
+
+const obj = {
+  factor: 10,
+};
+
+const res = arr.myMap(function (item) {
+  return item * this.factor;
+}, obj);
+
+console.log(res); // [10, 20, 30]
+```
+
+### filter
+**原理**：用来对数组的每个元素进行测试，并返回一个「新的数组」，包含**所有通过测试**的元素。
+接受一个回调函数`arr.filter((item,index,array)=>{})`作为参数，该函数会在数组的每个元素上被调用。回调函数可以接受三个参数：当前元素的值（item）、当前元素索引值（index）和原数组（array）。
+
+**示例**：
+
+```js
+const arr = [1, 2, 3, 4, 5];
+const res = arr.filter((item) => item > 3);
+console.log(res); // [4, 5]
+```
+
+**手撕最简实现**：
+
+```js
+Array.prototype.myFilter = function (callback) {
+  if (typeof callback !== "function") {
+    throw new TypeError(callback + " is not a function");
+  }
+
+  const res = [];
+  const len = this.length;
+
+  for (let i = 0; i < len; i++) {
+    callback(this[i], i, this) && res.push(this[i]);
+  }
+
+  return res;
+};
+
+const arr = [1, 2, 3, 4];
+const res = arr.myFilter((item) => item > 2);
+console.log(res); // [3, 4]
+```
+
+### 非常强悍的 reduce
+**原理**：把数组中的多个值，累计（归并）成一个值。
+`arr.reduce((accumulator, currentValue, index, array) => {}, initialValue)`接受一个回调函数和一个可选的初始值作为参数。
+回调函数可以接受四个参数：累计器（accumulator）、当前元素的值（currentValue）、当前元素索引值（index）和原数组（array）。如果没有提供初始值，则默认使用数组的第一个元素作为初始值，并从第二个元素开始执行回调函数。
+
+reduce 它能：数组 -> 任意值（数字、对象、字符串、Map、树结构...）
+
+**示例**：
+
+```js
+const arr = [1, 2, 3];
+const res = arr.reduce((prev, cur) => {
+  return prev + cur; // 第一次：prev=1, cur=2 => 3
+}, 0);
+
+console.log(res); // 6
+```
+
+**手撕最简实现**：
+
+```js
+Array.prototype.myReduce = function (fn, initialValue) {
+  if (typeof fn !== "function") {
+    throw new TypeError(fn + " is not a function");
+  }
+
+  if (this.length === 0 && initialValue === undefined) {
+    throw new TypeError("Reduce of empty array with no initial value");
+  }
+  //没有初始值时，默认用数组第一个元素，并从第二个元素开始迭代
+  let res = initialValue === undefined ? this[0] : initialValue;
+  let start = initialValue === undefined ? 1 : 0;
+
+  for (let i = start; i < this.length; i++) {
+    if (i in this) {
+      res = fn(res, this[i], i, this);
+    }
+  }
+  return res;
+};
+
+const arr = [1, 2, 3, 4];
+const res = arr.myReduce((acc, item) => acc + item);
+console.log(res); // 10
+```
+
+## 改变原数组的方法
+
+### forEach
+
+**原理**：用来遍历数组的每个元素，并对每个元素执行指定的回调函数。它不会返回一个新的数组，而是直接在原数组上进行操作。
+
+- 没有返回值
+- 不可以用 break 或 return 来退出循环，以及continue 来跳过当前迭代, 如果想要提前结束循环，可以使用`Array.prototype.some()`或`Array.prototype.every()`方法来替代。
+
+`arr.forEach((item, index, array) => {})`接受一个回调函数作为参数，该函数会在数组的每个元素上被调用。回调函数可以接受三个参数：当前元素的值（item）、当前元素的索引（index）和原数组（array）
+
+**手撕最简实现**：
+
+> 注意：这里涉及到了`this`的绑定问题，`forEach`方法允许我们传入一个可选的第二个参数`thisArg`，用来指定回调函数内部的`this`值。如果没有提供`thisArg`，则默认为`undefined`（在非严格模式下会被自动转换为全局对象）。因此，在实现时需要使用`callback.call(thisArg, ...)`来确保回调函数内部的`this`正确绑定。
+
+```js
+Array.prototype.myForEach = function (callback, thisArg) {
+  if (typeof callback !== "function") {
+    throw new TypeError(callback + " is not a function");
+  }
+
+  const len = this.length;
+
+  for (let i = 0; i < len; i++) {
+    // 跳过数组空槽
+    if (i in this) {
+      callback.call(thisArg, this[i], i, this);
+    }
+  }
+};
+
+const arr = [10, 20, 30];
+
+const obj = {
+  prefix: "当前值",
+};
+
+arr.myForEach(function (item, index, array) {
+  console.log("this =>", this);
+
+  console.log("this.prefix =>", this.prefix);
+
+  console.log("item =>", item);
+
+  console.log("index =>", index);
+
+  console.log("array =>", array);
+
+  console.log("----------------");
+}, obj);
+```
+
+### fill
+**原理**：用来将数组中的所有元素替换为指定的值，并返回修改后的数组。
+`arr.fill(value, start, end)`它接受三个参数：要填充的值（value）、开始索引（start，默认为0）和结束索引（end，默认为数组长度）。
+
+**示例**：
+
+```js
+const arr = [1, 2, 3];
+const res = arr.fill(9);
+console.log(arr); // [9, 9, 9]
+console.log(res); // [9, 9, 9]
+```
+
+**手撕最简实现**：
+
+```js
+Array.prototype.myFill = function (value, start = 0, end = this.length) {
+  const len = this.length;
+
+  // 处理负数
+  start = start < 0 ? Math.max(len + start, 0) : Math.min(start, len);
+  end = end < 0 ? Math.max(len + end, 0) : Math.min(end, len);
+
+  for (let i = start; i < end; i++) {
+    this[i] = value;
+  }
+
+  return this;
+};
+
+const arr = [1, 2, 3, 4];
+arr.myFill(8, 1, 3);
+console.log(arr); // [1, 8, 8, 4]
+```
