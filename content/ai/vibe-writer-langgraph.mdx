@@ -1,6 +1,6 @@
 ---
-title: "我把自己写的 AI 写作 Agent 重构了一遍"
-date: "2026-04-27"
+title: "从硬编码流水线到 LangGraph：重构我的 AI 写作 Agent"
+date: "2026-05-15"
 excerpt: "从硬流水线到 LangGraph：一次关于「控制流该由谁来掌管」的思考"
 category: "ai"
 tags: ["AI", "LangGraph", "Agent", "Python"]
@@ -9,9 +9,18 @@ draft: false
 
 ## 起因
 
-为了学习agent相关，我最近做了一个叫 [vibe-writer](https://github.com/0xelemen/vibe-writer) 的项目，输入一个主题，AI 自动完成搜索、写作、审稿，生成一篇完整的技术博客。
+最近在做一个叫 vibe-writer 的 AI 写作系统。
 
-整个系统有好几个 Agent 协作：PlannerAgent 生成大纲，WriterAgent 写每一章，ReviewAgent 审稿，SearchAgent 负责实时搜索。架构大概是这样：
+输入一个主题，系统会自动完成：
+
+- 搜索资料
+- 规划文章结构
+- 生成章节内容
+- 审稿与重写
+
+最后输出一篇完整的技术博客。
+
+整个系统由多个 Agent 协作完成：PlannerAgent 负责规划，WriterAgent 基于 ReAct loop 写作，ReviewAgent 负责审稿，SearchAgent 提供实时搜索能力。架构大概是这样：
 
 ```
 浏览器 (React + TypeScript)
@@ -40,7 +49,18 @@ return final text                          # LLM 决定停止时返回
 
 前端通过 SSE 实时接收每一个 token，写作过程可以实时预览。
 
-跑起来是能跑，但总觉得哪里不对劲。后来我去看了 [deer-flow](https://github.com/bytedance/deer-flow) 的源码，才意识到问题出在哪里——**我写的不是 Agent，是一个披着 Agent 外衣的硬流水线。**
+系统虽然能跑，但随着 workflow 越来越复杂，我开始意识到：
+
+问题已经不是“LLM 能不能生成内容”，而是：
+
+- workflow 该由谁控制
+- 状态该由谁维护
+- 多个 Agent 之间如何协作
+- 系统如何 tracing 和 recover
+
+后来去看了 [deer-flow](https://github.com/bytedance/deer-flow) 的源码，我才意识到：
+
+我写的并不是一个真正的 Agent workflow，更像是一个“披着 Agent 外衣的硬编码流水线”。
 
 ---
 
@@ -84,7 +104,7 @@ async def _run_pipeline(self, job):
 - **控制流**（判断要不要重写、重写几次、什么时候结束）
 - **基础设施**（`push_event` SSE 推流、`job_store.update` 状态更新、`log.info` 日志、`time.monotonic()` 计时）
 
-数一下，**基础设施的行数最多，业务逻辑反而最少。**
+数一下，**基础设施的行数最多，业务逻辑反而最少**，代码能运行，但 workflow 本身无法被观察、推理、可视化。
 
 这意味着什么？如果我想改"review 失败重写几次"这个规则，我要在一堆 `push_event` 和 `job_store.update` 中间找到那几行真正相关的代码。改一个业务规则，要读懂整个函数。
 
@@ -101,7 +121,7 @@ job.stage = StageStatus.WRITE
 job_store.update(job)
 ```
 
-`job` 对象可以在任何地方被任何人修改。`job.chapters` 这个字段，orchestrator、`_write_chapter`、review 阶段都直接改它。出问题时根本不知道是哪一步改坏了。
+`job` 对象可以在任何地方被任何人修改。`job.chapters` 这个字段，orchestrator、`_write_chapter`、review 阶段都直接改它，你知道状态被改了，但不知道是谁、什么时候、为什么改的。
 
 ---
 
@@ -110,8 +130,11 @@ job_store.update(job)
 这三个问题，LangGraph 提供了一个统一的解法：**把控制流、业务逻辑、状态管理三件事分开放。**
 
 ### State：单一事实来源
+LangGraph 的 State 本质上是一种“显式状态机”。
 
-首先定义一个 `WriterState`，所有节点共享这一份状态：
+每个节点只能声明“自己修改了什么”，而不是直接操作整个全局对象。
+
+在我的项目中我首先定义了一个 `WriterState`，所有节点共享这一份状态：
 
 ```python
 class ChapterState(TypedDict):
@@ -163,6 +186,7 @@ async def review_node(state: WriterState) -> dict:
 
 原来硬编码在 Python 里的"要不要重写"，现在变成一个独立的条件边函数：
 
+
 ```python
 def should_rewrite(state: WriterState) -> str:
     failed = [ch for ch in state["chapters"] if not ch["review_passed"]]
@@ -175,6 +199,16 @@ def should_rewrite(state: WriterState) -> str:
 
     return "write"              # 还有章节没通过，回去重写
 ```
+原来 workflow 的控制逻辑是“隐式埋在代码里的”。
+
+现在它第一次变成了：
+
+- 可观察的
+- 可推理的
+- 可修改的
+- 可视化的
+
+graph structure。
 
 以后想改成"最多重写三次"，只改这一个函数里的数字。
 
@@ -203,11 +237,11 @@ builder.add_edge("export", END)
 
 我原来以为 `push_event` 这类基础设施可以通过 LangGraph 的 callback 机制完全从节点里抽离出来，callback 在每个节点执行前后自动触发，节点本身不需要知道它的存在。
 
-但实际上这行不通。
+但实际上这行不通，不是所有基础设施都适合被 framework “自动接管”，token streaming 本身就是业务逻辑的一部分。
 
 callback 拿到的是节点的元数据（名字、输入输出），拿不到节点内部的运行状态。对于 token 级别的流式推送——"当前写到哪个字了"——只有节点自己知道，callback 没法拦截。
 
-去看了 deer-flow 和 vibe-blog 的源码，他们也是直接在节点里调用事件推送，没有用 callback 做这件事。所以这不是"青涩"，是这个场景下正确的做法。
+去看了 deer-flow 和 vibe-blog 的源码，他们也是直接在节点里调用事件推送，没有用 callback 做这件事。
 
 ---
 
@@ -244,6 +278,8 @@ await graph.ainvoke(
 流水线是 Python 说"先做 A，再做 B，再做 C"。Agent 是 LLM 说"我现在需要做 A"，Python 只是提供工具和约束。
 
 我原来的 vibe-writer 是前者——每一步都由代码决定，LLM 只是被调用的执行器。LangGraph 解决的不是"能不能跑"的问题，而是帮你把控制流从业务逻辑里分离出来，让代码结构本身就能反映这个区别。
+
+LangGraph 不是让系统更智能，而是让系统更可维护。
 
 当然，vibe-writer 现在还是偏流水线的——PLAN → WRITE → REVIEW → EXPORT 这个顺序还是固定的，只是"要不要重写"这个决策交给了条件边。真正让 LLM 自主决定整个流程的走向，是下一步要探索的方向。
 
