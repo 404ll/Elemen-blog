@@ -1,0 +1,107 @@
+---
+title: "BFC 笔记：独立的块级布局环境"
+date: "2026-05-16"
+excerpt: "BFC 不是为 float 而生，但 float 时代它最常被用来解决高度塌陷和 margin 合并。"
+category: "frontend"
+tags: ["css"]
+draft: false
+---
+
+> BFC（Block Formatting Context）本质是一种“独立的块级布局环境”。
+> 创建 BFC 后，内部布局尽量在内部完成计算，不轻易影响外部，也不轻易被外部影响。
+>
+> 所以它会出现一堆“现象”：能包含 float、独立计算高度、阻止 margin collapse、不与 float 重叠。
+> 这些都来自同一个核心：**独立的 block layout environment**。
+
+## 一句话理解
+
+BFC = 一个“自成一体”的 block 布局盒子。
+
+它不是“为了解决 float 而设计”，只是 float 布局时代它刚好能解决最痛的问题。
+
+---
+
+## 面试最常问的两类问题
+
+### 1) float 导致父元素高度塌陷
+
+float 会脱离普通文档流，父元素高度就变成 0。
+
+触发 BFC 后，父元素会把 float 重新纳入高度计算。
+
+```html
+<div class="parent bfc">
+  <div class="float"></div>
+</div>
+```
+
+```css
+.parent {
+  border: 1px solid #ddd;
+}
+
+.float {
+  float: left;
+  width: 100px;
+  height: 100px;
+  background: #f4f4f4;
+}
+
+.bfc {
+  overflow: hidden; /* 触发 BFC */
+}
+```
+
+### 2) 垂直方向 margin 合并（margin collapse）
+
+块级元素的上下 margin 会合并，父子之间尤其常见。
+
+给父元素触发 BFC，可以让它们不合并。
+
+---
+
+## BFC 典型“现象”回顾
+
+- **包含 float**：父元素高度不再塌陷。
+- **阻止 margin collapse**：父子 / 兄弟间的垂直 margin 不再合并。
+- **不与 float 重叠**：BFC 区域会避开浮动元素。
+- **独立布局**：内部不会影响外部布局计算。
+
+这些不是“不同的机制”，都是 BFC 的外在表现。
+
+---
+
+## 常见触发方式（记住几个就够）
+
+```css
+/* 最常见 */
+overflow: hidden | auto | scroll;
+
+/* 更语义化：直接声明它是独立 block */
+display: flow-root;
+
+/* 其他触发方式 */
+position: absolute | fixed;
+display: inline-block;
+float: left | right;
+```
+
+> 现代项目推荐 `display: flow-root`，语义清晰，不用“借用” overflow 的副作用。
+
+---
+
+## 现代前端还要不要关心 BFC？
+
+- `flex / grid` 已经解决了大部分布局问题。
+- BFC 不再是日常主角，但它仍是理解 CSS 布局底层机制的关键。
+- 在面试中，只要能把 “独立布局环境” 讲清楚，基本就够了。
+
+---
+
+## 最后的总结
+
+BFC 不是“清除浮动”的技巧，而是一个更底层的布局概念。
+
+你看到的所有神奇效果，归根到底都是：
+
+**它创建了一个独立的块级布局环境。**
