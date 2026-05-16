@@ -1,0 +1,193 @@
+---
+title: "虚拟列表手写实现"
+date: "2026-05-16"
+excerpt: "学习虚拟列表的具体实现方式，同时：带「手写实现」的文章都是我为了锻炼自己的手写能力才发的博客"
+category: "frontend"
+tags: ["javascript"]
+draft: false
+---
+
+> 只渲染可视区域内的 DOM 元素。
+> 这是虚拟列表的核心，也是面试和业务里最常见的性能优化点之一。
+
+## 基础版：固定高度 + 可视区渲染
+
+### 核心结构
+
+1. 外层容器：固定高度，`overflow-y: auto`，作为滚动容器。
+2. 内层容器：设置“总高度”，`总高度 = 总数据量 * 单项高度`。
+3. 可视区域列表项：根据滚动位置动态计算起始索引，用 `translateY` 把真实渲染层挪到正确位置。
+
+### 实现思路
+
+- 滚动时计算 `startIndex = Math.floor(scrollTop / itemHeight)`
+- 可视数量 `visibleCount = Math.ceil(containerHeight / itemHeight)`
+- 实际渲染区间 `[startIndex, startIndex + visibleCount]`
+- 真实渲染层整体上移 `startIndex * itemHeight`
+
+### 基础代码（手写版）
+
+```tsx
+import React, { useState, useRef, useEffect, useMemo } from "react";
+
+const VirtualList = ({ listData, itemHeight, containerHeight }) => {
+	const [visibleData, setVisibleData] = useState([]); // 实际渲染的数据
+	const [startOffset, setStartOffset] = useState(0); // 偏移量
+	const [startIndex, setStartIndex] = useState(0); // 起始索引
+
+	const containerRef = useRef(null);
+
+	const visibleCount = useMemo(() => {
+		return Math.ceil(containerHeight / itemHeight);
+	}, [containerHeight, itemHeight]);
+
+	const onScroll = () => {
+		const scrollTop = containerRef.current.scrollTop;
+		const currStartIndex = Math.floor(scrollTop / itemHeight);
+		const currEndIndex = currStartIndex + visibleCount;
+
+		setStartIndex(currStartIndex);
+		setVisibleData(listData.slice(currStartIndex, currEndIndex + 1));
+		setStartOffset(currStartIndex * itemHeight);
+	};
+
+	useEffect(() => {
+		onScroll();
+	}, [listData, itemHeight, containerHeight]);
+
+	return (
+		<div
+			ref={containerRef}
+			style={{
+				height: `${containerHeight}px`,
+				overflow: "auto",
+				position: "relative",
+			}}
+			onScroll={onScroll}
+		>
+			<div
+				style={{
+					height: `${listData.length * itemHeight}px`,
+					position: "absolute",
+					left: 0,
+					top: 0,
+					right: 0,
+					zIndex: -1,
+				}}
+			/>
+
+			{/* 实际渲染层 */}
+			<div style={{ transform: `translate3d(0, ${startOffset}px, 0)` }}>
+				{visibleData.map((item, index) => (
+					<div
+						key={startIndex + index}
+						style={{
+							height: `${itemHeight}px`,
+							borderBottom: "1px solid #eee",
+						}}
+					>
+						{item.value}
+					</div>
+				))}
+			</div>
+		</div>
+	);
+};
+
+export default VirtualList;
+```
+
+### 一句话总结
+
+“滚动时只更新渲染区间 + 平移渲染层”，这就是虚拟列表的全部逻辑。
+
+---
+
+## 补充知识点（面试和实战都会问）
+
+### A. 缓冲区（Buffer）
+
+**问题**：快速滚动时可能出现白屏。
+
+**解决**：上下多渲染一些元素（例如各加 5 个）。
+
+```js
+const bufferCount = 5;
+const renderStart = Math.max(0, startIndex - bufferCount);
+const renderEnd = Math.min(listData.length - 1, startIndex + visibleCount + bufferCount);
+const renderData = listData.slice(renderStart, renderEnd + 1);
+const offset = renderStart * itemHeight;
+```
+
+核心：可视区不变，渲染区扩大。
+
+---
+
+### B. 滚动节流 / 防抖？
+
+**注意**：虚拟列表不适合直接 debounce，滚动需要实时更新 DOM，防抖会造成明显卡顿。
+
+更好的方式是 **`requestAnimationFrame` 节流**：
+
+```js
+let ticking = false;
+
+const onScroll = () => {
+	if (ticking) return;
+	ticking = true;
+
+	requestAnimationFrame(() => {
+		// 只做一次计算
+		doCalc();
+		ticking = false;
+	});
+};
+```
+
+每帧只执行一次，性能和流畅度会好很多。
+
+---
+
+### C. 变高列表（高度不固定）
+
+**难点**：总高度不可预知，滚动条长度和偏移量算不准。
+
+**思路**：
+
+1. 先用 Estimated Height 估算（比如 60px）。
+2. 渲染后测量真实高度（`getBoundingClientRect` 或 `ResizeObserver`）。
+3. 缓存每个 item 的高度，维护“累计高度数组”。
+4. 重新计算总高度 + 偏移量。
+
+这类实现通常需要：
+
+- `heights[index]` 记录真实高度
+- `prefixHeights[]` 记录从 0 到 index 的累计高度
+- 二分查找定位 `startIndex`
+
+---
+
+### D. CSS 优化
+
+**两句就够**：
+
+- `transform: translate3d(...)` 开启 GPU 合成层，减少重排。
+- `will-change: transform` 提前告诉浏览器优化该元素。
+
+```css
+.virtual-list-inner {
+	will-change: transform;
+}
+```
+
+---
+
+## 结束
+
+基础版逻辑很少：
+
+1. 算出可视区
+2. 只渲染那一段
+3. 平移渲染层
+
+之后再把 Buffer、raf、变高处理补齐，就能上生产了。
