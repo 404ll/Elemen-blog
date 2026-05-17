@@ -1,5 +1,5 @@
 ---
-name: elemen-writing-style
+name: writing-style
 description: "使用场景：整理或撰写 Elemen 风格的博客/笔记/学习总结；触发词：写作风格、笔记式、手写实现、第一性原理、技术随笔"
 argument-hint: "主题 + 目标读者 + 是否需要代码/历史脉络/面试点"
 ---
