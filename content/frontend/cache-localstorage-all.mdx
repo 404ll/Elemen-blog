@@ -1,0 +1,227 @@
+---
+title: "浏览器缓存大大大整理！"
+date: "2026-05-16"
+excerpt: "每次当我觉得自己比较懂localstorage和cookie的时候，总是会刷到让我非常拿不准的问题，因此我进行一个大整理"
+category: "frontend"
+tags: ["javascript", "浏览器"]
+draft: false
+---
+> 本质：浏览器“缓存/存储”都是在解决三件事——**跨刷新保留**、**跨页面共享**、**减少网络/计算开销**。
+
+## 一句话理解
+
+cookie 解决“请求携带”，storage 解决“前端持久化”，indexDB 解决“大量结构化数据”。
+
+---
+
+## 发展脉络
+
+1. **cookie**：最早为“请求携带”而生（服务端识别用户），后续在鉴权上演进出 token / JWT 等方案，但 cookie 仍是浏览器原生的“自动携带”机制。
+2. **Web Storage**（localStorage/sessionStorage）：为前端持久化而生，API 简单。
+3. **indexDB**：为大数据量、结构化查询而生。
+4. **Cache Storage**：为离线与资源缓存而生（常配合 Service Worker）。
+
+---
+
+## 概览
+
+| 类型 | 典型场景 | 是否随请求发送 | 生命周期 | 适合存什么 | 数据量 |
+| --- | --- | --- | --- | --- | --- |
+| cookie | 登录态、埋点、偏好 | ✅ | 由过期时间控制 | 少量字符串 | 4KB 级 |
+| localStorage | 偏好、主题、配置 | ❌ | 手动清除 | 小量字符串 | 5-10MB |
+| sessionStorage | 临时表单、草稿 | ❌ | 关闭标签页 | 小量字符串 | 5-10MB |
+| indexDB | 离线数据、结构化数据 | ❌ | 手动清除 | 大量对象 | 数十 MB+ |
+| Cache Storage | 静态资源/接口缓存 | ❌ | 由 SW 策略控制 | Response | 取决于浏览器策略 |
+
+---
+
+## localStorage / sessionStorage
+
+**本质**：给前端一个简单的 KV 持久化，但是只能存字符串。
+所以你会看到“序列化 → 存 → 取 → 反序列化”的固定流程。
+
+```js
+// 写
+localStorage.setItem("theme", "dark");
+
+// 读
+const theme = localStorage.getItem("theme");
+
+// 删
+localStorage.removeItem("theme");
+
+// 存对象（手动序列化）
+const profile = { name: "Elemen", role: "dev" };
+localStorage.setItem("profile", JSON.stringify(profile));
+const cached = JSON.parse(localStorage.getItem("profile") || "{}");
+```
+
+**差异点**：
+
+- `localStorage`：同源共享，关闭浏览器不清除。
+- `sessionStorage`：只在当前标签页生存，关闭即清。
+
+```js
+// sessionStorage 的使用方式相同
+sessionStorage.setItem("draft", "...内容...");
+```
+
+**跨窗口监听**：通过订阅专用事件 `storage`，可以监听到其他窗口对 localStorage 的修改：
+
+```js
+window.addEventListener("storage", (event) => {
+  console.log("storage changed", event.key, event.newValue);
+});
+```
+
+> 注意：`storage` 只会在**其他窗口**触发，本窗口不会触发。
+
+数据量限制：一般 5-10MB，具体浏览器不同，超过之后就可以考虑 indexDB 了。
+
+### 面试常问（Q/A）
+
+**Q：localStorage 是同步还是异步？**
+
+A：同步。大量读写会阻塞主线程。
+
+```js
+// 可能卡 UI
+for (let i = 0; i < 100000; i++) {
+  localStorage.setItem(String(i), largeData);
+}
+```
+
+---
+
+## indexDB
+
+**本质**：浏览器内置的“事务型数据库”。
+
+```js
+// 打开数据库
+const request = indexedDB.open("myDatabase", 1);
+
+request.onupgradeneeded = (event) => {
+  const db = event.target.result;
+  db.createObjectStore("users", { keyPath: "id" });
+};
+
+request.onsuccess = (event) => {
+  const db = event.target.result;
+  const tx = db.transaction("users", "readwrite");
+  const store = tx.objectStore("users");
+
+  store.put({ id: 1, name: "Alice" });
+
+  const getReq = store.get(1);
+  getReq.onsuccess = () => {
+    console.log("user", getReq.result);
+  };
+};
+```
+
+**什么时候用**：
+
+- 数据量大（几十 MB 起步）。
+- 需要结构化查询。
+- 需要离线访问。
+
+**为什么不是 localStorage**：
+
+localStorage 同步且只能存字符串，大数据一多就卡 UI，结构化查询也做不了。
+
+### 面试常问（Q/A）
+
+**Q：indexDB 为什么是异步的？**
+
+A：它可能涉及磁盘 IO 和事务处理，异步是为了避免阻塞主线程。
+
+---
+
+
+## cookie
+
+**本质**：浏览器每次请求都会自动带上，用于“身份/状态”传递。
+
+```js
+// 写（简化示例）
+document.cookie = "token=abc; Max-Age=3600; Path=/; SameSite=Lax";
+
+// 读
+console.log(document.cookie);
+```
+
+**要点**：
+
+- 容量小，适合少量字段。
+- 每次请求都会发送，过大很影响性能。
+- 安全相关字段：`HttpOnly` / `Secure` / `SameSite`。
+
+### 面试常问（Q/A）
+
+**Q：SameSite 有哪几种取值？**
+
+A：`Strict` / `Lax` / `None`。其中 `None` 必须配合 `Secure`。
+
+---
+
+
+## Cache Storage（资源缓存）
+
+**本质**：专门缓存 Response，常配合 Service Worker。
+
+```js
+// 缓存一个资源
+const cache = await caches.open("v1");
+await cache.add("/api/user");
+
+// 读取缓存
+const res = await cache.match("/api/user");
+if (res) {
+  const data = await res.json();
+  console.log(data);
+}
+```
+
+**为什么不是 indexDB**：
+
+Cache Storage 直接缓存 Response，对资源离线和请求复用更自然。
+
+### 面试常问（Q/A）
+
+**Q：Cache Storage 和 HTTP 缓存有什么区别？**
+
+A：Cache Storage 由前端代码/Service Worker 主动控制；HTTP 缓存由浏览器策略和响应头控制。
+
+---
+
+## 问题 → 方案
+
+- **问题**：需要随请求带身份信息。
+  **方案**：cookie（配好 `HttpOnly` / `SameSite`）。
+
+- **问题**：前端持久化少量偏好。
+  **方案**：localStorage。
+
+- **问题**：只想在当前标签页生效。
+  **方案**：sessionStorage。
+
+- **问题**：数据量大、结构复杂。
+  **方案**：indexDB。
+
+- **问题**：需要离线加载静态资源。
+  **方案**：Cache Storage（配合 Service Worker）。
+
+---
+
+## 注意点
+
+> 注意：**“缓存”不等于“存储”**。
+> cookie / storage 是持久化数据，Cache Storage 更偏“资源缓存”。
+
+---
+
+## 最后总结
+
+**本质一句话**：你在选的不是“某个 API”，而是“数据要不要随请求发、要活多久、会有多大”。
+
