@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 手写题子模块与备份、测试 fixture 不参与博客 ESLint
+    "practice/**",
+    "practice.backup/**",
+    "tests/fixtures/**",
   ]),
   {
     rules: {
