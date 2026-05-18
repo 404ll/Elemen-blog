@@ -9,7 +9,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "new-post": "node scripts/new-post.mjs",
-    "test": "node --test --experimental-strip-types tests/post.test.ts",
+    "practice:sync": "git submodule update --remote practice && git add practice",
+    "test": "node --test --experimental-strip-types tests/post.test.ts tests/practice.test.ts",
     "prepare": "husky"
   },
   "dependencies": {
