@@ -8,9 +8,10 @@ import { SunIcon, MoonIcon, GithubIcon, MenuIcon, XIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 
 const NAV_LINKS = [
-  { href: "/blog",    label: "博客文章" },
-  { href: "/project", label: "项目合集" },
-  { href: "/about",   label: "关于我"   },
+  { href: "/blog",     label: "博客文章" },
+  { href: "/project",  label: "项目合集" },
+  { href: "/practice", label: "JS手写练习" },
+  { href: "/about",    label: "关于我"   },
 ];
 
 export default function Navbar() {
