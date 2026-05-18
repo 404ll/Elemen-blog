@@ -1,0 +1,12 @@
+{
+  "problems": [
+    {
+      "id": "array-fill",
+      "title": "手写 Array.prototype.fill",
+      "category": "array",
+      "difficulty": "medium",
+      "entry": "problems/array-fill/code.js",
+      "updatedAt": "2026-05-18"
+    }
+  ]
+}
