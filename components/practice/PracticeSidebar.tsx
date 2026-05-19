@@ -1,3 +1,7 @@
+/**
+ * 练习区侧栏：按 CATEGORY_ORDER 分组展示题目链接
+ * 桌面端固定左侧栏；移动端抽屉 + 遮罩，选中项高亮并去掉标题前缀「手写 」
+ */
 "use client";
 
 import Link from "next/link";
@@ -14,6 +18,7 @@ type PracticeSidebarProps = {
   problems: PracticeProblemMeta[];
 };
 
+/** 将扁平题目列表按分类分组，空分类不渲染 */
 function groupByCategory(problems: PracticeProblemMeta[]) {
   const map = new Map<PracticeCategory, PracticeProblemMeta[]>();
   for (const cat of CATEGORY_ORDER) {
@@ -36,11 +41,12 @@ export default function PracticeSidebar({ problems }: PracticeSidebarProps) {
   const [open, setOpen] = useState(false);
   const groups = groupByCategory(problems);
 
+  // 桌面侧栏与移动抽屉共用同一份目录 DOM
   const nav = (
-    <nav className="space-y-4" aria-label="练习题目目录">
+    <nav className="space-y-4 mt-4" aria-label="练习题目目录">
       {groups.map((group) => (
         <div key={group.category}>
-          <p className="text-[10px] font-bold tracking-widest uppercase text-gray-500 dark:text-gray-400 mb-1 px-2">
+          <p className="text-[14px] font-bold tracking-widest uppercase text-black dark:text-white mb-1 px-2">
             {group.label}
           </p>
           <ul className="space-y-0.5">

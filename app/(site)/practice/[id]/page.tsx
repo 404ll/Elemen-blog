@@ -1,3 +1,7 @@
+/**
+ * /practice/[id] 题目详情页（SSG）
+ * generateStaticParams 预渲染全部题目；展示题面、Shiki 高亮源码、复制与上下题导航
+ */
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import PracticeCodeBlock from "@/components/practice/PracticeCodeBlock";
@@ -18,6 +22,7 @@ type PracticeDetailPageProps = {
   params: Promise<{ id: string }>;
 };
 
+/** 构建时为 manifest 中每道题生成静态路径 */
 export async function generateStaticParams() {
   return getAllProblems().map((p) => ({ id: p.id }));
 }
@@ -40,6 +45,7 @@ export default async function PracticeDetailPage({
   if (!problem) notFound();
 
   const { prev, next } = getAdjacentProblems(id);
+  // 外链指向子模块仓库中 entry 对应文件
   const githubFileUrl = `${PRACTICE_REPO_URL}/blob/main/${problem.entry}`;
 
   return (

@@ -1,3 +1,7 @@
+/**
+ * 详情页底部「上一题 / 下一题」导航
+ * prev/next 顺序与 getAllProblems 排序一致（updatedAt → 标题）
+ */
 import Link from "next/link";
 import type { PracticeProblemMeta } from "@/lib/practice/types";
 

@@ -1,3 +1,7 @@
+/**
+ * /practice 路由布局
+ * 服务端读取 manifest 题目列表，左侧 PracticeSidebar + 右侧子路由（索引重定向或详情页）
+ */
 import PracticeSidebar from "@/components/practice/PracticeSidebar";
 import { getAllProblems } from "@/lib/practice/loader";
 
