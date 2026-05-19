@@ -1,0 +1,73 @@
+---
+title: "OpenAI Agents SDK 核心能力梳理"
+date: "2026-05-17"
+excerpt: "基于官方文档梳理 Agents SDK 的核心能力、核心原语与适用场景。"
+category: "ai"
+tags: ["Agent", "OpenAI", "SDK"]
+draft: false
+---
+
+> 本质：Agents SDK 不是“模型调用封装”，而是**把 agent loop、工具调用、护栏、协作与状态管理打包成运行时**。
+
+资料：https://openai.github.io/openai-agents-python/zh/
+
+---
+
+## 核心原语（Primitives）
+
+1. **Agent**：带指令与工具的 LLM。
+2. **Handoffs / Agents as tools**：让 agent 把子任务交给其他 agent。
+3. **Guardrails**：对输入/输出做校验，失败就中止或走降级。
+
+> 这三件事就能表达复杂协作关系，避免把所有流程硬编码在业务里。
+
+---
+
+## 核心能力清单
+
+- **Agent loop**：内置 loop，自动处理工具调用与结果回传。
+- **Python-first**：用 Python 本身组织逻辑，不引入复杂新抽象。
+- **Handoffs**：多 agent 委派与协作。
+- **Sandbox agents**：在隔离工作区内执行（可恢复的 sandbox 会话）。
+- **Guardrails**：输入/输出验证，失败快速终止。
+- **Function tools**：把任意函数变成工具，自动 schema 与校验。
+- **MCP server tools**：原生支持 MCP 工具调用。
+- **Sessions**：持久化运行态与上下文。
+- **Human in the loop**：内置人类介入流程的机制。
+- **Tracing**：内置追踪与可视化，便于调试与评估。
+- **Realtime agents**：面向语音与低延迟场景的实时代理。
+
+---
+
+## 基础用法
+
+```python
+from agents import Agent, Runner
+
+agent = Agent(name="Assistant", instructions="You are a helpful assistant")
+result = Runner.run_sync(agent, "Write a haiku about recursion in programming.")
+print(result.final_output)
+```
+
+---
+
+## 什么时候用 SDK（而不是直接用 Responses API）
+
+**用 SDK：**
+
+- 需要工具调用、协作、护栏、会话或可视化追踪。
+- 需要“多步执行”或“产出工件”的运行时。
+- 需要 sandbox 的隔离工作区。
+
+**直接用 Responses API：**
+
+- 只想单次调用，自己掌控 loop 和工具分发。
+- 流程很短，不需要运行时功能。
+
+---
+
+## 面试常问（Q/A）
+
+**Q：Agents SDK 的最小原语有哪些？**
+
+A：`Agent`、`Handoffs (Agents as tools)`、`Guardrails`。
