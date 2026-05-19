@@ -50,7 +50,8 @@ export default async function PracticeDetailPage({
       <h2 className="text-2xl font-bold text-black dark:text-white mb-3">
         {problem.title}
       </h2>
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex justify-between mb-6">
+        <div className="flex flex-wrap gap-2">
         <span className="text-xs font-mono font-bold border-[1.5px] border-current px-2 py-0.5 rounded-none">
           {CATEGORY_LABELS[problem.category]}
         </span>
@@ -65,6 +66,15 @@ export default async function PracticeDetailPage({
             {tag}
           </span>
         ))}
+        </div>
+        <Link
+          href={githubFileUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:underline"
+        >
+          在 GitHub 查看源码 →
+        </Link>
       </div>
 
       {problem.prompt && (
@@ -75,17 +85,6 @@ export default async function PracticeDetailPage({
 
       <PracticeCodeBlock code={problem.code} lang={problem.lang} />
       <CodeCopyButton />
-
-      <p className="text-right mt-3 text-xs text-gray-500 dark:text-gray-400">
-        <Link
-          href={githubFileUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:underline"
-        >
-          在 GitHub 查看源码 →
-        </Link>
-      </p>
 
       <PracticeNav prev={prev} next={next} />
     </article>
