@@ -78,7 +78,9 @@ export default function RootLayout({
         <ThemeProvider>
           <ObservabilityClient />
           <Navbar />
-          {children}
+          <div className="pt-6">
+            {children}
+          </div>
         </ThemeProvider>
       </body>
     </html>
