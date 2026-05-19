@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>手写练习 · Wiki 布局预览</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: #f0f0f0; color: #1d1d1f; line-height: 1.5; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 20px 48px; }
+    h1 { font-size: 1.35rem; margin: 0 0 8px; }
+    .lead { color: #666; margin: 0 0 24px; font-size: 0.95rem; }
+    .mockup { border: 1px solid #ccc; border-radius: 8px; overflow: hidden; margin-bottom: 24px; background: #fff; }
+    .mockup-title { background: #e8e8ed; padding: 8px 14px; font-size: 0.75rem; font-weight: 600; color: #555; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    @media (max-width: 768px) { .split { grid-template-columns: 1fr; } }
+    h2 { font-size: 1.1rem; margin: 28px 0 12px; }
+    .options { display: flex; flex-direction: column; gap: 10px; }
+    .option { display: flex; gap: 12px; padding: 14px 16px; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; background: #fff; transition: border-color 0.15s, background 0.15s; }
+    .option:hover { border-color: #999; }
+    .option.selected { border-color: #0071e3; background: #e8f4fd; }
+    .option .letter { width: 28px; height: 28px; border-radius: 50%; background: #e8e8ed; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
+    .option.selected .letter { background: #0071e3; color: #fff; }
+    .option h3 { margin: 0 0 4px; font-size: 1rem; }
+    .option p { margin: 0; font-size: 0.85rem; color: #666; }
+    .hint { font-size: 0.85rem; color: #888; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>手写练习页 · Wiki 壳布局预览</h1>
+    <p class="lead">类似 OpenWiki：左侧固定目录，右侧题面 + 源码。暖橙背景对齐你的博客。看完后在 Cursor 里回复 <strong>A / B / C</strong>。</p>
+
+    <div class="mockup">
+      <div class="mockup-title">桌面端 /practice/array-fill</div>
+      <div style="background: linear-gradient(180deg, #fff4e6 0%, #fafaf8 100%); min-height: 420px;">
+        <header style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; border-bottom:1px solid rgba(0,0,0,.08); background:rgba(255,244,230,.9);">
+          <span style="font-weight:700;">Elemen's Blog</span>
+          <nav style="display:flex; gap:20px; font-size:13px; font-weight:600; color:#444;">
+            <span>博客</span><span>项目</span>
+            <span style="border-bottom:2px solid #000">手写练习</span>
+            <span>关于</span>
+          </nav>
+        </header>
+        <div style="display:flex; min-height:380px;">
+          <aside style="width:220px; border-right:1px solid rgba(0,0,0,.1); background:rgba(255,255,255,.55); padding:14px 10px;">
+            <input readonly placeholder="搜索题目…" style="width:100%; padding:7px; border:1.5px solid #bbb; font-size:11px; font-family:monospace; margin-bottom:10px;" />
+            <p style="font-size:9px; font-weight:700; color:#888; margin:0 0 4px;">ARRAY</p>
+            <div style="font-size:12px; line-height:1.9; color:#555; padding-left:6px;">
+              map<br/>filter<br/>reduce<br/>
+              <span style="font-weight:700; background:#eee; padding:2px 6px; border-left:3px solid #111;">fill ← 当前</span><br/>flat
+            </div>
+            <p style="font-size:9px; font-weight:700; color:#888; margin:10px 0 4px;">FUNCTION</p>
+            <div style="font-size:12px; line-height:1.9; color:#555; padding-left:6px;">compose<br/>deepclone<br/>new</div>
+          </aside>
+          <main style="flex:1; padding:20px 24px;">
+            <p style="font-size:10px; font-family:monospace; color:#888; margin:0 0 6px;">practice / array / fill</p>
+            <h3 style="margin:0 0 8px; font-size:20px;">手写 Array.prototype.fill</h3>
+            <span style="font-size:10px; font-family:monospace; border:1.5px solid #222; padding:2px 6px; margin-right:6px;">array</span>
+            <span style="font-size:10px; font-family:monospace; border:1.5px solid #222; padding:2px 6px;">medium</span>
+            <article style="border:1.5px solid #111; padding:16px; background:#fff; margin-top:14px;">
+              <p style="font-size:13px; color:#444; margin:0 0 10px;">实现 myFill，与原生 fill 行为一致。</p>
+              <pre style="background:#1e1e2e; color:#a6e3a1; padding:12px; font-size:11px; margin:0; border-radius:3px; overflow:auto;">Array.prototype.myFill = function(value, start = 0, end = this.length) {
+  return this;
+}</pre>
+              <p style="text-align:right; font-size:10px; color:#777; margin:8px 0 0;">复制 · GitHub 源码</p>
+            </article>
+            <footer style="display:flex; justify-content:space-between; font-size:12px; color:#888; margin-top:12px; padding-top:10px; border-top:1px dashed #ccc;">
+              <span>← reduce</span><span>flat →</span>
+            </footer>
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <div class="split">
+      <div class="mockup">
+        <div class="mockup-title">移动端：抽屉目录</div>
+        <div style="padding:12px; background:#fafaf8; font-size:12px;">
+          <p style="font-weight:600; margin:0 0 8px;">☰ 题目 · fill</p>
+          <div style="border:1px solid #ccc; padding:10px; background:#fff;">
+            <strong>fill</strong>
+            <pre style="font-size:10px; background:#1e1e2e; color:#a6e3a1; padding:8px; margin-top:8px;">myFill...</pre>
+          </div>
+        </div>
+      </div>
+      <div class="mockup">
+        <div class="mockup-title">对比：卡片列表</div>
+        <div style="padding:10px; background:#fafaf8; display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:11px;">
+          <div style="border:1px solid #ddd; padding:10px; background:#fff; border-radius:6px;"><b>fill</b></div>
+          <div style="border:1px solid #ddd; padding:10px; background:#fff; border-radius:6px;"><b>map</b></div>
+          <div style="border:1px solid #ddd; padding:10px; background:#fff; border-radius:6px;"><b>clone</b></div>
+          <div style="border:1px solid #ddd; padding:10px; background:#fff; border-radius:6px;"><b>sched</b></div>
+          <p style="grid-column:1/-1; color:#888; font-size:10px;">需先点卡片再进详情</p>
+        </div>
+      </div>
+    </div>
+
+    <h2>请选择方向（点击选中，可多选）</h2>
+    <div class="options" id="options">
+      <div class="option" data-choice="A">
+        <div class="letter">A</div>
+        <div><h3>Wiki 壳（侧栏 + 主区）</h3><p>推荐。目录常驻，换题只换右侧。</p></div>
+      </div>
+      <div class="option" data-choice="B">
+        <div class="letter">B</div>
+        <div><h3>Wiki 壳 + P1 侧栏搜索</h3><p>在 A 上加 Fuse.js 过滤。</p></div>
+      </div>
+      <div class="option" data-choice="C">
+        <div class="letter">C</div>
+        <div><h3>卡片列表（/project）</h3><p>不用 Wiki 侧栏。</p></div>
+      </div>
+    </div>
+    <p class="hint">在 Cursor 对话里回复 A / B / C 即可，无需依赖本页点击。</p>
+  </div>
+  <script>
+    document.querySelectorAll('.option').forEach(el => {
+      el.addEventListener('click', () => el.classList.toggle('selected'));
+    });
+  </script>
+</body>
+</html>
