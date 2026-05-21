@@ -1,0 +1,126 @@
+---
+title: "层叠上下文与 z-index：一次真实 bug 复盘"
+date: "2026-05-21"
+excerpt: "从一个页面遮挡 bug 复盘层叠上下文的本质、常见陷阱与可操作的排查流程。"
+category: "frontend"
+tags: ["CSS", "Layout", "z-index"]
+draft: false
+---
+
+开门见山：**z-index 只在同一层叠上下文里比较**。一旦被新的上下文隔开，数值再大也没用。
+
+---
+
+## 一句话理解
+
+**本质**：层叠上下文（stacking context）是一个独立的“分层宇宙”，内部 z-index 只影响自己，不会跨宇宙竞争。
+
+> 结论：问题往往不是“z-index 太小”，而是“站错了上下文”。
+
+---
+
+## bug 复盘
+
+**现象**：全局弹层被某个卡片遮住。弹层 `z-index: 9999`，卡片只有 `z-index: 2`。
+
+**问题**：卡片所在父级触发了新的层叠上下文（`transform`）。弹层与卡片不在同一上下文里比较。
+
+**结论**：调整上下文归属（把弹层挂到 `body` 的顶层容器，或移除触发上下文的属性），问题消失。
+
+---
+
+## 为什么会有层叠上下文
+
+早期页面层级简单，用 `z-index` 足够解决。后来出现了：
+
+1. **变换与动画**：`transform` / `opacity` / `filter` 需要独立合成层。
+2. **隔离绘制**：避免复杂元素互相影响，提高性能与确定性。
+3. **可预测性**：让局部组件拥有稳定的渲染边界。
+
+**所以**：浏览器用“上下文”把渲染顺序分桶，先比“桶”，再比桶内的 `z-index`。
+
+---
+
+## 什么时候会创建层叠上下文
+
+常见触发条件（不是全部）：
+
+- `position` 非 `static` 且 `z-index` 非 `auto`
+- `transform` 非 `none`
+- `opacity` < 1
+- `filter` / `backdrop-filter` 非 `none`
+- `mix-blend-mode` 非 `normal`
+- `isolation: isolate`
+- `contain: paint` 或 `contain: layout/strict`
+
+**关键点**：一旦触发，这个元素就成了新的“分层边界”。
+
+---
+
+## 典型误区
+
+**误区 1**：给子元素加超大 `z-index` 就能顶上去。  
+**事实**：跨上下文不会比较。
+
+**误区 2**：`position: relative` 会创建上下文。  
+**事实**：只有在 `z-index` 非 `auto` 时才会创建。
+
+**误区 3**：问题一定是弹层的 `z-index` 太小。  
+**事实**：90% 的问题是“弹层不在正确的上下文”。
+
+---
+
+## 可执行的排查流程
+
+**问题 → 方案**
+
+1. **问题**：遮挡发生，但 `z-index` 很大。  
+   **方案**：用 DevTools 查看元素是否创建了新的上下文。
+2. **问题**：弹层无法覆盖某区域。  
+   **方案**：把弹层移动到更高层级容器（如 `body` 直系）。
+3. **问题**：组件化后层级更混乱。  
+   **方案**：统一管理 `z-index` 体系，避免局部随意设值。
+
+---
+
+## 最小复现代码
+
+```html
+<div class="page">
+  <div class="card">card</div>
+  <div class="modal">modal</div>
+</div>
+```
+
+```css
+.page {
+  position: relative;
+  transform: translateZ(0); /* 触发新上下文 */
+}
+
+.card {
+  position: relative;
+  z-index: 2;
+}
+
+.modal {
+  position: fixed;
+  z-index: 9999;
+}
+```
+
+**结果**：`modal` 仍可能被 `card` 覆盖，因为它们不在同一上下文。
+
+---
+
+## 面试常问（Q/A）
+
+**Q：为什么 `z-index` 9999 还会被挡住？**  
+A：因为比较发生在不同的层叠上下文内，数值不跨上下文生效。
+
+**Q：哪些属性会创建层叠上下文？**  
+A：`transform`、`opacity < 1`、`position + z-index`、`filter`、`isolation` 等。
+
+**Q：实战中怎么避免这类问题？**  
+A：把弹层挂到顶层容器，统一管理 `z-index` 规范，减少不必要的上下文触发。
+
