@@ -1,0 +1,397 @@
+---
+title: "关于我所知的SEO"
+date: "2026-05-21"
+excerpt: "总结陈述一下我在之前的实习经历中学习到的一些SEO相关的知识，会有一些技术细节的介绍。同时会加上一些面试题，帮助更好地理解和记忆。"
+category: "frontend"
+tags: ["SEO", "Next.js", "SSR", "SSG"]
+draft: false
+---
+
+## SEO 到底是什么
+
+SEO 的全称是 Search Engine Optimization（搜索引擎优化），本质上是在帮助搜索引擎与内容分发系统更高效地发现、理解、信任与展示你的内容。
+
+**核心目标**：让网站在搜索引擎（比如 Google、Bing）中获得更好的排名，从而带来更好的自然流量和曝光。
+
+举个例子：有人在搜索引擎里输入「什么是 SEO」，如果前十条里能出现我的文章，说明 SEO 做得不错。
+
+当然，也可以通过投放广告出现在靠前位置，但这属于 SEM（搜索引擎营销），通常会被标注为“广告”，并且对我个人来说，广告这种带有明显营销性质反而会拉低我对某个产品的探索欲（这不就是钱买不来的东西吗！！！
+
+---
+
+### 搜索引擎到底怎么工作
+
+原始的主要流程分为三个步骤：
+
+```text
+Crawling
+↓
+Indexing
+↓
+Ranking
+```
+
+* Crawling：由搜索引擎的爬虫定期访问网站，抓取页面内容和结构，提取文本、图片、链接等信息
+* Indexing：对抓取内容进行理解和归类，建立索引（可以理解为巨大的内容库）
+* Ranking：用户搜索时，从索引里选出最相关、最权威的页面并排序
+
+权威文档：[https://developers.google.com/search/docs/fundamentals/seo-starter-guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide)
+
+但现代 SEO 其实已经不仅仅只是“搜索排名”，还包括：
+
+* 搜索结果点击率（CTR）
+* 页面体验
+* 社交分享预览
+* 内容结构化
+* AI Search / LLM Retrieval（AI 搜索 / 大语言模型检索）
+
+---
+
+### sitemap.xml 和 robots.txt
+
+`sitemap.xml` 本质上是网站提供给搜索引擎的“页面地图”，也就是提前将网站中涉及到的重要页面链接统一收录起来。
+
+它会告诉爬虫：
+
+* 哪些页面存在
+* 页面最后更新时间
+* 哪些页面更重要
+
+例如：
+
+```xml
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://example.com/blog/seo</loc>
+    <lastmod>2026-05-21</lastmod>
+  </url>
+</urlset>
+```
+
+不过需要注意：`sitemap.xml` 并不等于“保证收录”，它只是帮助搜索引擎更高效地发现页面。
+
+`robots.txt` 文件用于告诉爬虫：
+
+* 哪些路径允许抓取
+* 哪些路径禁止抓取
+
+例如：
+
+```txt
+User-agent: *
+Allow: /
+
+Disallow: /admin
+```
+
+---
+
+## 为什么现代前端会影响 SEO
+
+从 Crawling 这一步看，搜索引擎首先读取的是 HTML。**HTML 的语义与结构决定了“可被理解”的质量**。
+
+---
+
+### 语义化 HTML 是基础
+
+一个好的 HTML 应该具备清晰的语义结构：
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- 页面编码 -->
+  <meta charset="UTF-8" />
+
+  <!-- 移动端适配 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- SEO 核心：页面标题 -->
+  <title>Modern Frontend SEO Guide</title>
+
+  <!-- SEO 核心：页面描述 -->
+  <meta
+    name="description"
+    content="Learn modern frontend SEO including SSR, sitemap, semantic HTML and Core Web Vitals."
+  />
+
+  <!-- SEO：关键词（现在权重很低） -->
+  <meta
+    name="keywords"
+    content="SEO, Frontend, React, Next.js, SSR"
+  />
+
+  <!-- 搜索引擎索引控制 -->
+  <meta name="robots" content="index, follow" />
+
+  <!-- canonical：告诉搜索引擎哪个 URL 才是主页面 -->
+  <link
+    rel="canonical"
+    href="https://example.com/blog/frontend-seo"
+  />
+
+  <!-- Open Graph（社交分享） -->
+  <meta property="og:title" content="Modern Frontend SEO Guide" />
+  <meta
+    property="og:description"
+    content="Understand SEO from a frontend engineering perspective."
+  />
+  <meta property="og:type" content="article" />
+</head>
+
+<body>
+  <article>
+    <h1>Modern Frontend SEO Guide</h1>
+
+    <p>
+      SEO is not just meta tags. It is about how search engines
+      discover, understand and rank your pages.
+    </p>
+  </article>
+</body>
+</html>
+```
+
+注：`keywords` 早已权重很低，**重点还是内容与结构本身**。
+
+另外，`canonical` 的作用也不仅仅只是“防止重复页面”。
+
+例如：
+
+```text
+/blog/post
+/blog/post?from=twitter
+/blog/post?utm_source=xxx
+```
+
+这些 URL 实际上可能都是同一个页面。而 canonical 的作用就是告诉搜索引擎： 哪个 URL 才是真正的主页面。
+
+---
+
+**面试题**
+
+Q：`title` 和 `meta description` 的作用是什么？
+A：影响搜索结果展示与点击率。
+
+Q：为什么语义化标签比一堆 `div` 更好？
+A：语义清晰，更利于解析与可访问性。
+
+---
+
+### SPA 与 SEO 的关系
+
+现代应用大量采用 SPA + CSR（客户端渲染），即：**HTML 初始是骨架，内容由 JS 动态生成**。
+
+于是，对于 CSR 页面来说，搜索引擎最开始拿到的往往只是一个 HTML 骨架：
+
+```html
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>React App</title>
+  </head>
+
+  <body>
+    <div id="root"></div>
+
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+```
+
+这会带来两个现实问题：
+
+1. **首屏内容依赖 JS 执行**，爬虫需要渲染 JS 才能看到正文
+2. **渲染与资源成本上升**，可能影响抓取频率与稳定性
+
+不过现代搜索引擎（尤其是 Google）其实已经具备一定的 JS 渲染能力，只不过这个过程通常会存在额外渲染成本与延迟。
+
+所以更合理的结论是：
+
+* CSR 不是不能做 SEO，但可控性弱
+* SSR / SSG 更稳定、更容易被抓取
+
+---
+
+**SPA 的优点与代价**
+
+**优点**：
+
+* 前端路由
+* 局部更新
+* 交互体验接近 App
+
+**代价**：
+
+* 依赖 JS 执行才有内容
+* 需要服务器配置才能支持 history 路由
+* SEO 成本更高，需要配套策略（SSR/SSG、sitemap、预渲染等）
+
+---
+
+### SSR / SSG / ISR 认识
+
+**SSR（Server-Side Rendering）服务端渲染**
+
+每次请求时，服务器实时生成 HTML，再返回给浏览器。
+
+* 优点：用户和爬虫直接看到内容
+
+* 缺点：服务器压力大，响应时间可能较长，不适合高并发场景
+
+---
+
+**SSG（Static Site Generation）静态站点生成**
+
+在构建时生成 HTML，例如 `npm run build`，服务器直接返回静态文件，像 CDN 一样。
+
+* 优点：快，CDN 友好，SEO 非常好
+
+* 缺点：不适合频繁变化的实时数据
+
+---
+
+**ISR（Incremental Static Regeneration）增量静态再生**
+
+ISR 可以理解为 SSG 的增强版，它允许页面先静态生成，然后在一定时间后重新生成页面。
+
+例如：
+
+```ts
+export const revalidate = 60
+```
+
+表示：
+
+* 页面会被缓存
+* 最多每 60 秒重新生成一次
+
+这样既保留了静态页面的性能优势，也能一定程度解决数据更新问题。
+
+---
+
+在我们的现代前端中通常是结合了各个页面渲染策略的优缺点来有的放矢地结合使用：
+
+例如，对于一些需要 SEO 的页面，例如产品首页（homepage），我们就常常使用 SSR 这个策略；对于一些不需要 SEO 的页面，例如用户个人中心，我们就常常使用 CSR 这个策略。
+
+对于一些不常变化的内容，比如博客或者 Wiki，我们就常常使用 SSG 这个策略。
+
+---
+
+**面试题**
+
+Q：SSR 和 SSG 的核心区别是什么？
+A：SSR 是请求时渲染，SSG 是构建时渲染。
+
+Q：ISR 是什么？
+A：在静态生成基础上支持周期性重新生成页面。
+
+---
+
+## Next.js
+
+Next.js 就是一个很好的例子，它支持多种渲染模式，开发者可以根据页面需求选择合适的渲染方式。
+
+它支持 Hybrid Rendering（混合渲染），开发者可以根据页面需求组合 CSR、SSR、SSG、ISR 等不同策略。
+
+而像 `use client` 这样的声明，本质上是在 React Server Components 架构下，用于标记当前组件需要在客户端执行。
+
+---
+
+**面试题**
+
+Q：Next.js 支持哪些渲染方式？
+A：CSR、SSR、SSG、ISR，以及混合渲染。
+
+Q：`use client` 的作用是什么？
+A：把组件标记为客户端组件，启用交互与浏览器 API。
+
+---
+
+### Hydration
+
+提到 Next.js 和 SSR，就不得不提 Hydration（水合）。
+
+很多人会问：SSR 返回 HTML 后，React 为什么还能继续交互？页面不应该只是一个“静态快照”吗？
+
+因为浏览器后续还会下载对应的 JS，然后把 HTML “激活”。
+
+让服务端生成的 HTML 与客户端 React 状态重新建立连接，并赋予真实交互能力的过程，我们就叫做 Hydration（水合）。
+
+React 在 Hydration 时并不会重新创建整个 DOM，而是尝试复用已有 HTML，然后绑定事件与状态。
+
+不过如果客户端首次渲染结果和服务端 HTML 不一致，就可能出现 Hydration mismatch warning。
+
+例如：
+
+* 时间
+* 随机数
+* locale
+* `window`
+* 客户端状态
+
+这些都很容易导致 mismatch。
+
+---
+
+**面试题**
+
+Q：Hydration 是什么？
+A：让服务端 HTML 绑定客户端交互能力的过程。
+
+Q：Hydration 常见问题有哪些？
+A：内容不一致导致 Hydration warning、交互延迟、客户端与服务端状态不一致等。
+
+---
+
+## Core Web Vitals（核心网页指标）
+
+Google 现在不仅关注“有没有内容”，还会关注“页面体验”。
+
+Core Web Vitals 本质上就是 Google 用来衡量页面体验的一组核心指标。
+
+### LCP（Largest Contentful Paint）
+
+最大内容渲染时间。
+
+简单理解就是：
+
+> 页面主要内容多久能显示出来。
+
+它会影响用户对于“页面是不是很慢”的第一感受。
+
+---
+
+### CLS（Cumulative Layout Shift）
+
+累计布局偏移。
+
+例如页面已经加载出来了，结果图片突然撑开、按钮突然下移，这种“页面乱跳”的问题就是 CLS。
+
+---
+
+### INP（Interaction to Next Paint）
+
+交互到下一次绘制的延迟。
+
+例如：
+
+* 点击按钮
+* 输入内容
+* 打开弹窗
+
+这些交互多久能真正响应。
+
+---
+
+所以很多现代前端优化，本质上其实也都和 SEO 有关系：
+
+* 图片懒加载
+* Code Splitting
+* Streaming SSR
+* preload
+* CDN
+* Resource Hint
+
+因为搜索引擎现在越来越关注：用户体验到底好不好。
+
