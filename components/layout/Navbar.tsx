@@ -4,25 +4,54 @@ import Image from "next/image";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { SunIcon, MoonIcon, GithubIcon, MenuIcon, XIcon } from "lucide-react";
+import { SunIcon, MoonIcon, GithubIcon, MenuIcon, XIcon, ChevronDown } from "lucide-react";
 import { useTheme } from "next-themes";
 
 const NAV_LINKS = [
-  { href: "/blog",     label: "博客文章" },
-  { href: "/project",  label: "项目合集" },
-  { href: "/practice", label: "JS手写练习" },
-  { href: "/about",    label: "关于我"   },
+  { 
+    label: "博客文章", 
+    href: "/blog",
+    children: [
+      { label: "前端开发", href: "/blog/frontend" },
+      { label: "后端技术", href: "/blog/backend" },
+      { label: "算法结构", href: "/blog/algorithm" },
+      { label: "AI与探索", href: "/blog/ai" },
+      { label: "Web3/其他", href: "/blog/web3" }
+    ]
+  },
+  { 
+    label: "项目合集", 
+    href: "/project" 
+  },
+  { 
+    label: "代码练习", 
+    href: "/practice" 
+  },
+  { 
+    label: "资源分享", 
+    href: "/resource",
+    children: [
+      { label: "工具推荐", href: "/resource/tools" },
+      { label: "教程文档", href: "/resource/tutorials" },
+    ]
+  },
+  { label: "关于我", href: "/about" },
 ];
 
 export default function Navbar() {
   const { setTheme, resolvedTheme } = useTheme();
   const pathname = usePathname();
   const [mounted] = useState(true);
-  // 控制移动端抽屉开关
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
+  const [expandedMobileMenu, setExpandedMobileMenu] = useState<string | null>(null);
 
   const isDark = resolvedTheme === 'dark';
   const toggleTheme = () => setTheme(isDark ? 'light' : 'dark');
+
+  const handleMobileMenuToggle = (href: string) => {
+    setExpandedMobileMenu(prev => prev === href ? null : href);
+  };
 
   return (
     <>
@@ -34,19 +63,55 @@ export default function Navbar() {
         </Link>
 
         {/* 中间：桌面端导航链接（移动端隐藏） */}
-        <div className="hidden md:flex items-center gap-10">
+        <div className="hidden md:flex items-center gap-6 lg:gap-10">
           {NAV_LINKS.map((link) => (
-            <Link
+            <div 
               key={link.href}
-              href={link.href}
-              className={`text-xl font-semibold font-zenmaru transition-opacity focus:outline-none rounded-lg p-2 hover:opacity-60 ${
-                pathname === link.href || pathname.startsWith(link.href + '/')
-                  ? 'border-b-2 border-black dark:border-white opacity-100'
-                  : 'opacity-70'
-              }`}
+              className="relative"
+              onMouseEnter={() => setHoveredMenu(link.href)}
+              onMouseLeave={() => setHoveredMenu(null)}
             >
-              {link.label}
-            </Link>
+              <Link
+                href={link.href}
+                className={`flex items-center gap-1 text-xl font-semibold font-zenmaru transition-opacity focus:outline-none rounded-lg p-2 hover:opacity-60 ${
+                  pathname === link.href || pathname.startsWith(link.href + '/')
+                    ? 'border-b-2 border-black dark:border-white opacity-100'
+                    : 'opacity-70'
+                }`}
+              >
+                {link.label}
+                {link.children && <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${hoveredMenu === link.href ? 'rotate-180' : ''}`} />}
+              </Link>
+              
+              {/* Desktop Dropdown */}
+              {link.children && (
+                <AnimatePresence>
+                  {hoveredMenu === link.href && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute top-full left-1/2 -translate-x-1/2 pt-2 min-w-32"
+                    >
+                      <div className="flex flex-col bg-white/90 dark:bg-gray-900/90 backdrop-blur-md rounded-xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden py-2">
+                        {link.children.map((child) => (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            className={`px-4 py-2 font-zenmaru text-base whitespace-nowrap transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ${
+                              pathname === child.href ? 'text-orange-500 font-bold' : 'text-gray-700 dark:text-gray-300'
+                            }`}
+                          >
+                            {child.label}
+                          </Link>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              )}
+            </div>
           ))}
         </div>
 
@@ -134,19 +199,68 @@ export default function Navbar() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
-              className="fixed top-16 left-0 right-0 z-40 md:hidden bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 shadow-lg"
+              className="fixed top-[73px] left-0 right-0 z-40 md:hidden bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-xl max-h-[80vh] overflow-y-auto"
             >
               <div className="flex flex-col py-2">
                 {NAV_LINKS.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setDrawerOpen(false)}
-                    className="px-6 py-4 text-lg font-semibold font-zenmaru text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0"
-                  >
-                    {link.label}
-                  </Link>
+                  <div key={link.href} className="border-b border-gray-100 dark:border-gray-800 last:border-0">
+                    <div className="flex items-center justify-between px-6 py-4">
+                      <Link
+                        href={link.href}
+                        onClick={() => setDrawerOpen(false)}
+                        className={`text-lg font-semibold font-zenmaru transition-colors ${
+                          pathname === link.href || pathname.startsWith(link.href + '/')
+                            ? 'text-orange-500'
+                            : 'text-black dark:text-white'
+                        }`}
+                      >
+                        {link.label}
+                      </Link>
+                      
+                      {link.children && (
+                        <button 
+                          onClick={() => handleMobileMenuToggle(link.href)}
+                          className="p-2 -mr-2"
+                        >
+                          <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${expandedMobileMenu === link.href ? 'rotate-180' : ''}`} />
+                        </button>
+                      )}
+                    </div>
+                    
+                    {/* Mobile Accordion */}
+                    {link.children && (
+                      <AnimatePresence>
+                        {expandedMobileMenu === link.href && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="bg-gray-50 dark:bg-gray-900/50 overflow-hidden"
+                          >
+                            <div className="px-6 py-2 flex flex-col gap-2">
+                              {link.children.map((child) => (
+                                <Link
+                                  key={child.href}
+                                  href={child.href}
+                                  onClick={() => setDrawerOpen(false)}
+                                  className={`py-2 pl-4 text-base font-zenmaru border-l-2 transition-colors ${
+                                    pathname === child.href
+                                      ? 'border-orange-500 text-orange-500 font-bold'
+                                      : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'
+                                  }`}
+                                >
+                                  {child.label}
+                                </Link>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    )}
+                  </div>
                 ))}
+                
                 <Link
                   href="https://github.com/404ll/Elemen-blog"
                   target="_blank"
