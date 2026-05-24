@@ -1,0 +1,325 @@
+---
+title: "webpack梳理"
+date: "2026-05-24"
+excerpt: "看见了掘金小册的一篇讲webpack的博客，大概了解了一些webpack相关的一个演变过程"
+category: "frontend"
+tags: ["webpack", "性能优化"]
+draft: false
+---
+
+# Webpack 性能优化
+
+虽然现在很多项目已经逐渐转向 Vite、Rspack 等新一代构建工具，但 Webpack 仍然是现代前端构建体系的重要基础。
+
+Webpack 的性能问题主要集中在两个方向：
+
+1. 构建速度慢
+2. 打包产物体积过大
+
+---
+
+# 一、构建速度优化
+
+## 1. 缩小 Loader 处理范围
+
+Webpack 在构建时，会递归分析模块依赖，并经过 Loader 转换。
+
+如果 Loader 扫描范围过大，会明显增加构建时间。
+
+例如：
+
+```js
+{
+  test: /\.js$/,
+  exclude: /node_modules/,
+  use: "babel-loader"
+}
+```
+
+这里通过 `exclude` 排除了 `node_modules`，避免 Babel 对第三方库再次编译。
+
+因为很多第三方包本身已经是构建完成的产物，没有必要再次处理。
+
+---
+
+## 2. 开启缓存
+
+例如 Babel：
+
+```js
+{
+  loader: "babel-loader",
+  options: {
+    cacheDirectory: true
+  }
+}
+```
+
+这样二次构建时会直接读取缓存，而不是重新编译。
+
+Webpack5 甚至已经内置了持久化缓存：
+
+```js
+cache: {
+  type: "filesystem"
+}
+```
+
+这是目前比早期插件更主流的方案。
+
+---
+
+## 3. 多进程 / 并行构建
+
+早期常见方案：
+
+* HappyPack
+* thread-loader
+
+例如：
+
+```js
+use: [
+  "thread-loader",
+  "babel-loader"
+]
+```
+
+原理是：
+
+```txt
+单线程 Loader 转换
+↓
+CPU 无法充分利用
+↓
+多进程并行处理
+```
+
+不过：
+
+* HappyPack 已经基本停止维护
+* 现代 Webpack 更推荐 `thread-loader`
+
+而且并行本身也有进程通信成本，小项目反而可能更慢。
+
+---
+
+## 4. 合理使用 SourceMap
+
+开发环境：
+
+```js
+devtool: "eval-cheap-module-source-map"
+```
+
+生产环境：
+
+```js
+devtool: false
+```
+
+高质量 SourceMap 会显著增加构建时间。
+
+---
+
+# 二、打包体积优化
+
+## 1. Tree Shaking
+
+Tree Shaking 用于移除“未被使用的模块代码”。
+
+例如：
+
+```js
+export function a() {}
+export function b() {}
+```
+
+如果只使用：
+
+```js
+import { a } from "./utils"
+```
+
+那么 `b` 会被删除。
+
+核心依赖：
+
+* ES Module 静态结构
+* production mode
+* terser 压缩
+
+Webpack4+ 已默认支持。
+
+本质上：
+
+```txt
+编译阶段分析依赖引用
+↓
+标记 unused export
+↓
+压缩阶段删除
+```
+
+---
+
+## 2. 代码压缩
+
+Webpack4 之后默认使用：
+
+Terser
+
+替代了以前的：
+
+UglifyJS
+
+因为 UglifyJS 对 ES6 支持并不完善。
+
+压缩包括：
+
+* 删除注释
+* 删除空格
+* 压缩变量名
+* 删除 dead code
+
+例如：
+
+```js
+if (false) {
+  console.log("test")
+}
+```
+
+会被直接删除。
+
+---
+
+## 3. 代码分割（Code Splitting）
+
+目的：
+
+```txt
+不要一次加载全部 JS
+↓
+按页面 / 按路由 / 按功能拆分
+```
+
+Webpack 早期方案：
+
+```js
+require.ensure()
+```
+
+现在已经基本被：
+
+```js
+import()
+```
+
+替代。
+
+例如：
+
+```js
+const Home = React.lazy(() => import("./Home"))
+```
+
+这样对应 chunk 会在真正访问页面时再加载。
+
+这也是现代 SPA 首屏优化的重要手段。
+
+---
+
+## 4. 第三方库优化
+
+## externals
+
+某些大型 CDN 库可以不打包：
+
+```js
+externals: {
+  react: "React"
+}
+```
+
+转而走 CDN：
+
+```html
+<script src="react.production.min.js"></script>
+```
+
+减少 bundle 体积。
+
+---
+
+## DLLPlugin（历史方案）
+
+Webpack3/4 时期比较常见。
+
+原理：
+
+```txt
+第三方库变化很少
+↓
+提前单独构建
+↓
+业务代码构建时直接复用
+```
+
+但：
+
+* 配置复杂
+* 缓存维护麻烦
+* Webpack5 持久化缓存后价值下降
+
+现在已经不算主流方案。
+
+---
+
+# 三、分析工具
+
+推荐：
+
+[webpack-bundle-analyzer](https://www.npmjs.com/package/webpack-bundle-analyzer?utm_source=chatgpt.com)
+
+可以可视化分析：
+
+* 哪个模块体积最大
+* 哪些依赖重复打包
+* 哪些 chunk 过大
+
+本质是帮助定位：
+
+```txt
+到底是谁让 bundle 变大
+```
+
+---
+
+# 四、现代趋势
+
+Webpack 的很多性能问题，本质来自：
+
+```txt
+JavaScript 实现
++
+Bundle-based 构建
++
+全量依赖分析
+```
+
+因此后来出现了：
+
+* Vite
+* Rspack
+* esbuild
+* SWC
+
+这些工具主要通过：
+
+* Rust/Go 提升编译速度
+* 原生 ESM
+* 更激进缓存
+* 更少 Bundle 成本
+
+来解决 Webpack 的历史性能问题。
