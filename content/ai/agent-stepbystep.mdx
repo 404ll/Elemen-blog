@@ -1,0 +1,333 @@
+---
+title: "Agent 一步步实践(updating)"
+date: "2026-05-25"
+excerpt: "从一次普通模型调用开始，逐步构建自己的Agent认识。"
+category: "ai"
+tags: ["ai", "Agent", "OpenAI", "Python"]
+draft: false
+---
+这篇先不追求框架封装，只用最小代码理解 Agent 是怎么一步步跑起来的。
+
+资料：
+
+- https://platform.openai.com/docs/guides/function-calling
+- https://platform.openai.com/docs/guides/structured-outputs
+
+---
+
+## 最小验证MVP
+
+**Agent loop 的核心就是：让模型先决定下一步做什么，如果要调用工具，代码执行工具，再把结果喂回模型，直到模型给出最终答案。**
+
+所以学习 Agent 可以按这个顺序拆：
+
+1. 先会发起一次普通 chat 请求。
+2. 再理解返回结构。
+3. 再让模型按固定 JSON 返回。
+4. 再给模型声明工具。
+5. 最后用循环把「模型决策 -> 代码执行 -> 结果回填」串起来。
+
+---
+
+### 核心流程
+
+可以把最小 Agent 画成这样：
+
+```text
+User
+  ↓
+LLM
+  ↓
+是否需要工具？
+  ├─ 不需要 -> final answer
+  └─ 需要 -> tool_calls
+              ↓
+            本地代码执行 tool
+              ↓
+            tool result 写回 messages
+              ↓
+            再次调用 LLM
+```
+
+这里最容易混淆的是：**模型不是执行者，模型是决策者；代码才是执行者。**
+
+---
+
+### 1. 普通模型调用
+
+最小调用只需要三件事：
+
+1. `model`：使用哪个模型。
+2. `messages`：对话上下文。
+3. 读取 `choices[0].message.content`：拿到模型文本输出。
+
+```python
+from openai import OpenAI
+
+client = OpenAI()
+model = "gpt-5"
+
+response = client.chat.completions.create(
+    model=model,
+    messages=[
+        {"role": "user", "content": "用一句话介绍一下 agent loop。"}
+    ],
+)
+
+print(response.choices[0].message.content)
+```
+
+**关键点**：第一次调用先不要想工具、记忆、规划，只把它当成「输入 messages，输出 message」的函数。
+
+---
+
+### 2. 返回结构
+
+一次 chat completion 返回的大致结构如下：
+
+```json
+{
+  "id": "chatcmpl_xxx",
+  "object": "chat.completion",
+  "created": 1756315657,
+  "model": "gpt-5",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Agent loop 是让模型在思考、调用工具和读取结果之间循环，直到完成任务。",
+        "refusal": null,
+        "annotations": []
+      },
+      "finish_reason": "stop"
+    }
+  ]
+}
+```
+
+这里先抓住 3 个字段：
+
+| 字段 | 作用 |
+| --- | --- |
+| `choices` | 模型可能返回多个候选，一般先取第一个 |
+| `message.content` | 普通文本答案 |
+| `finish_reason` | 模型停止原因，例如正常停止、长度截断、工具调用等 |
+
+**本质**：API 返回的不是一段纯文本，而是一个带状态的响应对象。Agent 后面要判断工具调用、终止条件、错误处理，都依赖这个结构。
+
+---
+
+### 3. 结构化返回
+
+如果只用 prompt 说「请返回 JSON」，模型通常会尽量照做，但这不是强约束。
+
+更稳的做法是配合 `response_format`：
+
+```python
+response = client.chat.completions.create(
+    model=model,
+    messages=[
+        {
+            "role": "system",
+            "content": "你必须返回 JSON，字段包括 summary 和 next_action。",
+        },
+        {
+            "role": "user",
+            "content": "总结 agent loop 的核心步骤。",
+        },
+    ],
+    response_format={"type": "json_object"},
+)
+```
+
+需要注意：
+
+- `json_object` 只是 **JSON mode**，它保证返回合法 JSON，但不保证字段一定符合你的 schema。
+- 如果模型支持，优先考虑 `json_schema`，因为它能约束字段结构。
+- 即使开启结构化输出，下游也应该继续做解析和校验。
+
+**问题**：为什么不能只靠 prompt？
+
+**方案**：prompt 负责表达意图，`response_format` / schema 负责约束输出形状，代码负责兜底校验。
+
+**结论**：LLM 输出永远不要裸用，至少要经过 parse、validate、fallback。
+
+---
+
+### 4. Tool 结构
+
+Agent 之所以能「行动」，不是因为模型真的会执行代码，而是我们把可执行能力声明成工具。
+
+工具声明的核心是 JSON Schema：
+
+```python
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get current weather by city name",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "city": {
+                        "type": "string",
+                        "description": "City name"
+                    }
+                },
+                "required": ["city"],
+                "additionalProperties": False
+            },
+            "strict": True
+        }
+    }
+]
+```
+
+这里有 4 个关键点：
+
+1. `name`：工具名，后面分发函数时会用到。
+2. `description`：告诉模型什么时候该用这个工具。
+3. `parameters`：告诉模型参数结构。
+4. `strict`：尽量让参数严格符合 schema。
+
+**本质**：tool schema 是模型和代码之间的契约。模型只负责提出「我要调用哪个工具、参数是什么」，真正执行的是我们的程序。
+
+---
+
+### 5. Tool Call 返回
+
+当模型决定调用工具时，返回里通常不会直接给最终答案，而是给出 `tool_calls`。
+
+```json
+{
+  "role": "assistant",
+  "content": null,
+  "tool_calls": [
+    {
+      "id": "call_123",
+      "type": "function",
+      "function": {
+        "name": "get_weather",
+        "arguments": "{\"city\":\"Shanghai\"}"
+      }
+    }
+  ]
+}
+```
+
+这一步要注意：
+
+- `arguments` 通常是 JSON 字符串，需要 `json.loads`。
+- 工具名要和本地函数做映射，不能让模型随便执行任意函数。
+- 工具执行结果要作为新的消息回填给模型。
+- 回填时要带上 `tool_call_id`，让模型知道这个结果对应哪一次调用。
+
+---
+
+### 6. 最小 Agent Loop
+
+下面是一个最小手写版，只保留核心流程：
+
+```python
+import json
+from openai import OpenAI
+
+client = OpenAI()
+
+
+def get_weather(city: str) -> str:
+    return json.dumps({"city": city, "weather": "sunny"})
+
+
+tool_map = {
+    "get_weather": get_weather,
+}
+
+messages = [
+    {"role": "user", "content": "上海今天天气怎么样？"}
+]
+
+for _ in range(5):
+    response = client.chat.completions.create(
+        model="gpt-5",
+        messages=messages,
+        tools=tools,
+        tool_choice="auto",
+    )
+
+    message = response.choices[0].message
+    messages.append(message)
+
+    if not message.tool_calls:
+        print(message.content)
+        break
+
+    for tool_call in message.tool_calls:
+        name = tool_call.function.name
+        args = json.loads(tool_call.function.arguments)
+
+        result = tool_map[name](**args)
+
+        messages.append({
+            "role": "tool",
+            "tool_call_id": tool_call.id,
+            "content": result,
+        })
+else:
+    raise RuntimeError("Agent loop reached max steps")
+```
+
+这个 loop 做了 4 件事：
+
+1. 把用户问题交给模型。
+2. 如果模型要调工具，就解析 `tool_calls`。
+3. 代码执行工具，并把结果加入 `messages`。
+4. 再次调用模型，让模型基于工具结果继续回答。
+
+> 注意：一定要设置最大循环次数。否则模型如果反复请求工具，可能导致无限循环和资源浪费。
+
+---
+
+### 注意点
+
+1. **工具要白名单映射**
+
+   不要把模型返回的函数名直接当代码执行。正确做法是维护 `tool_map`，只允许调用你显式暴露的工具。
+
+2. **参数要校验**
+
+   即使有 schema，也要在代码侧校验参数类型、必填字段和边界值。
+
+3. **结果要可控**
+
+   工具返回内容不要太长。返回给模型的内容越多，token 成本越高，噪音也越大。
+
+4. **循环要有上限**
+
+   最小实践可以设 `max_steps = 5`。生产环境还要加超时、重试、日志和 tracing。
+
+5. **结构化输出不是业务正确**
+
+   JSON 格式正确，只代表机器能解析，不代表答案事实正确。事实性仍然需要工具、检索或规则校验。
+
+---
+
+### 面试常问（Q/A）
+
+**Q：Agent 和普通 LLM 调用的区别是什么？**
+
+A：普通调用通常是一次输入一次输出；Agent 会在多轮里让模型决定是否调用工具，并把工具结果继续喂回模型。
+
+**Q：Function calling 是模型在执行函数吗？**
+
+A：不是。模型只返回工具名和参数，函数由业务代码执行。
+
+**Q：为什么 agent loop 要设置最大步数？**
+
+A：因为模型可能反复调用工具或无法收敛。最大步数是最基本的资源保护。
+
+**Q：JSON mode 和 JSON Schema 的区别是什么？**
+
+A：JSON mode 主要保证返回合法 JSON；JSON Schema 进一步约束字段结构。能用 schema 时优先用 schema。
