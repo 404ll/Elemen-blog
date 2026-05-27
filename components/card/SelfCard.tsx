@@ -1,4 +1,4 @@
-import Image from "next/image";
+import Link from "next/link";
 import { PROFILE } from "@/config/profile";
 
 interface SelfCardProps {
@@ -8,52 +8,32 @@ interface SelfCardProps {
 
 export default function SelfCard({ postCount = 0, categoryCount = 0 }: SelfCardProps) {
   return (
-    <div className="w-full">
-      <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-2xl p-8 transition-all shadow-lg hover:shadow-xl">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-
-          {/* 文字信息 */}
-          <div className="flex flex-col text-black dark:text-white space-y-4 md:max-w-lg transition-colors">
-            <div className="flex items-center gap-2">
-              <Image
-                src="/icon/sun.png"
-                alt="logo"
-                width={100}
-                height={100}
-                className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/50 p-2 rounded-full"
-              />
-              <span className="text-lg md:text-xl font-bold tracking-tight">Hello, I&apos;m {PROFILE.name}!</span>
-            </div>
-
-            <div className="flex gap-2 flex-wrap">
-              {PROFILE.tags.map((tag) => (
-                <span key={tag.label} className="px-3 py-1 bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 text-xs font-semibold rounded-full transition-colors">
-                  {tag.label}
-                </span>
-              ))}
-            </div>
-
-            <ul className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed list-disc list-inside space-y-1 transition-colors">
-              <li>Welcome to my blog!</li>
-              <li>I am a web developer and a blockchain developer.</li>
-              <li>I like to learn new things and share them with others.</li>
-            </ul>
+    <section className="w-full border-b border-black/10 dark:border-white/10 pb-5">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="max-w-2xl text-black dark:text-white">
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+            <span>{PROFILE.name}&apos;s notes</span>
           </div>
+          <h1 className="text-2xl font-bold tracking-tight md:text-4xl">
+            前端、Web3、AI 与工程实践记录
+          </h1>
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-gray-600 dark:text-gray-400 md:text-base">
+            这里更像一间持续整理中的技术工作台：记录问题、方案、复盘，以及一些正在学习中的想法。
+          </p>
+        </div>
 
-          {/* 右侧统计 */}
-          <div className="flex md:flex-col gap-6 md:gap-4 md:items-end">
-            <div className="text-center md:text-right">
-              <div className="text-3xl font-bold text-black dark:text-white">{postCount}</div>
-              <div className="text-xs text-gray-400 dark:text-gray-500 tracking-widest uppercase mt-1">Articles</div>
-            </div>
-            <div className="text-center md:text-right">
-              <div className="text-3xl font-bold text-black dark:text-white">{categoryCount}</div>
-              <div className="text-xs text-gray-400 dark:text-gray-500 tracking-widest uppercase mt-1">Topics</div>
-            </div>
-          </div>
-
+        <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+          <span className="font-mono">{postCount} articles</span>
+          <span className="h-1 w-1 rounded-full bg-gray-400 dark:bg-gray-500" />
+          <span className="font-mono">{categoryCount} topics</span>
+          <Link
+            href="/about"
+            className="ml-0 inline-flex items-center rounded-full border border-black/20 px-3 py-1.5 text-sm font-semibold text-black transition-colors hover:bg-black hover:text-white dark:border-white/25 dark:text-white dark:hover:bg-white dark:hover:text-black md:ml-2"
+          >
+            About
+          </Link>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

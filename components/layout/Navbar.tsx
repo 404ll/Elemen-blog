@@ -1,6 +1,5 @@
 'use client';
 import Link from "next/link";
-import Image from "next/image";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -57,8 +56,7 @@ export default function Navbar() {
     <>
       <nav className="w-full flex items-center justify-between p-4 text-black dark:text-white fixed top-0 left-0 right-0 z-50 backdrop-blur-sm bg-[#fff4e6]/80 dark:bg-[#1a0f00]/80 border-b border-orange-200/60 dark:border-orange-900/40 transition-colors duration-300">
         {/* 左侧：Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <Image src="/icon/sun.png" alt="logo" className="w-8 h-8 rounded-full" width={100} height={100} />
+        <Link href="/" className="flex items-center">
           <div className="font-bitcount text-xl md:text-3xl font-semibold">Elemen&#39;s Blog</div>
         </Link>
 

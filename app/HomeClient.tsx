@@ -9,8 +9,8 @@ import type { Post } from "@/types";
 export default function HomeClient({ posts }: { posts: Post[] }) {
   return (
     <div className="pt-20 pb-8">
-      {/* Hero 区域 */}
-      <div className="max-w-7xl mx-auto px-4 mb-8">
+      {/* 博客导语 */}
+      <div className="max-w-7xl mx-auto px-4 mb-6">
         <SelfCard postCount={posts.length} categoryCount={Object.keys(CATEGORIES).length} />
       </div>
 
