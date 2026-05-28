@@ -1,0 +1,618 @@
+---
+title: "TypeScript 类型校验和类型守卫"
+date: "2026-05-28"
+excerpt: "整理 TypeScript 类型校验、类型收窄和类型守卫的基础用法"
+category: "frontend"
+tags: ["typescript", "ts"]
+draft: false
+---
+
+最近发现自己对 TypeScript 的类型校验和类型守卫没有特别系统地整理过。
+
+平时写业务代码的时候，很多地方都是凭感觉写：
+
+- 接口返回的数据到底安不安全
+- `unknown` 和 `any` 应该怎么选
+- `typeof`、`instanceof`、`in` 分别适合什么场景
+- 自定义类型守卫什么时候用
+- 为什么有时候判断完类型，TS 还是不认
+
+所以这篇主要想把 **TypeScript 如何判断一个变量的类型** 这件事整理一下。
+
+---
+
+## 先区分两个概念
+
+TypeScript 的类型检查主要发生在**编译阶段**。
+
+```ts
+function add(a: number, b: number) {
+  return a + b
+}
+
+add(1, 2)
+add('1', 2) // TS 编译阶段会提示错误
+```
+
+但是代码真正运行起来以后，TypeScript 的类型会被擦除。
+
+也就是说，运行时并没有 TypeScript 类型。
+
+```ts
+type User = {
+  id: number
+  name: string
+}
+```
+
+上面的 `User` 只存在于 TS 编译阶段，打包成 JS 后就没有了。
+
+所以这里要先记住一句话：
+
+**TypeScript 能帮我们做静态类型检查，但不能自动保证运行时数据一定安全。**
+
+这也是为什么从接口、localStorage、URL 参数里拿到的数据，还是需要做类型校验。
+
+---
+
+## 类型校验是什么？
+
+类型校验可以理解为：
+
+**在运行时判断一个值到底是不是我们想要的类型。**
+
+例如接口返回的数据：
+
+```ts
+type User = {
+  id: number
+  name: string
+}
+
+async function getUser() {
+  const res = await fetch('/api/user')
+  const data = await res.json()
+
+  return data
+}
+```
+
+这里的 `data` 是不可信的。
+
+因为后端可能返回：
+
+```ts
+{
+  id: '1',
+  name: null
+}
+```
+
+但我们希望它是：
+
+```ts
+{
+  id: 1,
+  name: 'Elemen'
+}
+```
+
+所以类型校验解决的是：**运行时数据是否符合预期结构**。
+
+比如一个列表接口，前端一开始按下面的类型写：
+
+```ts
+type Article = {
+  id: number
+  title: string
+  viewCount: number
+}
+```
+
+但是接口实际返回时，`viewCount` 可能是 `null`。
+
+```ts
+{
+  id: 1,
+  title: 'TypeScript 笔记',
+  viewCount: null
+}
+```
+
+如果前端直接写：
+
+```ts
+article.viewCount.toLocaleString()
+```
+
+TS 可能因为我们提前声明了 `Article` 而不报错，但运行时就会出问题。
+
+所以只要数据来自外部，就不能只相信类型声明。
+
+---
+
+## 类型收窄是什么？
+
+类型收窄是 TypeScript 根据代码里的判断，把一个更宽的类型缩小成更具体的类型。
+
+比如：
+
+```ts
+function print(value: string | number) {
+  if (typeof value === 'string') {
+    value.toUpperCase()
+    return
+  }
+
+  value.toFixed(2)
+}
+```
+
+一开始 `value` 是：
+
+```ts
+string | number
+```
+
+进入 `if` 后，TS 知道它是：
+
+```ts
+string
+```
+
+离开 `if` 后，TS 知道剩下的情况只能是：
+
+```ts
+number
+```
+
+这个过程就是类型收窄。
+
+---
+
+## 常见的类型守卫
+
+类型守卫可以理解为：
+
+**通过一些判断语句，让 TypeScript 能够缩小变量类型。**
+
+### typeof
+
+`typeof` 适合判断基础类型。
+
+```ts
+function format(value: string | number) {
+  if (typeof value === 'string') {
+    return value.trim()
+  }
+
+  return value.toFixed(2)
+}
+```
+
+常见结果：
+
+```ts
+typeof 'hello' // 'string'
+typeof 123 // 'number'
+typeof true // 'boolean'
+typeof undefined // 'undefined'
+typeof function() {} // 'function'
+typeof {} // 'object'
+typeof null // 'object'
+```
+
+需要注意的是：
+
+```ts
+typeof null === 'object'
+```
+
+所以判断对象的时候，通常要额外排除 `null`，这个是历史遗留问题，不用过多纠结，记住就好
+
+```ts
+function isObject(value: unknown) {
+  return typeof value === 'object' && value !== null
+}
+```
+
+### instanceof
+
+`instanceof` 适合判断一个值是不是某个类的实例。
+
+```ts
+function handleDate(value: Date | string) {
+  if (value instanceof Date) {
+    return value.getTime()
+  }
+
+  return new Date(value).getTime()
+}
+```
+
+它比较适合：
+
+- `Date`
+- `Error`
+- 自己定义的 class
+
+```ts
+class ApiError extends Error {
+  code: number
+
+  constructor(message: string, code: number) {
+    super(message)
+    this.code = code
+  }
+}
+
+function handleError(error: unknown) {
+  if (error instanceof ApiError) {
+    console.log(error.code)
+  }
+}
+```
+
+但是 `instanceof` 不适合判断普通的 `type` 或 `interface`。
+
+```ts
+interface User {
+  id: number
+  name: string
+}
+
+function handleUser(value: unknown) {
+  // 这里不能写 value instanceof User
+}
+```
+
+因为 `User` 这种类型只存在于 TS 编译阶段，运行时并没有一个叫 `User` 的构造函数。
+
+如果要判断这种普通对象结构，需要用 `in`、`typeof` 或自定义类型守卫。
+
+### in
+
+`in` 适合判断对象里是否存在某个属性。
+
+```ts
+type Cat = {
+  meow: () => void
+}
+
+type Dog = {
+  bark: () => void
+}
+
+function speak(animal: Cat | Dog) {
+  if ('meow' in animal) {
+    animal.meow()
+    return
+  }
+
+  animal.bark()
+}
+```
+
+这里 TS 会根据 `'meow' in animal` 判断它更可能是 `Cat`。
+
+但是要注意，`in` 判断的是属性是否存在，不判断属性值类型是否正确。
+
+```ts
+'name' in { name: 123 } // true
+```
+
+所以它只能做比较粗的判断。
+
+### 字面量类型判断
+
+业务里很常见的一种写法是通过 `type`、`status`、`kind` 这种字段区分不同类型。
+
+```ts
+type LoadingState = {
+  status: 'loading'
+}
+
+type SuccessState = {
+  status: 'success'
+  data: string[]
+}
+
+type ErrorState = {
+  status: 'error'
+  message: string
+}
+
+type RequestState = LoadingState | SuccessState | ErrorState
+
+function render(state: RequestState) {
+  if (state.status === 'loading') {
+    return 'loading...'
+  }
+
+  if (state.status === 'success') {
+    return state.data.join(',')
+  }
+
+  return state.message
+}
+```
+
+这种写法也叫**可辨识联合类型**。我感觉这是业务代码里最常用、也最好理解的一种类型收窄方式。
+
+---
+
+## 自定义类型守卫
+
+如果判断逻辑比较复杂，可以封装成一个函数。
+
+```ts
+type User = {
+  id: number
+  name: string
+}
+
+function isUser(value: unknown): value is User {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+
+  return (
+    'id' in value &&
+    'name' in value &&
+    typeof value.id === 'number' &&
+    typeof value.name === 'string'
+  )
+}
+```
+
+这里最关键的是返回值：
+
+```ts
+value is User
+```
+
+它的意思是：
+
+**如果这个函数返回 true，那么 TypeScript 就可以把 value 当成 User。**
+
+使用时：
+
+```ts
+function handleUser(value: unknown) {
+  if (isUser(value)) {
+    console.log(value.id)
+    console.log(value.name)
+    return
+  }
+
+  console.log('不是合法用户')
+}
+```
+
+这里 `if (isUser(value))` 之后，`value` 就被收窄成了 `User`。
+
+---
+
+## unknown 比 any 更适合不确定的数据
+
+以前可能会直接写：
+
+```ts
+const data: any = await res.json()
+
+console.log(data.user.name)
+```
+
+`any` 的问题是：它会绕过 TypeScript 的检查。
+
+也就是说，写什么 TS 都不拦。
+
+更推荐的是：
+
+```ts
+const data: unknown = await res.json()
+```
+
+这样在使用之前必须先判断：
+
+```ts
+if (isUser(data)) {
+  console.log(data.name)
+}
+```
+
+可以简单理解为：
+
+| 类型 | 含义 | 使用风险 |
+| --- | --- | --- |
+| `any` | 我不想让 TS 检查 | 风险高 |
+| `unknown` | 我现在还不知道它是什么 | 更安全 |
+
+所以接口返回、缓存读取、外部输入这种不可信数据，更适合先用 `unknown` 接住，再通过类型守卫收窄。
+
+---
+
+## 类型断言不是类型校验
+
+这个点也很容易混。
+
+```ts
+const user = data as User
+```
+
+这不是校验。
+
+这只是告诉 TypeScript：
+
+**你相信我，它就是 User。**
+
+但是运行时不会真的检查 `data` 是否符合 `User`。
+
+比如：
+
+```ts
+const user = {
+  id: '1',
+  name: null,
+} as unknown as User
+
+console.log(user.id.toFixed(2))
+```
+
+TS 可能不报错，但运行时会出问题。
+
+所以可以先记住：
+
+**类型断言是骗过 TS，类型守卫是证明给 TS 看。**
+
+比如从 `localStorage` 里拿用户信息：
+
+```ts
+const raw = localStorage.getItem('user')
+const user = JSON.parse(raw || '{}') as User
+
+console.log(user.name.trim())
+```
+
+这段代码的问题是：缓存里的数据可能已经过期，也可能被手动改过。
+
+```ts
+{
+  "id": 1,
+  "name": null
+}
+```
+
+`as User` 只能让 TS 放行，不能让 `name` 真的变成字符串。
+
+更稳妥的写法还是先用 `unknown` 接住，再用类型守卫判断。
+
+---
+
+## 常见场景
+
+### 1. 接口返回数据
+
+```ts
+async function getUser() {
+  const res = await fetch('/api/user')
+  const data: unknown = await res.json()
+
+  if (!isUser(data)) {
+    throw new Error('用户数据格式错误')
+  }
+
+  return data
+}
+```
+
+### 2. localStorage
+
+```ts
+function getCacheUser() {
+  const raw = localStorage.getItem('user')
+
+  if (!raw) return null
+
+  try {
+    const data: unknown = JSON.parse(raw)
+    return isUser(data) ? data : null
+  } catch {
+    return null
+  }
+}
+```
+
+### 3. catch error
+
+```ts
+try {
+  await request()
+} catch (error) {
+  if (error instanceof Error) {
+    console.log(error.message)
+    return
+  }
+
+  console.log('unknown error')
+}
+```
+
+### 4. URL query
+
+URL 上拿到的值默认都是字符串，而且还可能不存在。
+
+```ts
+const page = Number(searchParams.get('page') || 1)
+
+if (!Number.isInteger(page) || page <= 0) {
+  throw new Error('page 参数错误')
+}
+```
+
+### 5. postMessage
+
+`postMessage` 收到的数据也属于外部输入，最好不要直接信任。
+
+```ts
+window.addEventListener('message', (event) => {
+  const data: unknown = event.data
+
+  if (!isUser(data)) {
+    return
+  }
+
+  console.log(data.name)
+})
+```
+
+---
+
+## 我目前的理解
+
+可以把 TypeScript 类型安全分成两层：
+
+- 编译阶段：TS 根据类型标注帮我们发现写法问题
+- 运行阶段：我们自己通过类型守卫确认外部数据是否可信
+
+对于自己代码内部的数据，TS 的静态检查通常已经够用了。
+
+但是对于外部输入，比如接口、缓存、用户输入，就不能完全相信类型标注。
+
+这个时候更合理的写法是：
+
+```ts
+unknown -> 类型守卫 -> 具体类型
+```
+
+而不是：
+
+```ts
+any -> as User -> 直接使用
+```
+
+目前我会先按这个原则来用：
+
+- 代码内部自己创建的数据，可以主要依赖 TS 静态类型
+- 接口、缓存、URL、用户输入、第三方 SDK 返回值，都先按不可信数据处理
+- 简单类型用 `typeof`、`instanceof`、`in`
+- 对象结构复杂时，封装自定义类型守卫
+- 不确定类型时优先用 `unknown`，尽量少用 `any`
+- `as` 只在非常确定类型时使用，不拿它替代校验
+
+---
+
+## 总结
+
+几个先记住的结论：
+
+- TypeScript 类型只存在于编译阶段，运行时会被擦除
+- 类型校验是运行时判断数据是否符合预期
+- 类型收窄是 TS 根据判断语句缩小变量类型
+- 类型守卫是帮助 TS 做类型收窄的一类判断
+- `typeof` 适合基础类型
+- `instanceof` 适合 class 实例
+- `in` 适合判断对象属性是否存在
+- 自定义类型守卫的关键写法是 `value is Xxx`
+- `unknown` 比 `any` 更适合接收不确定的数据
+- `as` 是类型断言，不是类型校验
