@@ -7,6 +7,8 @@ import { mdxComponents } from "@/components/ui/MdxContent";
 import ReadingEnhancements from "@/components/ui/ReadingEnhancements";
 import CodeCopyButton from "@/components/ui/CodeCopyButton";
 import { extractHeadingsFromMdx } from "@/lib/headings";
+import ArticleList from "@/components/card/ArticleList";
+import { CATEGORIES } from "@/constant";
 
 export const revalidate = 3600;
 
@@ -20,6 +22,15 @@ async function resolveSlug(paramsPromise: BlogPageProps["params"]) {
   return Array.isArray(params.slug) ? params.slug.join("/") : params.slug;
 }
 
+function getCategoryMeta(slug: string | null) {
+  if (!slug || slug.includes("/")) return null;
+  return CATEGORIES[slug as keyof typeof CATEGORIES] ?? null;
+}
+
+function getPostsByCategory(category: string) {
+  return getAllPosts().filter((post) => post.category === category);
+}
+
 function formatDate(dateString?: string) {
   if (!dateString) return null;
   return new Date(dateString).toLocaleDateString("zh-CN", {
@@ -31,14 +42,27 @@ function formatDate(dateString?: string) {
 
 export async function generateStaticParams() {
   const posts = getAllPosts();
-  return posts.map((post) => ({
+  const postParams = posts.map((post) => ({
     slug: post.slug.split("/"),
   }));
+  const categoryParams = Object.keys(CATEGORIES).map((category) => ({
+    slug: [category],
+  }));
+
+  return [...postParams, ...categoryParams];
 }
 
 export async function generateMetadata({ params }: BlogPageProps) {
   const slug = await resolveSlug(params);
   if (!slug) return {};
+
+  const categoryMeta = getCategoryMeta(slug);
+  if (categoryMeta) {
+    return {
+      title: `${categoryMeta.name} Articles`,
+      description: `${categoryMeta.name} 分类下的文章列表`,
+    };
+  }
 
   const post = getPostBySlug(slug);
   if (!post) return {};
@@ -59,6 +83,42 @@ export async function generateMetadata({ params }: BlogPageProps) {
 export default async function BlogPostPage({ params }: BlogPageProps) {
   const slug = await resolveSlug(params);
   if (!slug) return notFound();
+
+  const categoryMeta = getCategoryMeta(slug);
+  if (categoryMeta) {
+    const posts = getPostsByCategory(slug);
+
+    return (
+      <div className="pt-20 pb-16">
+        <div className="max-w-5xl mx-auto px-4 space-y-8">
+          <header className="space-y-3">
+            <p className="text-3xl font-bitcount tracking-[0.2em] text-gray-800 dark:text-gray-400 font-semibold transition-colors">
+              Category
+            </p>
+            <h1 className="text-xl font-bold text-black dark:text-white transition-colors">
+              {categoryMeta.name}
+            </h1>
+
+            <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 transition-colors">
+              <span className="text-gray-500 dark:text-gray-400">
+                {posts.length > 0 ? `${posts.length} 篇文章` : "暂无文章"}
+              </span>
+            </div>
+          </header>
+
+          {posts.length > 0 ? (
+            <ArticleList posts={posts} />
+          ) : (
+            <div className="bg-white/85 dark:bg-gray-900/85 p-10 text-center border border-black dark:border-white transition-colors">
+              <p className="text-gray-600 dark:text-gray-400 transition-colors">
+                这个分类还没有文章，敬请期待。
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const post = getPostBySlug(slug);
   if (!post) return notFound();

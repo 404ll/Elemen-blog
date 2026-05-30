@@ -13,7 +13,7 @@ export default function CategoryCard() {
           {Object.entries(CATEGORIES).map(([key, category]) => (
             <Link
               key={category.name}
-              href={`/blog/category/${key}`}
+              href={`/blog/${key}`}
               className="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
               {category.name}

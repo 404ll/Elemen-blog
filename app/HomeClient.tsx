@@ -20,7 +20,7 @@ export default function HomeClient({ posts }: { posts: Post[] }) {
           {Object.entries(CATEGORIES).map(([key, category]) => (
             <Link
               key={key}
-              href={`/blog/category/${key}`}
+              href={`/blog/${key}`}
               className="flex-shrink-0 px-2 py-1 border border-black dark:border-white font-mono text-xs font-bold tracking-wider text-black dark:text-white transition-all"
             >
               {category.name}

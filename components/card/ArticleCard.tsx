@@ -30,7 +30,7 @@ export default function ArticleCard({ post }: ArticleCardProps) {
         {categoryLabel && (
           category ? (
             <Link
-              href={`/blog/category/${category}`}
+              href={`/blog/${category}`}
               className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${badgeClassName}`}
             >
               {categoryLabel}
@@ -80,4 +80,3 @@ export default function ArticleCard({ post }: ArticleCardProps) {
     </article>
   );
 }
-

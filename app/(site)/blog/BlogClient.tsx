@@ -34,7 +34,7 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
             {Object.entries(CATEGORIES).map(([key, meta]) => (
               <Link
                 key={key}
-                href={`/blog/category/${key}`}
+                href={`/blog/${key}`}
                 className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${getColorStyle(meta.color, 'badge')}`}
               >
                 <span>{meta.name}</span>
@@ -87,7 +87,6 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
     </div>
   );
 }
-
 
 
 
