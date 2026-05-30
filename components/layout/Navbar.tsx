@@ -19,10 +19,6 @@ const NAV_LINKS = [
     ]
   },
   { 
-    label: "项目合集", 
-    href: "/project" 
-  },
-  { 
     label: "代码练习", 
     href: "/practice" 
   },
