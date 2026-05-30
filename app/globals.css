@@ -13,6 +13,8 @@
   /* Fonts */
   --font-bitcount: "Bitcount Prop Single", monospace;
   --font-zenmaru: "Zen Maru Gothic", sans-serif;
+  --font-site-mono: "SFMono-Regular", "SF Mono", "Cascadia Mono",
+    "Noto Sans Mono CJK SC", "Microsoft YaHei Mono", "PingFang SC", monospace;
 
   /* Colors - Light */
   --background: 255 255 255;
@@ -63,7 +65,9 @@ html {
 @layer base {
   body {
     min-height: 100vh;
-    font-family: var(--font-zenmaru);
+    --font-site-mono: var(--font-jetbrains-mono), "SFMono-Regular", "SF Mono", "Cascadia Mono",
+      "Noto Sans Mono CJK SC", "Microsoft YaHei Mono", "PingFang SC", monospace;
+    font-family: var(--font-site-mono);
     background: var(--gradient-bg);
     background-attachment: fixed;
     color: rgb(var(--foreground));
@@ -106,15 +110,16 @@ button:disabled {
       Typography (Blog Baseline)
       ========================================================= */
 .font-bitcount {
-  font-family: var(--font-bitcount);
+  font-family: var(--font-site-mono);
+  letter-spacing: 0.02em;
 }
 
 .font-zenmaru {
-  font-family: var(--font-zenmaru);
+  font-family: var(--font-site-mono);
 }
 
 .font-mono {
-  font-family: var(--font-mono);
+  font-family: var(--font-site-mono);
 }
 
 .fade-bottom {
@@ -142,7 +147,7 @@ button:disabled {
       Inline Code & Code Block Base
       ========================================================= */
 code {
-  font-family: var(--font-mono);
+  font-family: var(--font-site-mono);
   font-size: 0.875em;
 }
 
@@ -160,7 +165,7 @@ pre code {
   display: inline-block;
   font-size: 1rem;
   font-weight: bold;
-  font-family: var(--font-mono), sans-serif;
+  font-family: var(--font-site-mono);
   color: white;
   background-color: rgb(5, 70, 141);
   padding: 0.2rem 0.5rem;
@@ -208,7 +213,7 @@ figure[data-rehype-pretty-code-figure]::before {
   align-items: center;
   padding-inline: 0.5rem;
   font-size: 0.75rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-site-mono);
   color: rgb(156 163 175);
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -248,7 +253,7 @@ figure[data-rehype-pretty-code-figure] pre > code {
   display: grid;
   min-width: 100%;
   counter-reset: line;
-  font-family: var(--font-mono), 'JetBrains Mono', 'Fira Code', 'Menlo', monospace;
+  font-family: var(--font-site-mono);
   font-size: 0.875rem;
   line-height: 1.7;
   color: #abb2bf;

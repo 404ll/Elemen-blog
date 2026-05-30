@@ -16,7 +16,7 @@ const bitcountFont = localFont({
 // JetBrains Mono - 本地等宽字体
 const monoFont = localFont({
   src: './fonts/JetBrains_Mono/fonts/variable/JetBrainsMono[wght].ttf',
-  variable: '--font-mono',
+  variable: '--font-jetbrains-mono',
   display: 'swap',
   weight: '100 900',
 });
