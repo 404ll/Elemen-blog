@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { ChevronUp } from "lucide-react";
 import type { HeadingItem } from "@/lib/headings";
 
@@ -12,6 +13,7 @@ export default function ReadingEnhancements({ headings }: ReadingEnhancementsPro
   const [progress, setProgress] = useState(0);
   const [activeId, setActiveId] = useState<string>("");
   const [showTopButton, setShowTopButton] = useState(false);
+  const hasHeadings = headings.length > 0;
   const headingIds = useMemo(() => headings.map((item) => item.id), [headings]);
 
   useEffect(() => {
@@ -65,7 +67,7 @@ export default function ReadingEnhancements({ headings }: ReadingEnhancementsPro
         />
       </div>
 
-      {headings.length > 0 && (
+      {hasHeadings && (
         <div className="xl:hidden max-w-[72ch] mx-auto px-6 pt-2">
           <details className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white/85 dark:bg-gray-900/80 backdrop-blur px-4 py-3">
             <summary className="cursor-pointer text-sm font-semibold text-gray-800 dark:text-gray-200">
@@ -93,7 +95,7 @@ export default function ReadingEnhancements({ headings }: ReadingEnhancementsPro
         </div>
       )}
 
-      {headings.length > 0 && (
+      {hasHeadings ? (
         <aside className="hidden xl:block fixed right-6 top-28 z-40 w-56 rounded-2xl border border-gray-200/80 bg-white/90 p-4 shadow-lg backdrop-blur-sm dark:border-gray-700/80 dark:bg-gray-800/90">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
             On this page
@@ -116,6 +118,23 @@ export default function ReadingEnhancements({ headings }: ReadingEnhancementsPro
               ))}
             </ul>
           </nav>
+        </aside>
+      ) : (
+        <aside
+          aria-label="无目录提示"
+          className="hidden xl:block fixed right-6 top-28 z-40 w-80 rounded-2xl border border-gray-200/80 bg-white/90 p-3 shadow-lg backdrop-blur-sm dark:border-gray-700/80 dark:bg-gray-800/90"
+        >
+          <Image
+            src="/image/ui/no-toc-illustration.png"
+            alt="这篇文章看来是忘记写目录了"
+            width={640}
+            height={360}
+            className="rounded-lg border border-gray-100 bg-white dark:border-gray-700"
+            priority={false}
+          />
+          <p className="mt-3 text-center text-xs leading-5 text-gray-500 dark:text-gray-400">
+            这篇文章看来是忘记写目录了...
+          </p>
         </aside>
       )}
 
