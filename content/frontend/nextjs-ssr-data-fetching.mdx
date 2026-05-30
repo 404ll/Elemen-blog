@@ -1,0 +1,560 @@
+---
+title: "Next.js SSR、getServerSideProps 和 getStaticProps"
+date: "2026-05-28"
+excerpt: "从一次面试问题整理 Next.js SSR、SSG、Pages Router 数据获取 API，以及 App Router 里的对应写法"
+category: "frontend"
+tags: ["nextjs", "ssr"]
+draft: false
+---
+
+最近面试被问到 Next.js 的 SSR 过程，还问了两个 API：
+
+- `getServerSideProps`
+- `getStaticProps`
+
+这两个我之前没有特别接触过，因为我现在做的项目主要是 App Router，没有写过 `pages` 目录下的这套 API。
+
+当时我回答：
+
+> 构建的时候生成 HTML。
+
+面试官说不太准确，又追问：
+
+> 万一有动态数据呢？
+
+这个问题暴露了我之前对 Next.js 渲染模式理解得不够细。因为“构建时生成 HTML”其实更像是在说 **SSG**，而不是 **SSR**。
+
+---
+
+## 先把结论放前面
+
+Next.js 里生成 HTML 的时间点不只有一个。
+
+可以先按这个维度记：
+
+| 渲染方式 | HTML 什么时候生成 | 数据什么时候获取 | 适合场景 |
+| --- | --- | --- | --- |
+| CSR | 浏览器运行 JS 后生成页面 | 浏览器端请求 | 后台系统、强交互页面 |
+| SSR | 每次请求到服务器时生成 HTML | 请求到来时获取 | 登录态、个性化、实时数据 |
+| SSG | 构建时生成 HTML | 构建时获取 | 博客、文档、营销页 |
+| ISR | 构建时先生成，过期后后台再生成 | 构建时 + 重新验证时 | 内容会更新但不用每次实时 |
+
+所以“构建时生成 HTML”只覆盖了 SSG / ISR 的一部分情况。
+
+如果页面依赖动态数据，比如：
+
+- 当前登录用户
+- 请求头里的信息
+- cookie
+- 地理位置
+- 订单状态
+- 实时任务进度
+
+那就不能简单说构建时生成 HTML。
+
+这些数据只有请求来了才知道，更适合 SSR，或者在 App Router 里使用动态渲染。
+
+---
+
+## SSR 到底是什么过程？
+
+SSR 是 Server-Side Rendering，服务端渲染。
+
+它的核心是：
+
+**每次请求页面时，服务器先拿数据，再把 React 组件渲染成 HTML，最后把 HTML 返回给浏览器。**
+
+大致流程：
+
+```txt
+浏览器请求页面
+  ↓
+Next.js 服务器接收请求
+  ↓
+根据路由找到页面组件
+  ↓
+在服务端获取本次请求需要的数据
+  ↓
+把 React 组件渲染成 HTML
+  ↓
+返回 HTML 给浏览器
+  ↓
+浏览器先展示 HTML
+  ↓
+下载 JS
+  ↓
+Hydration，绑定事件，页面变得可交互
+```
+
+所以 SSR 的重点不是“构建时”，而是：
+
+**请求时。**
+
+如果数据每个用户不一样，或者每次请求都可能变，那 SSR 会在请求到来的时候重新计算这次页面的 HTML。
+
+---
+
+## 那构建时生成 HTML 是什么？
+
+构建时生成 HTML 更准确地说是 SSG。
+
+SSG 是 Static Site Generation，静态站点生成。
+
+它的核心是：
+
+**在 `next build` 的时候，提前把页面生成成 HTML 文件。**
+
+比如博客详情页：
+
+```txt
+/blog/a
+/blog/b
+/blog/c
+```
+
+这些文章内容在构建时就已经知道了，Next.js 可以提前生成 HTML。
+
+用户访问时，不需要服务器每次重新渲染，直接返回提前生成好的静态 HTML。
+
+所以 SSG 的优点是：
+
+- 首屏快
+- CDN 缓存友好
+- 服务端压力小
+- SEO 也好
+
+缺点是：
+
+- 数据不是每次请求都最新
+- 不适合强登录态、强个性化页面
+- 构建时不知道的数据不能直接静态生成
+
+---
+
+## getServerSideProps 是什么？
+
+`getServerSideProps` 是 **Pages Router** 里的 API。
+
+也就是老的目录结构：
+
+```txt
+pages/
+  index.tsx
+  user.tsx
+```
+
+它的作用是：
+
+**每次请求页面时，在服务端运行，用来获取数据，然后把数据作为 props 传给页面组件。**
+
+例子：
+
+```tsx
+import type { GetServerSideProps } from 'next'
+
+type Props = {
+  user: {
+    name: string
+  }
+}
+
+export const getServerSideProps: GetServerSideProps<Props> = async (context) => {
+  const cookie = context.req.headers.cookie
+
+  const user = await getUserByCookie(cookie)
+
+  return {
+    props: {
+      user,
+    },
+  }
+}
+
+export default function Page({ user }: Props) {
+  return <div>{user.name}</div>
+}
+```
+
+这里的重点：
+
+- 它只在服务端运行
+- 每次请求都会执行
+- 可以拿到 `req`、`res`、`query`、`params`
+- 适合请求时才能确定的数据
+- 返回的 `props` 会传给页面组件
+
+所以如果面试官问：
+
+> 动态数据怎么办？
+
+在 Pages Router 里，常见答案就是：
+
+**用 `getServerSideProps`，请求来的时候再获取数据并渲染 HTML。**
+
+---
+
+## getStaticProps 是什么？
+
+`getStaticProps` 也是 **Pages Router** 里的 API。
+
+它的作用是：
+
+**构建时在服务端运行，获取数据，然后生成静态 HTML。**
+
+例子：
+
+```tsx
+import type { GetStaticProps } from 'next'
+
+type Props = {
+  posts: {
+    id: number
+    title: string
+  }[]
+}
+
+export const getStaticProps: GetStaticProps<Props> = async () => {
+  const posts = await getPosts()
+
+  return {
+    props: {
+      posts,
+    },
+  }
+}
+
+export default function BlogPage({ posts }: Props) {
+  return (
+    <ul>
+      {posts.map((post) => (
+        <li key={post.id}>{post.title}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+这里的重点：
+
+- 它只在服务端运行
+- 默认在 `next build` 时执行
+- 不会在每次请求时执行
+- 适合数据提前能拿到的页面
+- 适合可以公开缓存的数据
+
+如果页面是动态路由，还会经常配合 `getStaticPaths`。
+
+比如：
+
+```txt
+pages/blog/[id].tsx
+```
+
+需要告诉 Next.js 哪些 `id` 要提前生成。
+
+---
+
+## 如果静态页面也会更新怎么办？
+
+如果博客文章、商品详情、CMS 内容会更新，但又不想每次请求都 SSR，可以用 ISR。
+
+在 Pages Router 里，`getStaticProps` 可以返回 `revalidate`：
+
+```tsx
+export const getStaticProps: GetStaticProps = async () => {
+  const posts = await getPosts()
+
+  return {
+    props: {
+      posts,
+    },
+    revalidate: 60,
+  }
+}
+```
+
+意思是：
+
+**这个静态页面最多缓存 60 秒。**
+
+过期后，Next.js 可以在后台重新生成页面。
+
+所以它不是纯粹的“一构建就永远不变”，而是：
+
+```txt
+先静态生成
+  ↓
+请求来了先用缓存
+  ↓
+过期后后台重新生成
+  ↓
+后面的用户拿到新页面
+```
+
+这个就是 ISR，Incremental Static Regeneration。
+
+---
+
+## getServerSideProps 和 getStaticProps 的区别
+
+可以按“执行时机”来区分。
+
+| API | 执行时机 | 能不能拿请求信息 | 是否适合动态数据 | 典型场景 |
+| --- | --- | --- | --- | --- |
+| `getServerSideProps` | 每次请求时 | 能 | 适合 | 用户中心、订单页、权限页面 |
+| `getStaticProps` | 构建时，或 ISR 重新验证时 | 不能直接拿本次请求 | 不适合强动态 | 博客、文档、商品详情 |
+
+一句话记：
+
+**`getServerSideProps` 是请求时拿数据，`getStaticProps` 是提前拿数据。**
+
+---
+
+## 为什么说我项目里没用这两个 API？
+
+我看了一下自己的项目，它是 Next 15，使用的是 App Router：
+
+```txt
+app/
+  page.tsx
+  [handle]/
+    page.tsx
+    TwitterAnalysisClient.tsx
+  actions/
+    get-data.ts
+    generate-task.ts
+  api/
+    task/data/route.ts
+```
+
+在 App Router 里，默认页面组件就是 Server Component，不再通过 `getServerSideProps` 给页面注入 props。
+
+比如项目里的 `app/[handle]/page.tsx`：
+
+```tsx
+export const dynamic = 'force-dynamic'
+
+export default async function CelebrityTasteMatchPage({ params }: PageProps) {
+  const { handle } = await params
+
+  const taskData = await getDataAction(handle)
+
+  if (!taskData.success) {
+    return redirect(`/?u=${encodeURIComponent(handle)}`)
+  }
+
+  return (
+    <div className="min-h-screen">
+      <TwitterAnalysisClient handle={handle} />
+    </div>
+  )
+}
+```
+
+这个页面做了几件事：
+
+- `page.tsx` 是服务端组件
+- `dynamic = 'force-dynamic'` 表示强制动态渲染
+- 请求 `/xxx` 时，服务端先根据 `handle` 查任务
+- 如果任务不存在，直接在服务端 `redirect`
+- 如果任务存在，返回页面 HTML
+- 真正的任务状态展示交给 `TwitterAnalysisClient`
+
+所以这个页面更接近 App Router 里的动态服务端渲染，而不是 `getStaticProps` 那种构建时生成。
+
+---
+
+## App Router 里对应怎么理解？
+
+Pages Router 里的模型是：
+
+```txt
+getServerSideProps / getStaticProps
+  ↓
+Page Component
+  ↓
+props
+```
+
+App Router 里的模型更像是：
+
+```txt
+Server Component 直接 await 数据
+  ↓
+返回 UI
+  ↓
+需要交互的部分交给 Client Component
+```
+
+例如：
+
+```tsx
+export default async function Page({ params }) {
+  const data = await getData(params.id)
+
+  return <ClientPart data={data} />
+}
+```
+
+如果要控制缓存和动态行为，可以用：
+
+```tsx
+export const dynamic = 'force-dynamic'
+```
+
+或者在请求数据时控制缓存：
+
+```tsx
+await fetch(url, { cache: 'no-store' })
+```
+
+也可以做类似 ISR 的重新验证：
+
+```tsx
+await fetch(url, {
+  next: {
+    revalidate: 60,
+  },
+})
+```
+
+所以 App Router 不是没有 SSR / SSG，而是写法变了。
+
+它不再主要靠 `getServerSideProps` 和 `getStaticProps`，而是通过：
+
+- Server Component
+- `fetch` 缓存策略
+- Route Segment Config
+- Server Actions
+- Route Handlers
+
+来表达页面到底是静态、动态，还是可重新验证。
+
+---
+
+## 我的项目为什么一定有动态数据？
+
+这个项目里有一个任务状态查询：
+
+```ts
+export async function getDataAction(handle: string) {
+  const task = await findTaskByHandle(handle.toLowerCase())
+
+  if (!task) {
+    return {
+      success: false,
+      error: 'No task found for this handle',
+    }
+  }
+
+  const queueStatus = await getQueueStatus(task.taskId)
+
+  return {
+    success: true,
+    status: task.status,
+    partialResult: task.partialResult,
+    progress: task.progress,
+    queueInfo,
+  }
+}
+```
+
+这些数据明显不是构建时能确定的。
+
+因为：
+
+- 用户输入的 Twitter handle 不确定
+- 任务可能刚创建
+- 队列位置会变
+- 分析进度会变
+- 任务可能成功、失败、超时
+
+所以如果面试官问这个项目：
+
+> 这种动态数据怎么渲染？
+
+我应该回答：
+
+这个项目不是用 `getStaticProps` 在构建时生成页面，而是 App Router 下的动态渲染。服务端页面先根据动态路由参数查任务，不存在就重定向，存在就返回页面。后续任务进度这种不断变化的数据，则通过 Client Component 调 Server Action 或 Route Handler 继续获取。
+
+---
+
+## 再补一下 Hydration
+
+SSR 只解决了“浏览器能快速看到 HTML”的问题。
+
+但是 HTML 本身没有事件能力。
+
+比如按钮：
+
+```tsx
+<button onClick={handleClick}>click</button>
+```
+
+服务端返回的 HTML 里只是：
+
+```html
+<button>click</button>
+```
+
+浏览器看到按钮后，还需要下载 JS，让 React 在客户端把事件绑定上。
+
+这个过程叫 Hydration。
+
+所以完整一点说，SSR 过程是：
+
+```txt
+服务端生成 HTML
+  ↓
+浏览器展示 HTML
+  ↓
+浏览器下载 JS
+  ↓
+React Hydration
+  ↓
+页面可交互
+```
+
+这也是为什么 SSR 页面首屏可以快，但不代表 JS 就不需要了。
+
+只要有交互，就还需要客户端 JS。
+
+---
+
+## 面试时可以怎么回答？
+
+如果再被问：
+
+> Next.js SSR 的过程是什么？
+
+可以这样答：
+
+SSR 是请求时渲染。用户请求页面后，Next.js 在服务端匹配路由，获取本次请求需要的数据，然后执行 React 渲染，把组件渲染成 HTML 返回给浏览器。浏览器先展示 HTML，随后下载 JS，React 做 Hydration，把事件绑定上，页面才真正可交互。
+
+如果页面依赖动态数据，比如 cookie、用户信息、请求参数、实时任务状态，就不能简单说构建时生成 HTML。构建时生成更接近 SSG，对应 Pages Router 里的 `getStaticProps`。而 SSR 在 Pages Router 里通常用 `getServerSideProps`，它会在每次请求时运行。
+
+如果是 App Router，就不再写 `getServerSideProps` 或 `getStaticProps`，而是通过 Server Component 直接获取数据，并配合缓存策略或 `dynamic = 'force-dynamic'` 控制静态还是动态。
+
+---
+
+## 总结
+
+这次主要要修正一个点：
+
+**SSR 不是构建时生成 HTML，而是请求时生成 HTML。**
+
+几个结论：
+
+- `getServerSideProps`：Pages Router API，每次请求时运行，适合动态数据
+- `getStaticProps`：Pages Router API，构建时运行，适合静态数据
+- `getStaticProps + revalidate`：可以实现 ISR，让静态页面过期后重新生成
+- App Router 不用这两个 API，而是用 Server Component、缓存策略和 Route Segment Config
+- 我的 `growth` 项目是 App Router，并且 `app/[handle]/page.tsx` 使用了 `dynamic = 'force-dynamic'`
+- 动态任务数据不适合构建时生成，需要请求时或客户端继续获取
+- SSR 返回 HTML 之后，浏览器还需要 Hydration 才能让页面可交互
+
+参考：
+
+- [Next.js getServerSideProps](https://nextjs.org/docs/pages/building-your-application/data-fetching/get-server-side-props)
+- [Next.js getStaticProps](https://nextjs.org/docs/pages/building-your-application/data-fetching/get-static-props)
+- [Next.js Server and Client Components](https://nextjs.org/docs/app/getting-started/server-and-client-components)
