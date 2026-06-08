@@ -1,0 +1,749 @@
+---
+title: "Next.js App Router 缓存与渲染架构深度指南"
+date: "2026-06-08"
+excerpt: "系统梳理 Next.js App Router 的请求链路、四层缓存、静态/动态渲染、ISR、Server Action 安全与 Hydration 边界。"
+category: "frontend"
+tags: ["nextjs", "app-router", "cache", "rsc", "ssr"]
+draft: false
+---
+
+> 版本说明：这篇文章按 Next.js App Router 的现代模型整理，并以 Next.js 16 的文档口径修正默认缓存表述。老文章里常见的 “fetch 默认永久缓存” 更接近 Next.js 13/14 的心智模型；Next.js 15 之后，`fetch` 和客户端 Page Segment Router Cache 都更偏向显式缓存。
+
+## 一、请求链路全景图
+
+理解 Next.js App Router 的核心，在于掌握一次请求从进入应用到用户看到页面的完整链路。
+
+```plaintext
+用户请求
+  │
+  ▼
+┌─────────────────────────────────────────────────────┐
+│  Middleware / Proxy                                  │
+│  · 读写 cookies / headers                            │
+│  · 重写 / 重定向 / 拦截                               │
+│  · 不是安全边界，不能替代真正鉴权                      │
+└──────────────────────┬──────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│  Full Route Cache 检查                               │
+│  · 命中：直接返回缓存的 HTML + RSC Payload             │
+│  · 未命中：进入渲染流程                               │
+└──────────────────────┬──────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│  Route 渲染（Server Component Tree）                  │
+│  ┌───────────────────────────────────────────────┐  │
+│  │ Request Memoization                            │  │
+│  │ · 同一渲染周期内相同 fetch 自动去重              │  │
+│  └───────────────────────────────────────────────┘  │
+│  ┌───────────────────────────────────────────────┐  │
+│  │ Data Cache                                     │  │
+│  │ · 跨请求持久化 fetch / cache 结果                │  │
+│  │ · force-cache / no-store / revalidate 控制      │  │
+│  └───────────────────────────────────────────────┘  │
+└──────────────────────┬──────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│  Server → Client 边界                                │
+│  · RSC Payload 序列化                                 │
+│  · "use client" 组件的 props 必须可序列化              │
+└──────────────────────┬──────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│  Hydration                                           │
+│  · 客户端 React 接管 HTML，绑定事件                    │
+│  · 服务端 HTML 必须与客户端首次渲染一致                 │
+└─────────────────────────────────────────────────────┘
+```
+
+## 二、四层缓存机制
+
+App Router 里经常被混在一起讨论的 “缓存”，其实至少分成四层。它们作用域不同，失效方式也不同。
+
+### 2.1 Request Memoization：单次渲染内请求去重
+
+**作用域**：单次服务端渲染周期。
+
+当同一棵 Server Component 树中多个组件调用相同 URL 和 options 的 `fetch`，React 会在本次渲染内自动去重，只发出一次请求。这不是跨请求缓存，请求结束就失效。
+
+```tsx
+// layout.tsx 和 page.tsx 都调用同一个接口
+// 同一轮服务端渲染里只会发出一次请求
+async function getUser(id: string) {
+  const res = await fetch(`https://api.example.com/users/${id}`);
+  return res.json();
+}
+```
+
+面试要点：
+
+- Request Memoization 只在单次渲染内有效。
+- 它主要基于 URL + options 形成 key。
+- 它解决的是同一轮 render 的重复请求，不等于 Data Cache。
+
+### 2.2 Data Cache：跨请求数据缓存
+
+**作用域**：跨请求，生产环境可持久化。
+
+Next.js 扩展了原生 `fetch`，让服务端请求可以声明 Data Cache 语义：
+
+| 配置 | 行为 |
+| --- | --- |
+| `fetch(url)` | 默认 `auto no cache`；开发环境每次请求，静态预渲染时会在 build 阶段请求一次 |
+| `fetch(url, { cache: "force-cache" })` | 写入 Data Cache，复用缓存结果 |
+| `fetch(url, { cache: "no-store" })` | 跳过 Data Cache，每次都从源站获取 |
+| `fetch(url, { next: { revalidate: 60 } })` | 缓存 60 秒，过期后重新验证 |
+| `fetch(url, { next: { tags: ["posts"] } })` | 打标签，支持 `revalidateTag("posts")` 按需失效 |
+
+```tsx
+// 缓存 60 秒
+const posts = await fetch("https://api.example.com/posts", {
+  next: { revalidate: 60 },
+});
+
+// 永不缓存
+const cart = await fetch("https://api.example.com/cart", {
+  cache: "no-store",
+});
+
+// 打标签，支持按需失效
+const products = await fetch("https://api.example.com/products", {
+  next: { tags: ["products"] },
+});
+```
+
+面试要点：
+
+- `force-cache` 和 `no-store` 不能同时出现在同一个 `fetch` 上。
+- `{ next: { revalidate: 3600 }, cache: "no-store" }` 这类冲突配置会被忽略，并在开发模式报警告。
+- 如果一条路由里有多个可重新验证的请求，通常最短的 `revalidate` 会决定静态路由的重新验证频率。
+
+### 2.3 Full Route Cache：整页产物缓存
+
+**作用域**：构建时或首次请求时生成，跨请求复用。
+
+对于静态路由，Next.js 会缓存渲染产物：HTML 和 RSC Payload。后续请求可以直接命中 Full Route Cache，不需要重新渲染整棵 Server Component Tree。
+
+常见退出 Full Route Cache 的方式：
+
+- 路由中使用动态 API：`cookies()`、`headers()`、`searchParams`、`connection()`。
+- 路由中有请求设置了 `cache: "no-store"`。
+- 路由导出 `export const dynamic = "force-dynamic"`。
+- 路由导出 `export const revalidate = 0`。
+
+面试要点：
+
+- Full Route Cache 存储的是 HTML + RSC Payload。
+- ISR 本质上是 Full Route Cache 加上时间或按需重新验证策略。
+- Data Cache 和 Full Route Cache 可以同时存在，也可以分别失效。
+
+### 2.4 Router Cache：客户端路由缓存
+
+**作用域**：浏览器内存，用户会话期间。
+
+用户通过 `<Link>` 或 `router.push()` 在客户端导航时，Next.js 会缓存 RSC Payload 的路由片段，以便复用 layout、loading state，并让前进后退更快。
+
+Next.js 15 之后需要特别注意：
+
+- Layout 和 loading state 仍会被复用。
+- Page segment 默认不再长期复用，只在浏览器前进/后退等场景中复用。
+- 静态路由的默认预取缓存时间通常是 5 分钟。
+- 动态路由默认预取不会缓存完整 page payload，除非使用 full prefetch 或配置 `staleTimes`。
+
+手动失效方式：
+
+- `router.refresh()`
+- Server Action 中调用 `revalidatePath()` / `revalidateTag()`
+- Server Action 中调用 `cookies.set()` / `cookies.delete()`
+
+## 三、静态渲染 vs 动态渲染
+
+### 3.1 默认行为
+
+App Router 的默认策略是尽可能让可静态化的部分静态化。路由没有使用动态 API，也没有显式退出缓存时，Next.js 可以在构建时预渲染 HTML 和 RSC Payload。
+
+### 3.2 触发动态渲染的条件
+
+以下任一条件出现，路由通常会切换为动态渲染：
+
+1. 调用动态 API：`cookies()`、`headers()`、`connection()`、`draftMode()`、Page 组件中访问 `searchParams`。
+2. `fetch` 显式设置 `cache: "no-store"` 或 `revalidate: 0`。
+3. 路由段配置：`export const dynamic = "force-dynamic"` 或 `export const revalidate = 0`。
+
+```tsx
+import { cookies } from "next/headers";
+
+export default async function Page() {
+  const cookieStore = await cookies();
+  const theme = cookieStore.get("theme");
+
+  return <div>Theme: {theme?.value}</div>;
+}
+```
+
+面试要点：动态 API 的影响是路由级别的。一个组件调用了 `cookies()`，整条路由都会按动态渲染处理。这正是 Partial Prerendering 要解决的问题：用 `<Suspense>` 边界把动态部分隔离，让静态外壳仍然可以预渲染和缓存。
+
+### 3.3 强制静态
+
+```tsx
+// 即使子组件尝试使用动态行为，也强制静态
+// 动态 API 在这种模式下可能会抛错或返回空值
+export const dynamic = "force-static";
+```
+
+## 四、ISR：增量静态再生
+
+ISR 让静态页面可以在不重新构建整个应用的情况下更新。
+
+### 4.1 基于时间的重新验证
+
+```tsx
+// app/blog/page.tsx
+export const revalidate = 3600;
+
+async function getPosts() {
+  const res = await fetch("https://api.example.com/posts", {
+    next: { revalidate: 3600 },
+  });
+
+  return res.json();
+}
+
+export default async function BlogPage() {
+  const posts = await getPosts();
+
+  return <PostList posts={posts} />;
+}
+```
+
+stale-while-revalidate 流程：
+
+1. 缓存有效期内：直接返回缓存。
+2. 过期后的第一个请求：返回旧缓存，同时后台触发重新生成。
+3. 重新生成完成：后续请求拿到新内容。
+4. 重新生成失败：继续使用旧缓存。
+
+### 4.2 按需重新验证
+
+```tsx
+// app/actions.ts
+"use server";
+
+import { revalidatePath, revalidateTag } from "next/cache";
+
+export async function publishPost() {
+  // 数据库操作...
+
+  revalidatePath("/blog");
+  revalidateTag("posts");
+}
+```
+
+```tsx
+// app/api/revalidate/route.ts
+import { revalidateTag } from "next/cache";
+import { NextRequest } from "next/server";
+
+export async function POST(request: NextRequest) {
+  const { tag, secret } = await request.json();
+
+  if (secret !== process.env.REVALIDATION_SECRET) {
+    return Response.json({ message: "Invalid secret" }, { status: 401 });
+  }
+
+  revalidateTag(tag);
+
+  return Response.json({ revalidated: true, now: Date.now() });
+}
+```
+
+面试要点：
+
+- `revalidatePath("/blog")` 失效指定路径。
+- `revalidatePath("/blog", "layout")` 可以影响该 layout 下的嵌套路由。
+- `revalidateTag("posts")` 更精细，只失效打了对应标签的数据缓存。
+- 两者都可以在 Server Action 或 Route Handler 中调用。
+
+## 五、Route Handler / Server Action / Middleware
+
+### 5.1 三者对比
+
+| 维度 | Route Handler | Server Action | Middleware / Proxy |
+| --- | --- | --- | --- |
+| 定义位置 | `app/**/route.ts` | 函数标记 `"use server"` | `middleware.ts` / `proxy.ts` |
+| 触发方式 | HTTP 请求 | 表单提交或客户端调用 | 匹配请求自动执行 |
+| 运行时 | Node.js 或 Edge | Node.js | Edge Runtime；15.5+ 可选 Node.js |
+| 典型用途 | Webhook、公开 API、文件下载 | 表单处理、数据变更、重新验证 | 重定向、i18n、A/B 测试、轻量前置检查 |
+| 缓存 | GET 可静态化，写方法不缓存 | 不缓存 | 不适用 |
+
+### 5.2 Server Action 安全要点
+
+Server Action 本质上是公开的 HTTP POST 能力。不能因为函数写在服务端文件里，就默认它安全。
+
+```tsx
+"use server";
+
+import { z } from "zod";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { revalidateTag } from "next/cache";
+
+const CreatePostSchema = z.object({
+  title: z.string().min(1).max(200),
+  content: z.string().min(1),
+});
+
+export async function createPost(formData: FormData) {
+  const cookieStore = await cookies();
+  const session = cookieStore.get("session");
+
+  if (!session) {
+    redirect("/login");
+  }
+
+  const parsed = CreatePostSchema.safeParse({
+    title: formData.get("title"),
+    content: formData.get("content"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.flatten() };
+  }
+
+  const user = await getUserFromSession(session.value);
+
+  if (!user || user.role !== "author") {
+    return { error: "Unauthorized" };
+  }
+
+  await db.posts.create({ data: parsed.data });
+  revalidateTag("posts");
+}
+```
+
+Server Action 安全必做项：
+
+- 鉴权：从 session 重新读取当前用户。
+- 输入验证：TypeScript 类型在运行时会被擦除，使用 Zod 等运行时 schema。
+- 授权：验证用户是否有权操作目标资源。
+- 错误处理：不要把内部错误、SQL、堆栈直接返回给客户端。
+- 不信任闭包里的用户 ID：关键身份信息必须从服务端可信上下文重新获取。
+
+### 5.3 Middleware 运行时限制与 CVE-2025-29927
+
+Middleware 默认运行在 Edge Runtime，有这些典型限制：
+
+- 不能直接使用多数 Node.js API。
+- 不适合放数据库客户端或重型依赖。
+- 不适合执行长时间运算。
+
+Next.js 15.5 之后 Middleware 支持稳定的 Node.js runtime，但安全心智不能变：Middleware 仍不应该是唯一鉴权层。
+
+2025 年披露的 CVE-2025-29927 说明了这个问题：攻击者可能通过特定请求头绕过 Middleware 检查。核心教训是：
+
+> Middleware 是路由和响应塑形层，不是最后一道安全边界。真正的鉴权必须在 Route Handler、Server Action 和数据访问层里重复验证。
+
+```tsx
+// middleware.ts：只作为 UX 优化层
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+export function middleware(request: NextRequest) {
+  const session = request.cookies.get("session");
+
+  if (!session && request.nextUrl.pathname.startsWith("/dashboard")) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ["/dashboard/:path*", "/api/admin/:path*"],
+};
+```
+
+## 六、渲染模式深度对比
+
+### 6.1 CSR / SSR / SSG / ISR 一览
+
+| 模式 | 渲染时机 | HTML 内容 | 数据新鲜度 | SEO | TTFB |
+| --- | --- | --- | --- | --- | --- |
+| CSR | 浏览器运行时 | 空壳 + JS bundle | 实时 | 差 | HTML 快，但 FCP 慢 |
+| SSR | 每次请求时服务端渲染 | 完整 HTML | 实时 | 好 | 较慢 |
+| SSG | 构建时 | 完整 HTML | 构建时快照 | 好 | 最快 |
+| ISR | 构建时 + 后台增量更新 | 完整 HTML | 可控准实时 | 好 | 快 |
+
+### 6.2 App Router 中的对应关系
+
+- SSG：静态渲染，无动态 API，数据可以静态化。
+- ISR：静态渲染 + `revalidate`。
+- SSR：动态渲染，使用动态 API 或 `no-store`。
+- CSR：Client Component 中用 `useEffect` / `useState` 获取数据。
+
+### 6.3 Hydration 机制
+
+Hydration 是 React 将服务端渲染的静态 HTML 激活为可交互应用的过程：
+
+1. 服务端渲染 HTML，浏览器立即展示。
+2. 浏览器下载 JS bundle。
+3. React 在客户端重新执行 Client Component 的渲染逻辑。
+4. React 将事件监听器绑定到已有 DOM 节点。
+5. 应用变为可交互。
+
+关键约束：服务端 HTML 与客户端首次渲染输出必须一致。任何不匹配都可能导致 Hydration Error。
+
+## 七、Server Component / Client Component 边界
+
+### 7.1 `"use client"` 边界传播规则
+
+```plaintext
+Server Component（默认）
+  │
+  ├── Server Component ✅
+  │
+  ├── "use client" Component ← 模块边界
+  │     │
+  │     ├── import 进来的子组件也进入客户端 bundle
+  │     │
+  │     └── 但可以通过 children / slots 接收 Server Component
+  │
+  └── Server Component ✅
+```
+
+核心规则：
+
+1. `"use client"` 声明的是模块边界，不是单个组件标记。
+2. 该文件中导出的组件及其 import 的子模块会进入客户端 bundle。
+3. 通过 `children` 或其他 prop 传入的 React Element 可以保持原有身份。
+
+```tsx
+// ClientWrapper.tsx
+"use client";
+
+import { useState } from "react";
+
+export function ClientWrapper({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div>
+      <button onClick={() => setOpen((current) => !current)}>Toggle</button>
+      {open && children}
+    </div>
+  );
+}
+```
+
+```tsx
+// page.tsx：Server Component
+import { ClientWrapper } from "./ClientWrapper";
+import { ServerContent } from "./ServerContent";
+
+export default function Page() {
+  return (
+    <ClientWrapper>
+      <ServerContent />
+    </ClientWrapper>
+  );
+}
+```
+
+### 7.2 Props 序列化约束
+
+从 Server Component 传递给 Client Component 的 props 必须可序列化。
+
+| 可以传递 | 不建议 / 不可传递 |
+| --- | --- |
+| string, number, boolean, null | 普通函数，除 Server Action 外 |
+| 普通对象、数组 | Class 实例 |
+| Date 的序列化结果 | Map, Set, WeakMap |
+| Server Action | Symbol |
+| JSX / React Element | DOM 节点 |
+
+```tsx
+// 错误：传递了不可序列化的 prop
+<ClientComponent
+  onClick={() => console.log("hi")}
+  user={new User("Alice")}
+/>;
+```
+
+```tsx
+// 正确：传递 Server Action 或普通数据
+<ClientComponent
+  deleteAction={deletePost}
+  user={{ id: "1", name: "Alice" }}
+/>;
+```
+
+面试要点：不要把带原型方法的对象当成普通数据跨 RSC 边界传。比如客户端组件如果需要 `Date` 方法，最好显式传字符串，并在客户端按需重新构造。
+
+## 八、Hydration Mismatch 常见原因与解决方案
+
+### 8.1 典型原因
+
+| 原因 | 示例 | 解决方案 |
+| --- | --- | --- |
+| 浏览器 API 在服务端不存在 | `window.innerWidth`、`localStorage` | 用 `useEffect` 延迟到客户端 |
+| 时间 / 随机数 | `new Date()`、`Math.random()` | 从服务端传固定值，或客户端 mounted 后再显示 |
+| 浏览器自动修正 HTML | `<p>` 内嵌套 `<div>` | 修正 HTML 结构 |
+| 第三方扩展注入 DOM | 浏览器插件修改 HTML | 谨慎使用 `suppressHydrationWarning` |
+| 条件渲染依赖客户端状态 | 主题切换 | `useEffect` + mounted 状态 |
+
+### 8.2 标准解决模式
+
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+
+export function ClientOnlyComponent() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <div className="skeleton" />;
+  }
+
+  return <div>Window width: {window.innerWidth}</div>;
+}
+```
+
+```tsx
+<time dateTime={post.createdAt} suppressHydrationWarning>
+  {formatDate(post.createdAt)}
+</time>
+```
+
+## 九、Demo 1：ISR 静态页面 + 按需重新验证
+
+```tsx
+// app/blog/page.tsx
+export const revalidate = 60;
+
+async function getPosts() {
+  const res = await fetch("https://api.example.com/posts", {
+    next: { tags: ["posts"], revalidate: 60 },
+  });
+
+  return res.json();
+}
+
+export default async function BlogPage() {
+  const posts = await getPosts();
+
+  return (
+    <main>
+      <h1>Blog</h1>
+      <ul>
+        {posts.map((post: { id: string; slug: string; title: string; publishedAt: string }) => (
+          <li key={post.id}>
+            <a href={`/blog/${post.slug}`}>{post.title}</a>
+            <span>{post.publishedAt}</span>
+          </li>
+        ))}
+      </ul>
+    </main>
+  );
+}
+```
+
+```tsx
+// app/blog/actions.ts
+"use server";
+
+import { revalidateTag } from "next/cache";
+
+export async function refreshBlog() {
+  revalidateTag("posts");
+}
+```
+
+```tsx
+// app/api/webhook/route.ts
+import { revalidateTag } from "next/cache";
+import { NextRequest } from "next/server";
+
+export async function POST(request: NextRequest) {
+  const authHeader = request.headers.get("authorization");
+
+  if (authHeader !== `Bearer ${process.env.WEBHOOK_SECRET}`) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const body = await request.json();
+
+  if (body.event === "post.published" || body.event === "post.updated") {
+    revalidateTag("posts");
+    revalidateTag(`post-${body.data.slug}`);
+  }
+
+  return Response.json({
+    revalidated: true,
+    tags: ["posts", `post-${body.data.slug}`],
+    now: Date.now(),
+  });
+}
+```
+
+验证方式：
+
+- `next build` 后观察终端输出，确认该路由是静态或 ISR。
+- 部署后检查响应头 `x-nextjs-cache`，`HIT` 表示命中缓存，`STALE` 表示正在后台重新生成。
+
+## 十、Demo 2：`cookies()` 触发动态渲染
+
+```tsx
+// app/dashboard/page.tsx
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+
+async function getUserData(sessionToken: string) {
+  const res = await fetch("https://api.example.com/me", {
+    headers: { Authorization: `Bearer ${sessionToken}` },
+    cache: "no-store",
+  });
+
+  if (!res.ok) return null;
+
+  return res.json();
+}
+
+export default async function DashboardPage() {
+  const cookieStore = await cookies();
+  const session = cookieStore.get("session_token");
+
+  if (!session) {
+    redirect("/login");
+  }
+
+  const user = await getUserData(session.value);
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  return (
+    <main>
+      <h1>Welcome, {user.name}</h1>
+      <section>
+        <h2>Your Stats</h2>
+        <p>Posts: {user.postCount}</p>
+        <p>Last login: {user.lastLogin}</p>
+        <p>Server time: {new Date().toISOString()}</p>
+      </section>
+    </main>
+  );
+}
+```
+
+验证方式：`next build` 后该路由应被标记为动态。每次刷新页面，`Server time` 都会更新，证明不是从 Full Route Cache 返回。
+
+## 十一、面试高频问答速查
+
+### Q1：`fetch` 默认缓存行为是什么？什么时候不缓存？
+
+Next.js 16 文档里，服务端 `fetch` 的默认值是 `auto no cache`：开发环境每次请求源站，静态预渲染时会在 `next build` 阶段请求一次。需要持久化缓存时，应显式使用 `cache: "force-cache"`、`next.revalidate`、`next.tags`，或更现代的 `use cache` 系列能力。
+
+明确不缓存的情况包括：
+
+- 显式设置 `cache: "no-store"`。
+- 设置 `next: { revalidate: 0 }`。
+- 路由设置 `dynamic = "force-dynamic"`。
+- 页面读取用户态动态数据，比如 `cookies()` / `headers()`，并且数据请求依赖这些值。
+
+### Q2：`revalidatePath` 和 `revalidateTag` 的区别？
+
+`revalidatePath("/blog")` 面向路径，失效指定路由相关缓存。`revalidateTag("posts")` 面向数据，失效所有打了 `posts` 标签的 Data Cache 条目。
+
+实际项目中通常组合使用：CMS Webhook 触发 `revalidateTag`，用户手动刷新或后台管理操作使用 `revalidatePath`。
+
+### Q3：为什么 Middleware 不能作为唯一鉴权层？
+
+三个原因：
+
+1. CVE-2025-29927 证明 Middleware 可能被绕过。
+2. Server Action 是独立的服务端调用入口，不能假设组件级保护已经生效。
+3. Middleware 的职责更适合路由塑形、重定向、轻量检查，而不是最终授权。
+
+正确做法是纵深防御：Middleware 做 UX 优化，Route Handler / Server Action / 数据访问层分别独立验证。
+
+### Q4：`"use client"` 组件还会在服务端渲染吗？
+
+会。`"use client"` 不等于 “只在客户端运行”。它表示该模块进入客户端 bundle，并且可以在服务端预渲染初始 HTML。Hydration mismatch 的根源之一，就是 Client Component 的服务端输出和客户端首次输出不一致。
+
+### Q5：如何在动态路由中保留部分静态？
+
+使用 Partial Prerendering：将动态部分包裹在 `<Suspense>` 中，让静态外壳在构建时预渲染，动态内容在请求时流式传入。
+
+```tsx
+import { Suspense } from "react";
+import { StaticHeader } from "./StaticHeader";
+import { DynamicUserBanner } from "./DynamicUserBanner";
+import { BannerSkeleton } from "./BannerSkeleton";
+
+export default function Page() {
+  return (
+    <div>
+      <StaticHeader />
+      <Suspense fallback={<BannerSkeleton />}>
+        <DynamicUserBanner />
+      </Suspense>
+    </div>
+  );
+}
+```
+
+## 十二、缓存决策流程图
+
+```plaintext
+页面是否需要用户个性化数据？
+  │
+  ├── 是 → 动态渲染
+  │         cookies() / headers() + cache: "no-store"
+  │         同时考虑 PPR 隔离个性化区域
+  │
+  └── 否 → 数据多久变一次？
+              │
+              ├── 几乎不变 → 纯静态 SSG
+              │
+              ├── 定期变化 → ISR
+              │     ├── 可预测频率 → revalidate: N
+              │     └── 事件驱动 → revalidateTag + CMS Webhook
+              │
+              └── 实时变化 → 动态渲染
+                    或 CSR / WebSocket / 轮询
+```
+
+## 十三、易混淆概念辨析
+
+### `export const dynamic` vs `fetch` cache 选项
+
+`export const dynamic` 是路由级配置，影响整条路由的渲染策略。`fetch` 的 `cache` 选项是请求级配置，只影响单个数据请求。
+
+两者独立但有交互：`dynamic = "force-dynamic"` 会让路由按动态渲染处理；单个 `fetch` 是否写入 Data Cache，仍应该通过该请求自己的配置显式表达。
+
+### `unstable_noStore()` vs `cache: "no-store"`
+
+`unstable_noStore()` 是组件或函数级的退出缓存声明，更适合不用 `fetch`、而是直接查数据库或调用 SDK 的场景。`cache: "no-store"` 是单个 `fetch` 请求级别的配置。
+
+在新版本中，也可以关注 `connection()` 和 `use cache` 系列 API；它们更能表达 “这里等待真实请求” 与 “这里显式缓存” 的意图。
+
+### Route Handler 的 GET 缓存
+
+Route Handler 的 `GET` 是否缓存，取决于它是否可静态化，以及是否使用了动态 API 或显式动态配置。`POST` / `PUT` / `DELETE` 这类写方法不应该被当作页面缓存入口。
+
+## 参考资料
+
+- [Next.js Caching Deep Dive](https://nextjs.org/docs/app/deep-dive/caching)
+- [Next.js fetch API Reference](https://nextjs.org/docs/app/api-reference/functions/fetch)
+- [Next.js 15.5: Node.js Middleware](https://nextjs.org/blog/next-15-5)
+- [Next.js Middleware Docs](https://nextjs.org/docs/15/pages/api-reference/file-conventions/middleware)
