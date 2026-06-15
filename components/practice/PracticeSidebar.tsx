@@ -1,5 +1,5 @@
 /**
- * 练习区侧栏：按 CATEGORY_ORDER 分组展示题目链接
+ * 练习区侧栏：按 manifest groups 分组展示题目链接
  * 桌面端固定左侧栏；移动端抽屉 + 遮罩，选中项高亮并去掉标题前缀「手写 」
  */
 "use client";
@@ -8,47 +8,33 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { MenuIcon, XIcon } from "lucide-react";
-import {
-  CATEGORY_LABELS,
-  CATEGORY_ORDER,
-} from "@/lib/practice/categories";
-import type { PracticeCategory, PracticeProblemMeta } from "@/lib/practice/types";
+import type { PracticeGroupWithProblems } from "@/lib/practice/types";
 
 type PracticeSidebarProps = {
-  problems: PracticeProblemMeta[];
+  groups: PracticeGroupWithProblems[];
+  problemCount: number;
 };
 
-/** 将扁平题目列表按分类分组，空分类不渲染 */
-function groupByCategory(problems: PracticeProblemMeta[]) {
-  const map = new Map<PracticeCategory, PracticeProblemMeta[]>();
-  for (const cat of CATEGORY_ORDER) {
-    map.set(cat, []);
-  }
-  for (const p of problems) {
-    const list = map.get(p.category) ?? [];
-    list.push(p);
-    map.set(p.category, list);
-  }
-  return CATEGORY_ORDER.map((cat) => ({
-    category: cat,
-    label: CATEGORY_LABELS[cat],
-    items: map.get(cat) ?? [],
-  })).filter((g) => g.items.length > 0);
-}
-
-export default function PracticeSidebar({ problems }: PracticeSidebarProps) {
+export default function PracticeSidebar({
+  groups,
+  problemCount,
+}: PracticeSidebarProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const groups = groupByCategory(problems);
 
   // 桌面侧栏与移动抽屉共用同一份目录 DOM
   const nav = (
     <nav className="space-y-4 mt-4" aria-label="练习题目目录">
       {groups.map((group) => (
-        <div key={group.category}>
+        <div key={group.id}>
           <p className="text-[14px] font-bold tracking-widest uppercase text-black dark:text-white mb-1 px-2">
-            {group.label}
+            {group.title}
           </p>
+          {group.description && (
+            <p className="text-xs text-gray-500 dark:text-gray-500 mb-1 px-2 leading-relaxed">
+              {group.description}
+            </p>
+          )}
           <ul className="space-y-0.5">
             {group.items.map((item) => {
               const href = `/practice/${item.id}`;
@@ -92,7 +78,7 @@ export default function PracticeSidebar({ problems }: PracticeSidebarProps) {
 
       <aside className="hidden md:block w-56 shrink-0 border-r border-gray-200/80 dark:border-gray-700/80 pr-4">
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 font-mono">
-          {problems.length} 道题
+          {problemCount} 道题
         </p>
         {nav}
       </aside>

@@ -6,7 +6,16 @@
 import fs from "fs";
 import path from "path";
 import { PracticeManifestSchema } from "./schema.ts";
-import type { PracticeProblem, PracticeProblemMeta } from "./types.ts";
+import {
+  CATEGORY_LABELS,
+  CATEGORY_ORDER,
+} from "./categories.ts";
+import type {
+  PracticeGroup,
+  PracticeGroupWithProblems,
+  PracticeProblem,
+  PracticeProblemMeta,
+} from "./types.ts";
 
 /** 博客仓库内 practice git submodule 默认路径 */
 const DEFAULT_PRACTICE_ROOT = path.join(process.cwd(), "practice");
@@ -20,6 +29,35 @@ function langFromEntry(entry: string): "javascript" | "jsx" {
   return entry.endsWith(".jsx") ? "jsx" : "javascript";
 }
 
+function groupIdForProblem(problem: PracticeProblemMeta) {
+  return problem.groupId ?? problem.category;
+}
+
+function dateValue(problem: PracticeProblemMeta) {
+  return problem.updatedAt ? new Date(problem.updatedAt).getTime() : 0;
+}
+
+function sortProblemsWithinGroup(
+  a: PracticeProblemMeta,
+  b: PracticeProblemMeta
+) {
+  const dateA = dateValue(a);
+  const dateB = dateValue(b);
+  if (dateA !== dateB) return dateB - dateA;
+  return a.title.localeCompare(b.title, "zh-CN");
+}
+
+function fallbackGroups(problems: PracticeProblemMeta[]): PracticeGroup[] {
+  const categorySet = new Set(problems.map((problem) => problem.category));
+  return CATEGORY_ORDER.filter((category) => categorySet.has(category)).map(
+    (category, index) => ({
+      id: category,
+      title: CATEGORY_LABELS[category],
+      order: index * 10,
+    })
+  );
+}
+
 /** 读取并校验 manifest.json */
 export function loadManifest(rootDir?: string) {
   const root = resolvePracticeRoot(rootDir);
@@ -28,21 +66,45 @@ export function loadManifest(rootDir?: string) {
 }
 
 /**
- * 返回全部题目元信息（已排序）
- * 排序：updatedAt 降序 → 同日期按中文标题 localeCompare
+ * 返回按 manifest groups 组织的展示分组；无 groups 时回退到旧 category 分组
  */
-export function getAllProblems(rootDir?: string): PracticeProblemMeta[] {
-  const { problems } = loadManifest(rootDir);
-  return [...problems].sort((a, b) => {
-    const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
-    const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-    if (dateA !== dateB) return dateB - dateA;
-    return a.title.localeCompare(b.title, "zh-CN");
-  });
+export function getPracticeGroups(
+  rootDir?: string
+): PracticeGroupWithProblems[] {
+  const manifest = loadManifest(rootDir);
+  const groups =
+    manifest.groups.length > 0
+      ? [...manifest.groups].sort(
+          (a, b) => (a.order ?? 0) - (b.order ?? 0)
+        )
+      : fallbackGroups(manifest.problems);
+
+  const problemsByGroup = new Map<string, PracticeProblemMeta[]>();
+  for (const problem of manifest.problems) {
+    const groupId = groupIdForProblem(problem);
+    const items = problemsByGroup.get(groupId) ?? [];
+    items.push(problem);
+    problemsByGroup.set(groupId, items);
+  }
+
+  return groups
+    .map((group) => ({
+      ...group,
+      items: (problemsByGroup.get(group.id) ?? []).sort(sortProblemsWithinGroup),
+    }))
+    .filter((group) => group.items.length > 0);
 }
 
 /**
- * 按 id 加载完整题目：manifest 元信息 + entry 源码 + 可选 prompt.md
+ * 返回全部题目元信息（已按展示分组排序）
+ * 排序：group.order → 组内 updatedAt 降序 → 标题
+ */
+export function getAllProblems(rootDir?: string): PracticeProblemMeta[] {
+  return getPracticeGroups(rootDir).flatMap((group) => group.items);
+}
+
+/**
+ * 按 id 加载完整题目：manifest 元信息 + entry 源码 + 可选 article.md
  */
 export function getProblemById(
   id: string,
@@ -55,16 +117,16 @@ export function getProblemById(
   const codePath = path.join(root, meta.entry);
   const code = fs.readFileSync(codePath, "utf8");
 
-  // 题面与源码分文件存放，无 prompt.md 时不展示题面区块
-  const promptPath = path.join(root, "problems", id, "prompt.md");
-  const prompt = fs.existsSync(promptPath)
-    ? fs.readFileSync(promptPath, "utf8").trim()
+  const articleEntry = meta.article ?? path.join("problems", id, "article.md");
+  const articlePath = path.join(root, articleEntry);
+  const note = fs.existsSync(articlePath)
+    ? fs.readFileSync(articlePath, "utf8").trim()
     : undefined;
 
   return {
     ...meta,
     code,
-    prompt,
+    note,
     lang: langFromEntry(meta.entry),
   };
 }

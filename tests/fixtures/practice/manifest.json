@@ -1,12 +1,38 @@
 {
+  "groups": [
+    {
+      "id": "array",
+      "title": "数组",
+      "description": "数组原型方法",
+      "order": 10
+    },
+    {
+      "id": "async",
+      "title": "异步控制",
+      "description": "防抖、调度器等异步题",
+      "order": 40
+    }
+  ],
   "problems": [
     {
       "id": "array-fill",
       "title": "手写 Array.prototype.fill",
       "category": "array",
+      "groupId": "array",
       "difficulty": "medium",
       "entry": "problems/array-fill/code.js",
       "updatedAt": "2026-05-18"
+    },
+    {
+      "id": "debounce",
+      "title": "手写防抖 debounce",
+      "category": "async",
+      "groupId": "async",
+      "difficulty": "medium",
+      "tags": ["异步", "性能"],
+      "entry": "problems/debounce/code.js",
+      "article": "problems/debounce/article.md",
+      "updatedAt": "2026-06-10"
     }
   ]
 }

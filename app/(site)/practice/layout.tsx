@@ -3,7 +3,7 @@
  * 服务端读取 manifest 题目列表，左侧 PracticeSidebar + 右侧子路由（索引重定向或详情页）
  */
 import PracticeSidebar from "@/components/practice/PracticeSidebar";
-import { getAllProblems } from "@/lib/practice/loader";
+import { getAllProblems, getPracticeGroups } from "@/lib/practice/loader";
 
 export default function PracticeLayout({
   children,
@@ -11,6 +11,7 @@ export default function PracticeLayout({
   children: React.ReactNode;
 }) {
   const problems = getAllProblems();
+  const groups = getPracticeGroups();
 
   return (
     <div className="pt-20 pb-16 min-h-screen">
@@ -25,7 +26,7 @@ export default function PracticeLayout({
         </header>
 
         <div className="flex flex-col md:flex-row gap-6 md:gap-8">
-          <PracticeSidebar problems={problems} />
+          <PracticeSidebar groups={groups} problemCount={problems.length} />
           <div className="flex-1 min-w-0">{children}</div>
         </div>
       </div>

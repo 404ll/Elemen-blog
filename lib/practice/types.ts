@@ -11,6 +11,14 @@ export type PracticeCategory =
   | "react"
   | "oop";
 
+/** manifest 中的展示分组 */
+export type PracticeGroup = {
+  id: string;
+  title: string;
+  description?: string;
+  order?: number;
+};
+
 /** 难度档位 */
 export type PracticeDifficulty = "easy" | "medium" | "hard";
 
@@ -19,24 +27,34 @@ export type PracticeProblemMeta = {
   id: string;
   title: string;
   category: PracticeCategory;
+  /** 展示分组；缺省时回退到 category */
+  groupId?: string;
   difficulty: PracticeDifficulty;
   tags?: string[];
   /** 相对 practice 根目录的源码路径，如 problems/array-fill/code.js */
   entry: string;
+  /** 相对 practice 根目录的笔记路径，如 problems/debounce/article.md */
+  article?: string;
   /** ISO 日期字符串，用于列表排序（新题靠前） */
   updatedAt?: string;
 };
 
 /** practice/manifest.json 根结构 */
 export type PracticeManifest = {
+  groups: PracticeGroup[];
   problems: PracticeProblemMeta[];
 };
 
-/** 页面展示用的完整题目：元信息 + 磁盘读取的源码与可选题面 */
+/** 带题目列表的展示分组 */
+export type PracticeGroupWithProblems = PracticeGroup & {
+  items: PracticeProblemMeta[];
+};
+
+/** 页面展示用的完整题目：元信息 + 源码与可选笔记 */
 export type PracticeProblem = PracticeProblemMeta & {
   code: string;
-  /** problems/{id}/prompt.md，存在则展示在代码块上方 */
-  prompt?: string;
+  /** article.md 内容，存在则展示为笔记记录 */
+  note?: string;
   /** 由 entry 扩展名推断，供 Shiki 高亮 */
   lang: "javascript" | "jsx";
 };
