@@ -1,0 +1,734 @@
+---
+title: "前端 Monorepo 现代架构认知"
+date: "2026-06-15"
+excerpt: "用一个真实团队迁移案例，讲清楚 Monorepo、pnpm Workspace、Turborepo 和 CI/CD 到底如何协作。"
+category: "frontend"
+tags: ["monorepo", "pnpm", "turborepo", "工程化", "ci-cd"]
+draft: false
+---
+
+开门见山：**Monorepo 解决的是代码组织问题，pnpm Workspace 解决的是依赖连接问题，Turborepo 解决的是任务编排和缓存问题。**
+
+三者不是互相替代的关系，而是现代前端工程里一条很自然的协作链路：
+
+```txt
+Monorepo：把多个项目放进同一个仓库
+  ↓
+pnpm Workspace：让这些项目可以在本地互相引用
+  ↓
+Turborepo：按依赖关系运行任务，并把结果缓存起来
+  ↓
+CI/CD：只检查和构建真正受影响的部分
+```
+
+如果用一句更通俗的话说：
+
+> Monorepo 像一家餐厅的后厨，所有档口都在同一个厨房里；pnpm 像食材仓库和传菜通道；Turborepo 像总调度员，知道哪道菜要先做、哪些菜已经做过可以直接复用；CI/CD 则是自动质检员和配送员。
+
+这篇文章不只讲概念，而是从一个真实工程场景出发，解释为什么团队会从多仓库走向 Monorepo，以及 pnpm 和 Turborepo 到底分别在其中负责什么。
+
+---
+
+## 一、真实案例：改一个按钮，为什么要发三次包
+
+先看一个很常见的业务团队结构。
+
+团队里有几个前端项目：
+
+- `admin-web`：后台管理系统
+- `mobile-h5`：移动端活动页
+- `docs-site`：内部组件文档
+- `ui`：组件库
+- `utils`：工具函数库
+- `eslint-config`：团队统一代码规范
+
+一开始，它们分别放在不同仓库里：
+
+```txt
+company-admin-web
+company-mobile-h5
+company-docs-site
+company-ui
+company-utils
+company-eslint-config
+```
+
+这种 Multirepo 结构早期很舒服：每个项目独立，权限清晰，部署互不影响。
+
+但项目一多，问题就开始出现。
+
+假设你要改组件库里的 `Button`，让后台和 H5 都支持新的 `loading` 状态。在多仓库模式下，流程通常是这样：
+
+```txt
+1. 修改 company-ui
+2. 发版 @company/ui@1.2.3
+3. 到 admin-web 升级依赖，联调，提交
+4. 到 mobile-h5 升级依赖，联调，提交
+5. docs-site 也要升级一次依赖，避免文档和真实组件不一致
+```
+
+如果中途发现组件库还有问题，你要重新回到 `ui` 仓库修 bug，再发一个 `1.2.4`，再去每个业务仓库升级。
+
+更烦的是工具函数。
+
+比如 `utils` 里有一个金额格式化函数：
+
+```ts
+export function formatMoney(value: number) {
+  return value.toFixed(2);
+}
+```
+
+后来产品要求支持千分位：
+
+```ts
+formatMoney(1234567); // "1,234,567.00"
+```
+
+这个函数一改，后台、H5、文档站都可能受影响。多仓库下，真正消耗人的不是代码本身，而是发包、升级、联调、回滚这些周边动作。
+
+这就是很多团队走向 Monorepo 的真实原因：**不是为了赶潮流，而是为了把跨项目协作从“发布依赖”变成“本地修改”。**
+
+---
+
+## 二、Monorepo 到底解决什么问题
+
+Monorepo 的定义很简单：**把多个应用和多个共享包放在同一个代码仓库里统一管理。**
+
+一个典型结构长这样：
+
+```txt
+my-company-frontend/
+  apps/
+    admin-web/
+    mobile-h5/
+    docs-site/
+  packages/
+    ui/
+    utils/
+    eslint-config/
+    tsconfig/
+```
+
+这里一般会把项目分成两类：
+
+| 类型 | 例子 | 作用 |
+| --- | --- | --- |
+| Apps | `admin-web`、`mobile-h5`、`docs-site` | 可以独立运行、构建、部署的应用 |
+| Packages | `ui`、`utils`、`eslint-config` | 被多个应用复用的基础能力 |
+
+Monorepo 的核心收益不是“目录看起来整齐”，而是下面两点。
+
+### 1. 本地共享，实时生效
+
+以前你修改 `@company/ui`，要先发包，业务项目再升级版本。
+
+现在你在同一个仓库里改 `packages/ui`，`apps/admin-web` 可以直接引用本地包。组件还没发布，业务项目就能立刻联调。
+
+### 2. 原子化提交
+
+以前一个需求可能拆成三个 PR：
+
+```txt
+PR 1：修改 ui
+PR 2：admin-web 升级 ui
+PR 3：mobile-h5 升级 ui
+```
+
+如果 PR 2 合了，PR 3 还没合，线上就可能出现版本不一致。
+
+Monorepo 里可以把跨包修改放进同一个 PR：
+
+```txt
+同一个 PR：
+  - packages/ui 新增 Button loading
+  - apps/admin-web 接入 loading
+  - apps/mobile-h5 接入 loading
+  - packages/ui 补测试
+```
+
+这叫原子化提交。它让一次需求的所有相关修改一起被 review、一起进入主干，也更容易回滚。
+
+---
+
+## 三、pnpm Workspace：把本地包真正连起来
+
+Monorepo 只是代码组织方式。光把目录放到一起还不够，你还需要一个工具告诉包管理器：
+
+> 这些目录都是工作区里的包，它们可以互相引用。
+
+这就是 pnpm Workspace 的作用。
+
+### 为什么很多团队选 pnpm
+
+pnpm 有几个非常适合 Monorepo 的特点：
+
+- 安装速度快
+- 磁盘占用低
+- 原生支持 Workspace
+- 依赖隔离更严格，不容易误用幽灵依赖
+
+它的磁盘节省来自内容寻址存储。简单理解就是：同一个依赖不会在每个项目里重复复制一份，而是存到统一仓库里，再通过链接给各个项目使用。
+
+### 核心配置：pnpm-workspace.yaml
+
+在仓库根目录声明工作区范围：
+
+```yaml
+packages:
+  - "apps/*"
+  - "packages/*"
+```
+
+这表示：
+
+```txt
+apps 下面的每个子目录都是一个 workspace package
+packages 下面的每个子目录也是一个 workspace package
+```
+
+然后每个包都有自己的 `package.json`。
+
+比如组件库：
+
+```json
+{
+  "name": "@company/ui",
+  "version": "0.0.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts"
+}
+```
+
+业务应用可以这样引用：
+
+```json
+{
+  "dependencies": {
+    "@company/ui": "workspace:*",
+    "@company/utils": "workspace:*"
+  }
+}
+```
+
+这里的 `"workspace:*"` 就是关键。
+
+它的意思不是去 npm registry 上下载最新版，而是告诉 pnpm：
+
+> 请使用当前工作区里的本地包。
+
+所以 `apps/admin-web` 引用 `@company/ui` 时，实际指向的是本地的 `packages/ui`。这也是 Monorepo 本地联调体验丝滑的根源。
+
+### 一个最小可跑结构
+
+```txt
+my-company-frontend/
+  pnpm-workspace.yaml
+  package.json
+  apps/
+    admin-web/
+      package.json
+  packages/
+    utils/
+      package.json
+      src/index.ts
+```
+
+`packages/utils/package.json`：
+
+```json
+{
+  "name": "@company/utils",
+  "version": "0.0.0",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}
+```
+
+`apps/admin-web/package.json`：
+
+```json
+{
+  "dependencies": {
+    "@company/utils": "workspace:*"
+  }
+}
+```
+
+`apps/admin-web/src/demo.ts`：
+
+```ts
+import { formatMoney } from "@company/utils";
+
+console.log(formatMoney(1234567));
+```
+
+这时你改 `packages/utils/src/index.ts`，业务应用就能直接拿到本地修改，不需要 `npm publish`。
+
+---
+
+## 四、Turborepo：它不是打包工具，而是任务指挥官
+
+很多初学者会把 Turborepo 和 Vite、Webpack、Rspack 放在一起比较，这是一个很常见的误区。
+
+它们不是一类东西。
+
+| 工具 | 主要职责 |
+| --- | --- |
+| Vite / Webpack / Rspack | 编译、打包、压缩、转换模块 |
+| pnpm | 安装依赖、管理 workspace、本地包链接 |
+| Turborepo | 编排任务、处理任务依赖、缓存任务结果 |
+
+Turborepo 不负责把 TS 编译成 JS，也不负责压缩混淆代码。真正打包的仍然是每个包自己的工具。
+
+比如：
+
+- `apps/admin-web` 可能用 Next.js
+- `apps/mobile-h5` 可能用 Vite
+- `packages/ui` 可能用 tsup
+- `packages/utils` 可能用 tsc
+
+Turbo 负责的是：
+
+> 当我执行 `build` 时，应该先构建谁？哪些任务可以并行？哪些任务之前跑过，可以直接复用缓存？
+
+### turbo.json 的灵魂参数
+
+一个常见配置如下：
+
+```json
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+    },
+    "lint": {
+      "outputs": []
+    },
+    "test": {
+      "outputs": ["coverage/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}
+```
+
+重点看 `dependsOn` 和 `outputs`。
+
+### dependsOn: ["^build"]：按依赖关系先后执行
+
+`"^build"` 的意思是：**先执行当前包依赖项的 build，再执行当前包自己的 build。**
+
+比如依赖关系是：
+
+```txt
+admin-web
+  ├─ depends on @company/ui
+  └─ depends on @company/utils
+
+@company/ui
+  └─ depends on @company/utils
+```
+
+那么构建顺序应该是：
+
+```txt
+1. @company/utils build
+2. @company/ui build
+3. admin-web build
+```
+
+这就是拓扑排序。
+
+如果没有这个顺序，`admin-web` 可能在 `ui` 还没产出 `dist` 时就开始打包，结果就会出现类型文件找不到、产物没生成、构建偶发失败等问题。
+
+### outputs：告诉 Turbo 哪些结果可以缓存
+
+`outputs` 的作用是告诉 Turbo：
+
+> 这个任务跑完后，哪些文件是产物，可以被缓存。
+
+例如组件库：
+
+```json
+{
+  "build": {
+    "outputs": ["dist/**"]
+  }
+}
+```
+
+Next.js 应用：
+
+```json
+{
+  "build": {
+    "outputs": [".next/**", "!.next/cache/**"]
+  }
+}
+```
+
+当 Turbo 判断输入没有变化时，它可以不重新执行命令，而是直接恢复上一次的产物。
+
+你会看到类似这样的结果：
+
+```txt
+Tasks:    3 successful, 3 total
+Cached:   3 cached, 3 total
+Time:     120ms >>> FULL TURBO
+```
+
+第一次构建可能要 10 秒：
+
+```txt
+@company/utils:build  1.2s
+@company/ui:build     3.1s
+admin-web:build       6.4s
+Total                 10.7s
+```
+
+第二次如果没有任何输入变化：
+
+```txt
+@company/utils:build  cache hit
+@company/ui:build     cache hit
+admin-web:build       cache hit
+Total                 0.1s
+```
+
+这就是 Turbo 最爽的地方：它不是让每个构建工具变快，而是尽可能避免重复构建。
+
+---
+
+## 五、CI/CD 和 Monorepo 的碰撞：厨房质检员和外卖配送员
+
+很多人理解 CI/CD 时会卡在缩写上。
+
+换成餐厅比喻会更容易。
+
+### CI：厨房里的自动化质检员
+
+CI 是 Continuous Integration，持续集成。
+
+它像后厨里的自动质检员。每次你把新菜谱提交到厨房，质检员都会自动检查：
+
+```txt
+代码提交
+  ↓
+安装依赖
+  ↓
+跑 lint
+  ↓
+跑 test
+  ↓
+跑 build
+  ↓
+确认这次改动没有把厨房搞坏
+```
+
+对应到前端工程里就是：
+
+```txt
+git push
+  ↓
+CI 自动执行 pnpm install
+  ↓
+pnpm lint
+  ↓
+pnpm test
+  ↓
+pnpm build
+```
+
+CI 的价值不是帮你部署，而是让每次合并之前都有一套自动化检查，避免把明显坏掉的代码合进主干。
+
+### CD：把通过质检的菜送出去
+
+CD 可以指 Continuous Delivery，也可以指 Continuous Deployment。这里先按持续部署理解。
+
+它像外卖配送员。
+
+当 CI 质检通过之后，CD 会把构建产物自动送到用户能访问的地方：
+
+```txt
+CI 通过
+  ↓
+构建产物上传
+  ↓
+服务器 / CDN / Vercel / Docker 镜像更新
+  ↓
+用户看到新功能
+```
+
+所以 CI/CD 的完整链路可以理解成：
+
+```txt
+开发者提交代码
+  ↓
+CI 自动检查质量
+  ↓
+CD 自动发布产物
+  ↓
+用户访问新版本
+```
+
+### Monorepo 下的 CI 痛点
+
+Monorepo 带来代码协作便利，但也带来一个新问题：
+
+> 仓库变大后，难道每次提交都要把所有应用和所有包都 lint、test、build 一遍吗？
+
+如果仓库里有 20 个应用、50 个包，完整 CI 可能要跑 30 分钟。你只是改了 `packages/utils` 的一个函数，却要等所有应用都构建完，这显然不合理。
+
+这时 Turborepo 的价值就出来了。
+
+它会基于任务输入生成指纹。输入通常包括：
+
+- 源码文件
+- `package.json`
+- lockfile
+- 环境变量
+- 任务配置
+- 上游依赖产物
+
+如果这些输入没有变化，Turbo 就认为任务结果可以复用。
+
+于是 CI 不再是粗暴地“全仓库重跑”，而是变成：
+
+```txt
+这次改了什么？
+  ↓
+哪些包受到影响？
+  ↓
+这些包依赖谁？
+  ↓
+只跑必要的 lint / test / build
+  ↓
+没变的任务直接命中缓存
+```
+
+这就是 Turborepo 对 CI/CD 的降维打击：**用任务图和缓存，把团队等待时间从“全量重复劳动”变成“按需验证”。**
+
+---
+
+## 六、一套可落地的工程配置
+
+下面给一套比较典型的最小配置。
+
+目录结构：
+
+```txt
+my-company-frontend/
+  apps/
+    admin-web/
+    mobile-h5/
+  packages/
+    ui/
+    utils/
+  package.json
+  pnpm-workspace.yaml
+  turbo.json
+```
+
+根目录 `package.json`：
+
+```json
+{
+  "private": true,
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "test": "turbo test"
+  },
+  "devDependencies": {
+    "turbo": "latest",
+    "typescript": "latest"
+  }
+}
+```
+
+`pnpm-workspace.yaml`：
+
+```yaml
+packages:
+  - "apps/*"
+  - "packages/*"
+```
+
+`turbo.json`：
+
+```json
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+    },
+    "lint": {
+      "outputs": []
+    },
+    "test": {
+      "outputs": ["coverage/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}
+```
+
+`packages/utils/package.json`：
+
+```json
+{
+  "name": "@company/utils",
+  "version": "0.0.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}
+```
+
+`packages/ui/package.json`：
+
+```json
+{
+  "name": "@company/ui",
+  "version": "0.0.0",
+  "scripts": {
+    "build": "tsup src/index.ts --dts",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@company/utils": "workspace:*"
+  }
+}
+```
+
+`apps/admin-web/package.json`：
+
+```json
+{
+  "name": "admin-web",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@company/ui": "workspace:*",
+    "@company/utils": "workspace:*"
+  }
+}
+```
+
+这套配置背后的分工很清晰：
+
+- pnpm 负责安装依赖和连接本地包。
+- 每个 package 自己负责定义 `build`、`lint`、`test` 怎么跑。
+- Turbo 负责按依赖关系调度这些任务，并缓存输出。
+- CI 只需要调用根目录脚本，比如 `pnpm build`。
+
+---
+
+## 七、面试官真正想听什么
+
+如果面试里被问到 Monorepo、pnpm、Turborepo，不要只背命令。
+
+更好的回答方式是先讲分工：
+
+> Monorepo 是代码管理策略，把多个 app 和 package 放在一个仓库里；pnpm Workspace 负责本地包之间的依赖链接，`workspace:*` 可以让业务应用直接引用本地共享包；Turborepo 是任务运行器，负责根据包依赖图做拓扑排序、并行执行和缓存复用。它不是打包工具，真正打包仍然由 Next.js、Vite、tsup、tsc 这些工具完成。
+
+然后讲价值：
+
+> 这套架构主要解决跨项目复用和 CI 效率问题。以前共享包改动需要发 npm 包、业务项目再升级版本；现在可以在同一个 PR 里完成共享包和业务应用的原子化修改。CI 里再通过 Turbo 的缓存和任务图，只构建受影响的部分，减少重复劳动。
+
+最后补一个风险意识：
+
+> Monorepo 不是银弹。它会让仓库变大，也要求团队统一脚本规范、依赖边界和 CI 策略。如果没有清晰的 package 边界，只是把所有代码塞进一个仓库，最后会变成更大的泥球。
+
+这个回答比“pnpm 很快、Turbo 有缓存”更像工程实践。
+
+---
+
+## 八、常见误区
+
+### 误区 1：Monorepo 就是把项目放进一个文件夹
+
+不是。
+
+Monorepo 的关键不是“放一起”，而是统一依赖、统一脚本、统一 CI、统一变更流程。
+
+如果只是手动建了几个目录，但没有 workspace、没有任务编排、没有边界约束，那只是一个大文件夹。
+
+### 误区 2：pnpm Workspace 会自动帮你构建依赖
+
+不会。
+
+pnpm 负责把依赖链接起来，但它不理解你的构建顺序。比如 `admin-web` 依赖 `ui`，`ui` 依赖 `utils`，谁先 build 不是 pnpm 的核心职责。
+
+这正是 Turbo 要解决的问题。
+
+### 误区 3：Turborepo 可以替代 Vite 或 Webpack
+
+不能。
+
+Turbo 不打包代码，它只是调用各个包里已有的脚本。
+
+你可以理解成：
+
+```txt
+Vite：厨师，真正做菜
+pnpm：仓库管理员，管理食材和通道
+Turbo：后厨总调度，安排谁先做、谁可以并行、哪道菜之前做过
+CI/CD：质检员和配送员
+```
+
+### 误区 4：有缓存就一定安全
+
+缓存必须建立在准确的输入识别上。
+
+如果构建依赖了某个环境变量，但没有把它纳入任务输入，缓存就可能复用错误结果。真实项目里要特别注意：
+
+- 环境变量
+- lockfile
+- 构建配置
+- 代码生成产物
+- 外部接口 schema
+
+缓存越强，越要重视失效条件。
+
+---
+
+## 九、最后总结
+
+可以把这套体系记成四句话：
+
+1. **Monorepo 管代码组织**：把多个应用和共享包放进同一个仓库，方便跨包协作。
+2. **pnpm 管依赖连接**：用 Workspace 和 `workspace:*` 让本地包互相引用，减少发包联调成本。
+3. **Turborepo 管任务执行**：用依赖图、拓扑排序、并行执行和缓存减少重复劳动。
+4. **CI/CD 管质量和交付**：自动跑检查、构建和部署，让团队交付更稳定。
+
+真正理解它们的协作关系后，你会发现这不是一套炫技工具链，而是一种工程化思维：
+
+> 把相关变化放在一起，把重复劳动交给机器，把依赖关系显式化，把团队等待时间降下来。
+
+这才是 Monorepo、pnpm 和 Turborepo 最值得学习的地方。
