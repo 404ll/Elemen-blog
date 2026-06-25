@@ -24,40 +24,79 @@ export default function PracticeSidebar({
 
   // 桌面侧栏与移动抽屉共用同一份目录 DOM
   const nav = (
-    <nav className="space-y-4 mt-4" aria-label="练习题目目录">
-      {groups.map((group) => (
-        <div key={group.id}>
-          <p className="text-[14px] font-bold tracking-widest uppercase text-black dark:text-white mb-1 px-2">
-            {group.title}
-          </p>
-          {group.description && (
-            <p className="text-xs text-gray-500 dark:text-gray-500 mb-1 px-2 leading-relaxed">
-              {group.description}
-            </p>
-          )}
-          <ul className="space-y-0.5">
-            {group.items.map((item) => {
-              const href = `/practice/${item.id}`;
-              const active = pathname === href;
-              return (
-                <li key={item.id}>
-                  <Link
-                    href={href}
-                    onClick={() => setOpen(false)}
-                    className={`block text-sm px-2 py-1.5 rounded-sm transition-colors ${
-                      active
-                        ? "font-semibold bg-black/5 dark:bg-white/10 border-l-2 border-black dark:border-white pl-[calc(0.5rem-2px)] text-black dark:text-white"
-                        : "text-gray-600 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5"
-                    }`}
-                  >
-                    {item.title.replace(/^手写\s*/, "")}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
+    <nav className="mt-4 space-y-5" aria-label="练习题目目录">
+      {groups.map((group) => {
+        const activeInGroup = group.items.some(
+          (item) => pathname === `/practice/${item.id}`
+        );
+
+        return (
+          <section
+            key={group.id}
+            className={`border-l pl-3 ${
+              activeInGroup
+                ? "border-black dark:border-white"
+                : "border-gray-300/80 dark:border-gray-700"
+            }`}
+          >
+            <div className="mb-2">
+              <div className="flex items-baseline justify-between gap-3">
+                <h2
+                  className={`text-[13px] font-bold tracking-[0.18em] uppercase ${
+                    activeInGroup
+                      ? "text-black dark:text-white"
+                      : "text-gray-700 dark:text-gray-300"
+                  }`}
+                >
+                  {group.title}
+                </h2>
+                <span className="shrink-0 text-[11px] font-mono text-gray-500 dark:text-gray-500">
+                  {group.items.length}
+                </span>
+              </div>
+              {group.description && (
+                <p className="mt-1 text-[12px] leading-relaxed text-gray-500 dark:text-gray-500">
+                  {group.description}
+                </p>
+              )}
+            </div>
+
+            <ol className="space-y-1">
+              {group.items.map((item, index) => {
+                const href = `/practice/${item.id}`;
+                const active = pathname === href;
+                return (
+                  <li key={item.id}>
+                    <Link
+                      href={href}
+                      onClick={() => setOpen(false)}
+                      aria-current={active ? "page" : undefined}
+                      className={`group flex items-start gap-2 rounded-sm px-2.5 py-2 text-sm leading-snug transition-colors ${
+                        active
+                          ? "bg-white/70 font-semibold text-black shadow-[inset_0_0_0_1px_rgb(0_0_0_/_0.08)] dark:bg-white/10 dark:text-white dark:shadow-[inset_0_0_0_1px_rgb(255_255_255_/_0.12)]"
+                          : "text-gray-600 hover:bg-white/45 hover:text-black dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
+                      }`}
+                    >
+                      <span
+                        className={`mt-0.5 w-5 shrink-0 text-[11px] font-mono tabular-nums ${
+                          active
+                            ? "text-black dark:text-white"
+                            : "text-gray-400 dark:text-gray-600"
+                        }`}
+                      >
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span className="min-w-0 flex-1 break-words">
+                        {item.title.replace(/^手写\s*/, "")}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        );
+      })}
     </nav>
   );
 
@@ -76,10 +115,15 @@ export default function PracticeSidebar({
         </button>
       </div>
 
-      <aside className="hidden md:block w-56 shrink-0 border-r border-gray-200/80 dark:border-gray-700/80 pr-4">
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 font-mono">
-          {problemCount} 道题
-        </p>
+      <aside className="hidden md:block w-64 shrink-0 border-r border-gray-200/80 pr-5 dark:border-gray-700/80">
+        <div className="border-b border-gray-200/80 pb-3 dark:border-gray-700/80">
+          <p className="text-[11px] font-mono uppercase tracking-[0.18em] text-gray-500 dark:text-gray-500">
+            Practice Index
+          </p>
+          <p className="mt-1 text-sm font-semibold text-gray-800 dark:text-gray-200">
+            {problemCount} 道题 · {groups.length} 个章节
+          </p>
+        </div>
         {nav}
       </aside>
 
