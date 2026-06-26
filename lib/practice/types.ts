@@ -11,6 +11,9 @@ export type PracticeCategory =
   | "react"
   | "oop";
 
+/** 顶层练习集合；缺省题目默认归入 handwriting */
+export type PracticeCollection = "handwriting" | "work";
+
 /** manifest 中的展示分组 */
 export type PracticeGroup = {
   id: string;
@@ -26,6 +29,7 @@ export type PracticeDifficulty = "easy" | "medium" | "hard";
 export type PracticeProblemMeta = {
   id: string;
   title: string;
+  collection?: PracticeCollection;
   category: PracticeCategory;
   /** 展示分组；缺省时回退到 category */
   groupId?: string;
@@ -37,6 +41,20 @@ export type PracticeProblemMeta = {
   article?: string;
   /** ISO 日期字符串，用于列表排序（新题靠前） */
   updatedAt?: string;
+};
+
+/** 工作收集记录中按二级标题解析出的可选段落 */
+export type PracticeWorkNoteSection = {
+  title: string;
+  content: string;
+};
+
+/** 工作收集轻量记录卡，基础三块够用，其他标题进入 optional */
+export type PracticeWorkNote = {
+  scene?: string;
+  code?: string;
+  note?: string;
+  optional: PracticeWorkNoteSection[];
 };
 
 /** practice/manifest.json 根结构 */
@@ -55,6 +73,8 @@ export type PracticeProblem = PracticeProblemMeta & {
   code: string;
   /** article.md 内容，存在则展示为笔记记录 */
   note?: string;
+  /** 工作收集条目的结构化轻量记录 */
+  workNote?: PracticeWorkNote;
   /** 由 entry 扩展名推断，供 Shiki 高亮 */
   lang: "javascript" | "jsx";
 };

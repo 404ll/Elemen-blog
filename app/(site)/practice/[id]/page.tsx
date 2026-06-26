@@ -26,14 +26,16 @@ type PracticeDetailPageProps = {
 
 /** 构建时为 manifest 中每道题生成静态路径 */
 export async function generateStaticParams() {
-  return getAllProblems().map((p) => ({ id: p.id }));
+  return getAllProblems({ collection: "handwriting" }).map((p) => ({
+    id: p.id,
+  }));
 }
 
 export async function generateMetadata({ params }: PracticeDetailPageProps) {
   const { id } = await params;
-  const problem = getProblemById(id);
+  const problem = getProblemById(id, { collection: "handwriting" });
   if (!problem) return {};
-  const group = getPracticeGroups().find((group) =>
+  const group = getPracticeGroups({ collection: "handwriting" }).find((group) =>
     group.items.some((item) => item.id === problem.id)
   );
   return {
@@ -46,11 +48,13 @@ export default async function PracticeDetailPage({
   params,
 }: PracticeDetailPageProps) {
   const { id } = await params;
-  const problem = getProblemById(id);
+  const problem = getProblemById(id, { collection: "handwriting" });
   if (!problem) notFound();
 
-  const { prev, next } = getAdjacentProblems(id);
-  const group = getPracticeGroups().find((group) =>
+  const { prev, next } = getAdjacentProblems(id, {
+    collection: "handwriting",
+  });
+  const group = getPracticeGroups({ collection: "handwriting" }).find((group) =>
     group.items.some((item) => item.id === problem.id)
   );
   const groupTitle = group?.title ?? problem.category;

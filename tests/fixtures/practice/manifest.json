@@ -11,6 +11,12 @@
       "title": "异步控制",
       "description": "防抖、调度器等异步题",
       "order": 40
+    },
+    {
+      "id": "formatting",
+      "title": "格式化",
+      "description": "工作中收集的展示格式处理片段",
+      "order": 10
     }
   ],
   "problems": [
@@ -33,6 +39,18 @@
       "entry": "problems/debounce/code.js",
       "article": "problems/debounce/article.md",
       "updatedAt": "2026-06-10"
+    },
+    {
+      "id": "work-money-format",
+      "collection": "work",
+      "title": "金额格式化函数",
+      "category": "function",
+      "groupId": "formatting",
+      "difficulty": "easy",
+      "tags": ["金额", "格式化"],
+      "entry": "problems/work-money-format/code.js",
+      "article": "problems/work-money-format/article.md",
+      "updatedAt": "2026-06-26"
     }
   ]
 }

@@ -5,22 +5,74 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { MenuIcon, XIcon } from "lucide-react";
-import type { PracticeGroupWithProblems } from "@/lib/practice/types";
+import {
+  PRACTICE_COLLECTIONS,
+  practiceProblemHref,
+} from "@/lib/practice/categories";
+import type {
+  PracticeCollection,
+  PracticeGroupWithProblems,
+} from "@/lib/practice/types";
 
 type PracticeSidebarProps = {
-  groups: PracticeGroupWithProblems[];
-  problemCount: number;
+  groupsByCollection: Record<PracticeCollection, PracticeGroupWithProblems[]>;
+  problemCountByCollection: Record<PracticeCollection, number>;
 };
 
 export default function PracticeSidebar({
-  groups,
-  problemCount,
+  groupsByCollection,
+  problemCountByCollection,
 }: PracticeSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const activeCollection: PracticeCollection = pathname.startsWith("/practice/work")
+    ? "work"
+    : "handwriting";
+  const activeCollectionMeta = PRACTICE_COLLECTIONS[activeCollection];
+  const groups = groupsByCollection[activeCollection];
+  const problemCount = problemCountByCollection[activeCollection];
+
+  const collectionPicker = (id: string) => (
+    <div className="border-b border-gray-200/80 pb-3 dark:border-gray-700/80">
+      <label
+        htmlFor={id}
+        className="block text-[11px] font-mono uppercase tracking-[0.18em] text-gray-500 dark:text-gray-500"
+      >
+        Collection
+      </label>
+      <select
+        id={id}
+        value={activeCollection}
+        onChange={(event) => {
+          const nextCollection = event.target.value as PracticeCollection;
+          router.push(PRACTICE_COLLECTIONS[nextCollection].href);
+          setOpen(false);
+        }}
+        className="mt-2 w-full rounded-sm border border-gray-300 bg-white px-2.5 py-2 text-sm font-semibold text-gray-900 outline-none transition-colors focus:border-black dark:border-gray-700 dark:bg-[#1a0f00] dark:text-gray-100 dark:focus:border-white"
+      >
+        {Object.values(PRACTICE_COLLECTIONS).map((collection) => (
+          <option key={collection.id} value={collection.id}>
+            {collection.title}
+          </option>
+        ))}
+      </select>
+      <div className="mt-3 rounded-sm border border-gray-200/80 bg-white/55 p-3 dark:border-gray-700/80 dark:bg-white/5">
+        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+          {activeCollectionMeta.title}
+        </p>
+        <p className="mt-1 text-[12px] leading-relaxed text-gray-500 dark:text-gray-500">
+          {activeCollectionMeta.description}
+        </p>
+        <p className="mt-2 text-[11px] font-mono text-gray-500 dark:text-gray-500">
+          {problemCount} 条记录 · {groups.length} 个章节
+        </p>
+      </div>
+    </div>
+  );
 
   // 桌面侧栏与移动抽屉共用同一份目录 DOM
   const nav = (
@@ -63,7 +115,7 @@ export default function PracticeSidebar({
 
             <ol className="space-y-1">
               {group.items.map((item, index) => {
-                const href = `/practice/${item.id}`;
+                const href = practiceProblemHref(item);
                 const active = pathname === href;
                 return (
                   <li key={item.id}>
@@ -116,14 +168,7 @@ export default function PracticeSidebar({
       </div>
 
       <aside className="hidden md:block w-64 shrink-0 border-r border-gray-200/80 pr-5 dark:border-gray-700/80">
-        <div className="border-b border-gray-200/80 pb-3 dark:border-gray-700/80">
-          <p className="text-[11px] font-mono uppercase tracking-[0.18em] text-gray-500 dark:text-gray-500">
-            Practice Index
-          </p>
-          <p className="mt-1 text-sm font-semibold text-gray-800 dark:text-gray-200">
-            {problemCount} 道题 · {groups.length} 个章节
-          </p>
-        </div>
+        {collectionPicker("practice-collection-desktop")}
         {nav}
       </aside>
 
@@ -149,6 +194,7 @@ export default function PracticeSidebar({
                 <XIcon className="w-5 h-5" />
               </button>
             </div>
+            {collectionPicker("practice-collection-mobile")}
             {nav}
           </aside>
         </div>

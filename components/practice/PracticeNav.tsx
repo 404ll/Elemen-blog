@@ -3,6 +3,7 @@
  * prev/next 顺序与 getAllProblems 排序一致（updatedAt → 标题）
  */
 import Link from "next/link";
+import { practiceProblemHref } from "@/lib/practice/categories";
 import type { PracticeProblemMeta } from "@/lib/practice/types";
 
 type PracticeNavProps = {
@@ -20,7 +21,7 @@ export default function PracticeNav({ prev, next }: PracticeNavProps) {
     >
       {prev ? (
         <Link
-          href={`/practice/${prev.id}`}
+          href={practiceProblemHref(prev)}
           className="text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors max-w-[45%]"
         >
           <span className="font-mono text-xs block mb-0.5">上一题</span>
@@ -31,7 +32,7 @@ export default function PracticeNav({ prev, next }: PracticeNavProps) {
       )}
       {next ? (
         <Link
-          href={`/practice/${next.id}`}
+          href={practiceProblemHref(next)}
           className="text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors text-right max-w-[45%] ml-auto"
         >
           <span className="font-mono text-xs block mb-0.5">下一题</span>
