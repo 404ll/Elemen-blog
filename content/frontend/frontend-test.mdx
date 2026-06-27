@@ -1,0 +1,598 @@
+---
+title: "前端测试方案 — React + TypeScript 从零到体系"
+date: "2026-06-27"
+excerpt: "整理 React + TypeScript 前端测试的策略模型、工具链选型、Vitest 与 Playwright 分工、实战配置，以及 AI Agent 驱动测试的方法。"
+category: "frontend"
+tags: ["test", "vitest", "jest", "playwright", "react"]
+draft: false
+---
+
+# 前端测试方案 — React + TypeScript 从零到体系
+
+## 第一部分：测试策略思维——从金字塔到奖杯
+
+### 测试金字塔的遗产
+
+十年前，Mike Cohn 提出了测试金字塔模型：底层大量单元测试（快、便宜、隔离），中间适量集成测试，塔尖少量 E2E 测试（慢、贵、脆弱）。
+
+这个模型统治了测试策略讨论近十年，至今仍然是一个有用的启发式框架。
+
+但前端的现实与金字塔的前提假设存在根本性矛盾。金字塔假设“UI 测试很贵所以少写”，但在现代前端应用中，绝大部分业务价值恰好体现在 UI 层：用户看到的东西、交互的体验、数据的流动。
+
+如果你只测纯函数而跳过组件，你实际上跳过了最可能出错的代码。
+
+### 测试奖杯：更适合前端的策略框架
+
+Kent C. Dodds 在 2018 年提出的**测试奖杯（Testing Trophy）**把集成测试放到了最大的一层。
+
+核心洞见只有一句话：**测试越像用户使用软件的方式，它给你的信心就越大。**
+
+奖杯的四层结构（从底到顶）：
+
+- **静态分析（Static）**：TypeScript 类型检查、ESLint 规则。这是最便宜的测试，在写代码的瞬间就能捕获一大类错误：拼错的变量名、错误的函数签名、缺失的必传 props。你不应该跳过这一层，而且 Vite 创建的项目默认就带着 TypeScript，你已经在用它了。
+- **单元测试（Unit）**：测试纯函数和工具函数。什么是一个好的单元测试对象？一个没有副作用的函数：输入确定，输出确定。比如日期格式化函数、数据转换器、表单验证逻辑。在 React 中，这些通常是你从组件中提取出来的 `utils` 或 `helpers`。
+- **集成测试（Integration）**：这是奖杯最大的一层，也是 React Testing Library 的用武之地。集成测试渲染一个组件（或多个协作的组件），模拟用户交互，然后断言屏幕上出现了正确的内容。它不 mock 子组件，不测试实现细节（不测 state 变量、不测函数调用次数），只关心“用户看到了什么、能做什么”。一个典型的集成测试：渲染登录表单，输入邮箱和密码，点击提交，验证成功提示出现在页面上。
+- **端到端测试（E2E）**：用真实浏览器走完一个完整的用户旅程。比如：从首页到搜索商品，再到加入购物车、结算、支付确认。Playwright 是这一层的标准工具。
+
+### 2026 年的新变量：E2E 正在变便宜
+
+一个值得关注的趋势是，工具性能正在重塑测试策略。
+
+2024 年的一期播客中，Dodds 被问到：随着 SSR 应用（Next.js、Remix）的普及，以及 Playwright 和 Vitest Browser Mode 的崛起，E2E 是否应该取代集成测试成为奖杯的最大层？
+
+他的回应揭示了一个关键转变：当 Playwright 能在几秒钟内启动完整浏览器环境，当 Vitest Browser Mode 能直接在浏览器中运行组件测试时，传统的“E2E 太慢所以少写”的逻辑不再成立。
+
+与此同时，SSR 应用的集成测试反而变得更复杂：你需要同时 mock 客户端和服务端代码。这意味着对于 Next.js 项目，把更多测试推向 Playwright E2E 层可能是更理性的选择。
+
+### 关键原则：策略不是教条
+
+Testing Trophy 不是你必须在每个项目中机械套用的公式。它是帮你提出正确问题的思维框架：
+
+- 这个功能的风险在哪里？
+- 哪种测试能以最低的成本给我最高的信心？
+- 哪些路径是用户真正会走、且一旦坏掉影响最大的？
+
+你的团队规模、业务关键程度、功能的法律合规要求，才是决定各层测试比例的真正变量。
+
+一个三人创业团队的 MVP 和一个百人企业级团队的支付系统，它们的测试分布必然不同。这不仅是正常的，而且是正确的。
+
+---
+
+## 第二部分：2026 年 React + TypeScript 测试工具链
+
+### 已成定局的三大件
+
+如果你在 2024 年还能听到“Vitest 还是 Jest”的争论，到了 2026 年，这场争论基本结束了。新项目默认用 Vitest，老项目除非有沉重的 Jest 插件依赖（比如某些旧的 React Native 配置），否则没有理由不迁移。
+
+Vitest 的 10 倍提速不是营销话术。Jest 的转换管道（`ts-jest` 或 `babel-jest`）是在原生 ESM 和 esbuild 出现之前设计的，每次运行都需要完整的独立编译步骤。Vitest 共享 Vite 的构建管道，在 watch 模式下利用 HMR 只重新运行受影响的测试文件。
+
+E2E 战场同样尘埃落定。Playwright 在 npm 周下载量上已超越 Cypress。多标签页支持、跨浏览器（Chromium + Firefox + WebKit）、trace viewer、以及一流的 TypeScript 支持，使其成为新项目的默认选择。
+
+Cypress 的实时浏览器视图调试体验确实出色，但它不支持多标签页工作流、跨域 iframe 需要变通方案，在复杂应用中这些限制愈发突出。
+
+### 推荐技术栈
+
+2026 年的标准组合：
+
+- **Vitest**：测试运行器，负责执行测试、提供断言（`expect`）、生成覆盖率报告。
+- **React Testing Library (RTL)**：组件测试的核心库，“按用户使用方式测试”是其哲学。
+- **MSW (Mock Service Worker)**：在网络层拦截 API 请求，实现最接近真实环境的 mock。
+- **Playwright**：E2E 测试，遍历完整的用户旅程。
+- **@testing-library/user-event**：模拟真实用户交互（点击、输入、选择），比 `fireEvent` 更接近浏览器行为。
+- **@testing-library/jest-dom**：提供 `toBeInTheDocument()` 等 DOM 专用断言。
+
+辅助工具：
+
+- **Vitest UI (`vitest --ui`)**：可视化的测试运行面板，实时显示通过/失败状态、覆盖率热力图。
+- **Playwright UI Mode (`playwright test --ui`)**：可视化的 E2E 调试工具，支持逐步回放和时间旅行。
+- **Vitest Browser Mode**：在真实浏览器中运行组件测试，比 jsdom 更接近用户环境。
+
+### 一个关键区分：Vitest vs Playwright 的分工
+
+这个问题在初学时容易混淆，因为它俩都能“测试组件”。清晰的边界是：
+
+- **纯逻辑、工具函数、同步组件**：Vitest + jsdom（毫秒级）。
+- **需要真实 DOM 的组件交互、CSS 动画、视觉回归**：Vitest Browser Mode 或 Playwright Component Testing（秒级）。
+- **跨页面的用户旅程、真实后端交互、认证流程**：Playwright E2E（秒到十秒级）。
+
+真实项目通常三层都用，但比例有讲究。一个健康的分工是：把纯逻辑（格式化函数、reducer、校验器）留在 Vitest 单元测试里；用 Playwright Component Testing 覆盖视觉状态、可访问性和组件级交互；把 E2E 留给跨页面、跨系统的关键用户旅程。
+
+---
+
+## 第三部分：三阶段学习路径
+
+### 阶段一：零基础到能写测试（约 1 周）
+
+这个阶段的目标不是理解所有概念，而是**能用 Vitest + React Testing Library 写出第一个组件测试，并理解它为什么是这样写的**。
+
+#### 第一天：理解三个核心 API
+
+忘掉框架、忘掉 mock、忘掉一切复杂的配置。打开一个已有的 Vite + React 项目（或者用 `npm create vite@latest` 新建一个），只学三个东西：
+
+- `describe(name, fn)`：给一组测试起个名字。
+- `it(name, fn)`（或 `test`）：一个具体的测试用例。
+- `expect(value).toBe(expected)`：断言。
+
+先用这三个 API 测试纯函数：
+
+```ts
+// utils.test.ts
+import { describe, expect, it } from "vitest";
+import { formatPrice } from "./utils";
+
+describe("formatPrice", () => {
+  it("将数字格式化为人民币", () => {
+    expect(formatPrice(1234)).toBe("¥1,234.00");
+  });
+
+  it("处理零值", () => {
+    expect(formatPrice(0)).toBe("¥0.00");
+  });
+
+  it("处理负数", () => {
+    expect(formatPrice(-500)).toBe("-¥500.00");
+  });
+});
+```
+
+这里的关键学习点是：**测试是在给一段代码写“使用说明书”**。你在定义什么输入应该产生什么输出，这和写 TypeScript 类型注解是同一个思维。
+
+#### 第二天：测试第一个 React 组件
+
+安装 React Testing Library 并写第一个组件测试：
+
+```tsx
+// Button.test.tsx
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+import { Button } from "./Button";
+
+describe("Button", () => {
+  it("渲染按钮文字", () => {
+    render(<Button>提交</Button>);
+    expect(screen.getByRole("button", { name: "提交" })).toBeInTheDocument();
+  });
+
+  it("点击时触发 onClick", async () => {
+    const user = userEvent.setup();
+    const handleClick = vi.fn();
+
+    render(<Button onClick={handleClick}>点击我</Button>);
+    await user.click(screen.getByRole("button", { name: "点击我" }));
+
+    expect(handleClick).toHaveBeenCalledTimes(1);
+  });
+});
+```
+
+注意到什么？你没有测试 `Button` 内部的 state、没有测试它的 `className`、没有测试它的渲染结构。你只关心两件事：它渲染了什么文字，以及点击它会发生什么。
+
+这就是 React Testing Library 的核心哲学：**测试行为，不测试实现**。
+
+#### 第三天：理解查询优先级
+
+React Testing Library 提供了多种查询方法，按推荐度从高到低：
+
+1. `getByRole`：按 ARIA role 查询，最接近辅助技术用户的使用方式。
+2. `getByLabelText`：按表单标签查询。
+3. `getByPlaceholderText`：按 placeholder 查询。
+4. `getByText`：按可见文字查询。
+5. `getByTestId`：按 `data-testid` 属性查询，作为最后的选择。
+
+`getByTestId` 放在最后不是因为它不能用，而是因为用户不会通过 `data-testid` 来操作你的页面。每当你使用 `getByTestId`，你都在测试实现细节而不是用户行为。
+
+当然在实际项目中，某些复杂场景确实需要用 `getByTestId` 兜底，只是它不应该成为默认选择。
+
+#### 第四到第五天：测试异步组件
+
+大多数 React 组件不是同步的。它们会 `fetch`、`useEffect` 加载数据、响应用户交互后更新状态。RTL 提供了 `findBy*` 系列方法（返回 Promise）来处理异步断言：
+
+```tsx
+it("加载并显示用户列表", async () => {
+  render(<UserList />);
+
+  // findBy 会等待元素出现，默认超时 1000ms
+  expect(await screen.findByText("张三")).toBeInTheDocument();
+});
+
+it("提交表单后显示成功消息", async () => {
+  const user = userEvent.setup();
+
+  render(<LoginForm />);
+
+  await user.type(screen.getByLabelText("邮箱"), "test@example.com");
+  await user.type(screen.getByLabelText("密码"), "password123");
+  await user.click(screen.getByRole("button", { name: "登录" }));
+
+  expect(await screen.findByText("登录成功")).toBeInTheDocument();
+});
+```
+
+第一阶段的成果标志：你能为项目中任何一个组件写出可读的测试，理解 `getByRole` 和 `getByTestId` 的区别，知道 `userEvent` 比 `fireEvent` 更接近真实用户行为。
+
+### 阶段二：写出好测试到写出正确的测试策略（约 2-3 周）
+
+#### 第一周：掌握 MSW，在网络层 mock
+
+传统的 mock 方式有一个根本缺陷：你在 mock 一个具体的模块（比如 `jest.mock("axios")` 或 `vi.mock("./api")`），这意味着你的组件在测试中执行的代码和在生产环境中不同。
+
+MSW 解决了这个问题。它在网络层（Service Worker 层）拦截请求，你的组件完全不知道自己在被测试。`fetch` 或 axios 照常发出，MSW 拦截并返回你定义的响应。
+
+更重要的是，同一套 MSW handlers 可以在三个环境复用：开发时（后端还没好，用 mock 数据开发）、测试时、Storybook 中。这是 MSW 相比传统 mock 方式最大的结构性优势。
+
+```ts
+// mocks/handlers.ts
+import { http, HttpResponse } from "msw";
+
+export const handlers = [
+  http.get("/api/users", () => {
+    return HttpResponse.json([
+      { id: 1, name: "张三" },
+      { id: 2, name: "李四" },
+    ]);
+  }),
+
+  http.post("/api/login", async ({ request }) => {
+    const body = await request.json();
+
+    if (body.email === "test@example.com") {
+      return HttpResponse.json({ token: "fake-jwt" });
+    }
+
+    return HttpResponse.json({ error: "Invalid credentials" }, { status: 401 });
+  }),
+];
+```
+
+#### 第二周：测试自定义 Hook 和复杂状态
+
+`renderHook` 让你在不渲染完整组件的情况下测试 Hook 逻辑：
+
+```ts
+import { act, renderHook } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { useCounter } from "./useCounter";
+
+describe("useCounter", () => {
+  it("初始值为 0", () => {
+    const { result } = renderHook(() => useCounter());
+
+    expect(result.current.count).toBe(0);
+  });
+
+  it("increment 增加计数", () => {
+    const { result } = renderHook(() => useCounter());
+
+    act(() => result.current.increment());
+
+    expect(result.current.count).toBe(1);
+  });
+});
+```
+
+#### 第三周：建立分层测试的判断力
+
+这个阶段最重要的不是技术，而是判断力。当你在写测试时，你一直在做三个决策：
+
+- **这个边界情况应该用单元测试覆盖吗？** 如果是一段纯计算逻辑（比如金额计算、日期处理），单元测试是最快最稳定的选择。
+- **这个用户旅程应该用 E2E 测试覆盖吗？** 如果它涉及多个页面跳转、真实后端状态变更、或支付/认证等关键流程，E2E 是最有信心的选择。
+- **大部分组件交互应该用集成测试覆盖吗？** 对于 80% 的 React 组件来说，是的。渲染组件，模拟交互，断言屏幕输出，这是效率和信心的最佳平衡点。
+
+第二阶段成果标志：你能独立决定一个功能的测试策略：哪些测、测到什么程度、用什么层次测。你理解 MSW 的原理并能用它 mock 任何 API 场景。
+
+### 阶段三：CI/CD 集成与视觉回归（约 2 周）
+
+#### 引入 Playwright E2E
+
+Playwright 的初体验和 Vitest 不同。它启动的是真实浏览器，你需要安装浏览器二进制文件：
+
+```bash
+npm install -D @playwright/test
+npx playwright install
+```
+
+第一个 E2E 测试：
+
+```ts
+// e2e/login.spec.ts
+import { expect, test } from "@playwright/test";
+
+test("用户可以登录", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel("邮箱").fill("test@example.com");
+  await page.getByLabel("密码").fill("password123");
+  await page.getByRole("button", { name: "登录" }).click();
+
+  await expect(page.getByText("欢迎回来")).toBeVisible();
+});
+```
+
+和 RTL 的 API 非常相似，这是因为 Playwright 的 Testing Library 风格查询器（`getByRole`、`getByLabel`、`getByText`）刻意保持了这种一致性。你不需要学习两套完全不同的查询哲学。
+
+Playwright 的高级特性值得专门花时间探索：
+
+- **Trace Viewer**：记录测试的每一步，包括 DOM 快照、网络请求、控制台日志。测试失败时，打开 trace 可以精确回放失败前发生了什么。
+- **Codegen**：`npx playwright codegen` 打开浏览器，记录你的操作并生成测试代码。对于新手来说，这是理解 Playwright API 最快的捷径。
+- **Fixtures**：`test.extend()` 让你定义可复用的测试上下文，比如自动登录、注入测试数据。
+
+#### CI/CD 中的分层运行策略
+
+不要把全部测试塞进一个 CI 步骤。高效的做法是：
+
+1. **静态分析 + 单元测试**：PR 打开时立即运行，30 秒内给出反馈。
+2. **集成测试**：单元测试通过后运行，依赖于数据库/API mock 的 test fixture。
+3. **E2E 测试**：部署到 staging 环境后运行，使用真实后端。
+4. **视觉回归测试**：Storybook + Chromatic（或 Percy），自动对比组件的视觉快照。
+
+第三阶段成果标志：你有一套完整的 CI/CD 测试流水线。单元测试在 30 秒内完成，E2E 在 staging 环境自动运行，失败的测试自动生成 trace 文件供调试。
+
+---
+
+## 第四部分：实战配置——从零搭建 React + TypeScript 测试环境
+
+以下是一套可以直接复制使用的完整配置。每一步都有解释，不只有命令。
+
+### 第一步：安装依赖
+
+```bash
+npm install -D vitest @vitest/ui jsdom \
+  @testing-library/react @testing-library/jest-dom @testing-library/user-event \
+  msw @playwright/test
+```
+
+### 第二步：配置 Vitest
+
+在 `vite.config.ts` 中添加 `test` 配置块：
+
+```ts
+/// <reference types="vitest/config" />
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    globals: true,
+    environment: "jsdom",
+    setupFiles: ["./src/testing/setup.ts"],
+    css: true,
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+    },
+  },
+});
+```
+
+### 第三步：创建测试基础设施
+
+`src/testing/setup.ts` 会在每个测试文件运行前执行：
+
+```ts
+import { afterEach, expect } from "vitest";
+import { cleanup } from "@testing-library/react";
+import * as matchers from "@testing-library/jest-dom/matchers";
+
+// 扩展 expect，增加 DOM 专用断言。
+expect.extend(matchers);
+
+// 每个测试后清理 DOM，防止测试间状态泄漏。
+afterEach(() => {
+  cleanup();
+});
+```
+
+加上 MSW 之后的完整版 `setup.ts`：
+
+```ts
+import { afterAll, afterEach, beforeAll, expect } from "vitest";
+import { cleanup } from "@testing-library/react";
+import * as matchers from "@testing-library/jest-dom/matchers";
+import { server } from "./mocks/server";
+
+expect.extend(matchers);
+
+beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+
+afterEach(() => {
+  server.resetHandlers();
+  cleanup();
+});
+
+afterAll(() => server.close());
+```
+
+`src/testing/mocks/server.ts`：
+
+```ts
+import { setupServer } from "msw/node";
+import { handlers } from "./handlers";
+
+export const server = setupServer(...handlers);
+```
+
+### 第四步：让 TypeScript 认识全局测试 API
+
+在 `tsconfig.app.json` 中添加：
+
+```json
+{
+  "compilerOptions": {
+    "types": ["vitest/globals", "@testing-library/jest-dom"]
+  }
+}
+```
+
+### 第五步：配置 Playwright
+
+```ts
+// playwright.config.ts
+import { defineConfig, devices } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "./e2e",
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: "html",
+  use: {
+    baseURL: "http://localhost:5173",
+    trace: "on-first-retry",
+  },
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    { name: "firefox", use: { ...devices["Desktop Firefox"] } },
+  ],
+  webServer: {
+    command: "npm run dev",
+    url: "http://localhost:5173",
+    reuseExistingServer: !process.env.CI,
+  },
+});
+```
+
+### 第六步：添加 npm scripts
+
+```json
+{
+  "scripts": {
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
+  }
+}
+```
+
+---
+
+## 第五部分：AI Agent 驱动测试——从“让 Agent 写代码”到“让 Agent 写测试并验证代码”
+
+### 为什么 Agent 和测试是一体的
+
+在 2026 年，AI Agent 已经不再只是代码补全工具。它们能分析需求、规划架构、生成完整的 TypeScript 实现。
+
+但 Bryan Lopez 在他关于 Agentic AI 架构的文章中指出了一个关键教训：**“生成很容易，验证才值钱”**。
+
+你的角色在 Agent 时代发生了转移：从“写代码的人”变成了“定义黄金路径的人”。你定义项目的标准部署方式、观测方式和安全策略，Agent 在这些路径上执行。而测试，就是这个黄金路径的核心部分。
+
+### Agent 驱动测试的四个层级
+
+#### 第一层：Agent 生成测试（最低门槛）
+
+这是你现在就能做的事情。当你让 Agent 生成一个组件时，同时要求它生成对应的测试：
+
+> 请为这个 `SearchBar` 组件写完整的 Vitest + React Testing Library 测试，包括空输入、正常搜索、网络错误三个场景。使用 MSW mock API 请求。
+
+Agent 生成的测试不总是完美的。它可能使用 `getByTestId` 而不是 `getByRole`，可能遗漏边界情况。但**有一个 80% 正确的测试作为起点，远比从空白文件开始要好**。
+
+你的工作是 review 和修正，而不是从零创作。
+
+关键实践：在项目中创建一个 `TESTING_CONVENTIONS.md` 文件，写清楚你项目的测试约定：
+
+```md
+# 测试约定
+
+- 查询优先级：getByRole > getByLabelText > getByText > getByTestId
+- 使用 userEvent，不用 fireEvent
+- API 调用使用 MSW mock，不 mock 具体模块
+- 测试文件命名：ComponentName.test.tsx，放在组件同目录
+- 每个 describe 文件只测试一个组件
+```
+
+然后在每次让 Agent 生成测试时引用这个文件。这确保了 Agent 的输出符合你的项目规范，而不是通用模式。
+
+#### 第二层：Agent 审查测试（中等门槛）
+
+让 Agent 审查你写的测试，指出遗漏和问题：
+
+> 审查这个测试文件。是否覆盖了所有重要的边界情况？查询方法的选择是否符合 Testing Library 最佳实践？是否有假阳性风险（测试通过但实际功能有问题）？
+
+Agent 能从几个角度帮你提升测试质量：检查是否遗漏了 loading 状态和 error 状态的测试、是否测试了空数据和边界数据、是否测试了用户交互的完整流程而不仅仅是渲染结果。
+
+#### 第三层：Agent 决策测试策略（高级门槛）
+
+给定一个功能需求，让 Agent 帮你做测试策略决策：
+
+> 这是用户注册功能的需求文档。请分析：哪些逻辑应该用 Vitest 单元测试覆盖？哪些组件交互应该用 RTL 集成测试覆盖？哪些用户旅程应该用 Playwright E2E 覆盖？给出每个层次的测试用例列表和理由。
+
+Agent 可以从风险角度分析：纯计算（密码强度校验、邮箱格式验证）用单元测试；组件交互（表单验证提示、提交按钮状态变化）用集成测试；完整流程（注册、邮箱验证、首次登录、引导页面）用 E2E。
+
+#### 第四层：Agent 集成到 CI 流水线（专业门槛）
+
+最高级的方式是让 Agent 直接参与 CI/CD 流程。当 E2E 测试失败时，Agent 自动分析 trace viewer 的输出、定位失败原因、生成修复建议，甚至直接提交修复 PR。
+
+Agent 不再只是给你建议，而是成为 CI 流程中的一等公民，产出可追溯、可审查的测试结果。
+
+### Agent 测试的三大陷阱与对策
+
+#### 陷阱一：Agent 倾向使用 `getByTestId`
+
+AI 生成代码时，`data-testid` 是最简单的选择。它不需要理解 DOM 结构、不需要知道 ARIA role、不需要判断可见文字。
+
+解决方案：在 prompt 中明确要求“使用 `getByRole` 和 `getByLabelText`，禁止使用 `getByTestId`，除非组件确实没有可访问的语义化元素”。同时在你项目的 `TESTING_CONVENTIONS.md` 中声明这个约定。
+
+#### 陷阱二：Agent 测试实现细节而不是行为
+
+Agent 可能测试 `useState` 是否被调用、`useEffect` 的依赖数组是否正确、组件是否触发了某个内部函数。这些测试在重构时会大量失败，即使功能完全正常。
+
+解决方案：教 Agent 以“用户视角”写测试，只断言屏幕上可见的内容和用户可触发的交互结果。
+
+#### 陷阱三：盲目信任 Agent 生成的测试
+
+Agent 生成的测试可能包含“假绿色”：测试通过了，但它并没有真正验证你想要的行为。
+
+比如 Agent 用 `expect(true).toBe(true)` 占位，或者在 `waitFor` 超时前恰好捕捉到了暂态但非目标状态。
+
+解决方案：始终人工 review Agent 生成的测试，特别关注异步断言和 mock 配置。
+
+---
+
+## 第六部分：参考资源
+
+视频教程：
+
+- [React Testing Full Course 2026 — Vitest and React Testing Library Tutorial](https://www.youtube.com/watch?v=6dOpQIwyV6g)：48 分钟的完整视频教程，覆盖 Vitest + RTL 全流程。
+
+文章与指南：
+
+- [Unit Testing a React Application with Vitest, MSW, and Playwright](https://makepath.com/unit-testing-a-react-application-with-vitest-msw-and-playwright/)：完整的实战代码指南，涵盖 Redux 和异步 Thunk 测试。
+- [Add unit testing support to a React project using Vite and TypeScript](https://reactpractice.dev/articles/add-unit-testing-support-to-a-react-project-using-vite-and-typescript/)：step-by-step 的配置教程。
+- [Using Mock Service Worker With Vitest For API Testing](https://stevekinney.com/courses/testing/testing-with-mock-service-worker)：Steve Kinney 的 MSW 指南。
+
+测试策略与哲学：
+
+- [Static vs Unit vs Integration vs E2E Testing — Kent C. Dodds](https://kentcdodds.com/blog/static-vs-unit-vs-integration-vs-e2e-tests)：Testing Trophy 的权威阐述。
+- [UI Testing Best Practices](https://github.com/NoriSte/ui-testing-best-practices/blob/master/sections/testing-strategy/component-vs-integration-vs-e2e-testing.md)：持续更新的 UI 测试最佳实践集合。
+
+工具链对比与选型：
+
+- [Choosing a TypeScript Testing Framework (2026)](https://dev.to/agent-tools-dev/choosing-a-typescript-testing-framework-jest-vs-vitest-vs-playwright-vs-cypress-2026-7j9)：四大框架的完整决策矩阵。
+- [Vitest + Jest + Playwright: Full Testing Stack 2026](https://www.pkgpulse.com/blog/vitest-jest-playwright-complete-testing-stack-2026)：架构层面的深度对比。
+
+AI Agent 与测试：
+
+- [The Rise of Agentic AI: Building Autonomous Frontend Workflows in 2026](https://bryancode.dev/en/blog/the-rise-of-agentic-ai-building-autonomous-frontend-workflows-in-2026)：2026 年 Agent 驱动前端开发的趋势分析。
+- [Using AI to Write Tests for React Components](https://www.callstack.com/blog/using-ai-to-write-tests-for-react-components)：Callstack 关于 AI 辅助测试的实践文章。
+- [Building Reviewable Mobile QA Agents With Vercel Eve](https://www.callstack.com/blog/building-reviewable-mobile-qa-agents-with-vercel-eve)：Agent 作为 CI 一等公民的实践案例。
+
+---
+
+## 附录：术语速查
+
+| 术语 | 一句话解释 |
+| --- | --- |
+| **Testing Trophy** | Kent C. Dodds 提出的前端测试策略模型，集成测试是最大层 |
+| **Vitest** | 基于 Vite 的测试运行器，兼容 Jest API，速度快 |
+| **React Testing Library** | “按用户使用方式测试”的组件测试库 |
+| **jsdom** | 在 Node.js 中模拟浏览器 DOM 环境 |
+| **MSW** | Mock Service Worker，在网络层拦截 HTTP 请求 |
+| **Playwright** | 微软出品的跨浏览器 E2E 测试框架 |
+| **userEvent** | 模拟真实用户交互，比 `fireEvent` 更接近浏览器行为 |
+| **renderHook** | RTL 提供的 Hook 测试 API |
+| **fixture** | Playwright/Vitest 中可复用的测试上下文 |
+| **trace viewer** | Playwright 的测试回放工具，可看到每一步的 DOM 和网络状态 |
+| **codegen** | Playwright 的代码生成器，记录浏览器操作并生成测试代码 |
