@@ -1,0 +1,520 @@
+---
+title: "前端直传 R2 / S3：上传进度、取消与 mock API"
+date: "2026-06-28"
+excerpt: "整理前端通过 presigned URL 直传 R2 / S3 兼容对象存储的核心流程：XHR 上传进度、AbortController 取消、错误处理，以及不依赖真实接口的 mock 示例。"
+category: "frontend"
+tags: ["upload", "r2", "s3", "xhr", "mock"]
+draft: false
+---
+
+# 前端直传 R2 / S3：上传进度、取消与 mock API
+
+这段代码的本质是：**把 XHR 的上传进度、成功、失败、取消事件封装成一个 Promise，让前端可以用 `await` 控制 R2 / S3 presigned URL 上传，同时用 `onProgress` 更新 UI，用 `AbortController` 取消上传。**
+
+可以把它抽象成一句话：
+
+```ts
+uploadToR2WithProgress(params): Promise<void>
+```
+
+意思是：开始上传，上传成功就 `resolve`，上传失败或取消就 `reject`。
+
+---
+
+## 一、为什么是前端直传
+
+传统上传路径是：
+
+```txt
+浏览器 -> 业务后端 -> 对象存储
+```
+
+直传对象存储的路径是：
+
+```txt
+浏览器 -> R2 / S3
+```
+
+业务后端只负责生成一个临时上传地址，也就是 `presignedUrl`。浏览器拿到这个地址后，直接把文件上传到对象存储。
+
+这样做的好处是：
+
+- 文件流量不经过业务后端，后端压力更小。
+- 上传大文件时链路更短。
+- 前端可以独立控制上传进度、取消和重试。
+
+---
+
+## 二、mock 版接口约定
+
+笔记里的接口全部使用 mock，不依赖真实 API。
+
+前端先向 mock 后端请求一个上传地址：
+
+```ts
+type MockPresignedUploadResponse = {
+  presignedUrl: string;
+  objectKey: string;
+  publicUrl: string;
+};
+```
+
+示例请求：
+
+```ts
+async function getMockPresignedUploadUrl(file: File): Promise<MockPresignedUploadResponse> {
+  const response = await fetch('/api/mock/presigned-upload', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      filename: file.name,
+      contentType: file.type || 'application/octet-stream',
+      size: file.size,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Create mock presigned URL failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+```
+
+mock 后端可以返回固定数据：
+
+```ts
+export async function POST() {
+  return Response.json({
+    presignedUrl: 'https://mock-r2-upload.example.test/demo-bucket/mock-file.png?signature=mock-signature',
+    objectKey: 'uploads/mock-file.png',
+    publicUrl: 'https://cdn.example.test/uploads/mock-file.png',
+  });
+}
+```
+
+这里的域名都是示例域名：
+
+```txt
+/api/mock/presigned-upload
+https://mock-r2-upload.example.test
+https://cdn.example.test
+```
+
+不要在笔记、测试或 demo 里写真实 bucket、真实 token、真实 API 网关地址。
+
+---
+
+## 三、上传函数签名
+
+```ts
+type UploadToR2WithProgressParams = {
+  presignedUrl: string;
+  file: File;
+  onProgress?: (percent: number) => void;
+  signal?: AbortSignal;
+};
+```
+
+参数含义：
+
+```txt
+presignedUrl   后端生成的临时上传地址
+file           浏览器 File 对象，也就是用户选择的文件
+onProgress     上传进度回调，例如 setProgress
+signal         用于取消上传的 AbortSignal
+```
+
+返回值是：
+
+```ts
+Promise<void>
+```
+
+这个函数只关心“上传是否成功”，不直接返回文件 URL。通常文件 URL、对象 key、访问地址是在请求 `presignedUrl` 时就已经拿到了。
+
+---
+
+## 四、为什么不用 fetch
+
+这里使用 `XMLHttpRequest`，主要原因是：**XHR 原生支持上传进度事件**。
+
+```ts
+xhr.upload.onprogress = (event) => {
+  // event.loaded / event.total
+};
+```
+
+`fetch` 更现代，但它没有同样直接的上传进度 API。
+
+如果 UI 需要展示：
+
+```txt
+上传中 18%
+上传中 57%
+上传完成
+```
+
+XHR 仍然是简单可靠的选择。
+
+---
+
+## 五、完整上传函数
+
+```ts
+export function uploadToR2WithProgress({
+  presignedUrl,
+  file,
+  onProgress,
+  signal,
+}: UploadToR2WithProgressParams): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(createUploadAbortError());
+      return;
+    }
+
+    const xhr = new XMLHttpRequest();
+
+    const abortUpload = () => {
+      xhr.abort();
+    };
+
+    const cleanup = () => {
+      signal?.removeEventListener('abort', abortUpload);
+    };
+
+    xhr.open('PUT', presignedUrl, true);
+
+    xhr.setRequestHeader(
+      'Content-Type',
+      file.type || 'application/octet-stream'
+    );
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+
+      const percent = Math.round((event.loaded / event.total) * 100);
+      onProgress?.(percent);
+    };
+
+    xhr.onload = () => {
+      cleanup();
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+        return;
+      }
+
+      reject(new Error(`Upload failed: ${xhr.status}`));
+    };
+
+    xhr.onerror = () => {
+      cleanup();
+      reject(new Error('Upload network error'));
+    };
+
+    xhr.onabort = () => {
+      cleanup();
+      reject(createUploadAbortError());
+    };
+
+    signal?.addEventListener('abort', abortUpload, { once: true });
+
+    xhr.send(file);
+  });
+}
+
+function createUploadAbortError() {
+  return new DOMException('Upload aborted', 'AbortError');
+}
+```
+
+---
+
+## 六、为什么要包一层 Promise
+
+`XMLHttpRequest` 是事件回调风格，不能直接这样写：
+
+```ts
+await xhr.send(file);
+```
+
+所以要手动包装成 Promise：
+
+```txt
+xhr.onload   -> resolve 或 reject
+xhr.onerror  -> reject
+xhr.onabort  -> reject
+```
+
+这样外部就可以写：
+
+```ts
+await uploadToR2WithProgress({
+  presignedUrl,
+  file,
+  onProgress: setProgress,
+  signal,
+});
+```
+
+本质上是把“事件式 API”封装成“async/await 友好的 API”。
+
+---
+
+## 七、取消上传的链路
+
+取消上传不是 `AbortController` 直接取消 XHR。
+
+`AbortController` 只负责发出一个取消信号，真正停止请求的是：
+
+```ts
+xhr.abort();
+```
+
+完整链路是：
+
+```txt
+controller.abort()
+        ↓
+signal 触发 abort 事件
+        ↓
+执行 abortUpload()
+        ↓
+调用 xhr.abort()
+        ↓
+触发 xhr.onabort
+        ↓
+reject(createUploadAbortError())
+```
+
+这就是这段代码里最重要的取消链路。
+
+---
+
+## 八、上传进度怎么计算
+
+核心代码是：
+
+```ts
+xhr.upload.onprogress = (event) => {
+  if (!event.lengthComputable) return;
+
+  const percent = Math.round((event.loaded / event.total) * 100);
+  onProgress?.(percent);
+};
+```
+
+`event` 里常用的字段是：
+
+```txt
+event.loaded             已经上传的字节数
+event.total              总字节数
+event.lengthComputable   是否可以计算总进度
+```
+
+例如文件总大小是 10MB，已经上传 3MB：
+
+```txt
+event.loaded = 3145728
+event.total = 10485760
+```
+
+计算出来就是：
+
+```txt
+30%
+```
+
+`lengthComputable` 要判断，因为不是所有场景都能拿到可靠的总大小。普通 `File` 上传一般可以计算，但保留这个判断更稳。
+
+---
+
+## 九、成功、失败、取消的区别
+
+`xhr.onload` 表示请求完成并收到响应，但不代表一定成功。
+
+例如：
+
+```txt
+403 Forbidden
+500 Internal Server Error
+```
+
+这些也会进入 `onload`，所以必须判断状态码：
+
+```ts
+if (xhr.status >= 200 && xhr.status < 300) {
+  resolve();
+} else {
+  reject(new Error(`Upload failed: ${xhr.status}`));
+}
+```
+
+`xhr.onerror` 处理网络层错误，例如：
+
+```txt
+断网
+DNS 错误
+CORS 被浏览器拦截
+TLS 错误
+请求无法发出去
+```
+
+`xhr.onabort` 处理主动取消：
+
+```ts
+xhr.onabort = () => {
+  cleanup();
+  reject(createUploadAbortError());
+};
+```
+
+主动取消和网络失败应该区分开。用户主动取消上传，通常不应该按业务错误提示。
+
+---
+
+## 十、完整 mock 使用示例
+
+```ts
+async function uploadSelectedFile(file: File) {
+  const controller = new AbortController();
+
+  try {
+    const { presignedUrl, publicUrl } = await getMockPresignedUploadUrl(file);
+
+    await uploadToR2WithProgress({
+      presignedUrl,
+      file,
+      signal: controller.signal,
+      onProgress: (percent) => {
+        console.log(`mock upload progress: ${percent}%`);
+      },
+    });
+
+    console.log('mock upload success:', publicUrl);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      console.log('mock upload aborted');
+      return;
+    }
+
+    console.error('mock upload failed:', error);
+  }
+
+  return () => {
+    controller.abort();
+  };
+}
+```
+
+如果用户点击“取消上传”按钮：
+
+```ts
+controller.abort();
+```
+
+---
+
+## 十一、真实项目里要注意什么
+
+### 1. `Content-Type` 要和签名保持一致
+
+如果后端生成 presigned URL 时把 `Content-Type` 参与了签名，前端上传时传的 `Content-Type` 必须一致。
+
+否则对象存储可能会返回：
+
+```txt
+403 SignatureDoesNotMatch
+```
+
+更稳的写法是：
+
+```ts
+xhr.setRequestHeader(
+  'Content-Type',
+  file.type || 'application/octet-stream'
+);
+```
+
+### 2. 不要随便加 `Cache-Control`
+
+例如：
+
+```ts
+xhr.setRequestHeader('Cache-Control', 'max-age=86400');
+```
+
+这个 header 可能影响签名、CORS 和后续缓存策略。更稳的做法是：由后端决定是否允许这个 header，然后前端按后端返回的配置设置。
+
+```ts
+if (cacheControl) {
+  xhr.setRequestHeader('Cache-Control', cacheControl);
+}
+```
+
+### 3. 文件 key 最好不要覆盖
+
+如果同一个 URL 后续会被覆盖，浏览器或 CDN 缓存可能导致用户看到旧文件。
+
+更推荐的对象存储策略是：
+
+```txt
+uploads/{uuid}-{filename}
+uploads/{content-hash}.{ext}
+```
+
+不要频繁覆盖同一个 key。
+
+### 4. 可以返回 ETag
+
+R2 / S3 上传成功后，响应头里可能有：
+
+```txt
+ETag
+```
+
+如果后续要校验文件完整性，可以读取：
+
+```ts
+const etag = xhr.getResponseHeader('ETag');
+```
+
+然后把函数返回值从：
+
+```ts
+Promise<void>
+```
+
+升级成：
+
+```ts
+Promise<{ etag: string | null }>
+```
+
+---
+
+## 十二、整体流程
+
+```txt
+1. 前端选择文件
+2. 前端请求 /api/mock/presigned-upload
+3. mock 后端返回 presignedUrl、objectKey、publicUrl
+4. 前端创建 XMLHttpRequest
+5. 前端用 PUT 把 file 上传到 presignedUrl
+6. 上传中通过 xhr.upload.onprogress 更新进度
+7. 用户取消时通过 AbortController 触发 xhr.abort()
+8. 上传成功后 resolve
+9. HTTP 失败、网络失败、主动取消分别 reject
+```
+
+核心设计只有三点：
+
+- **上传进度**：`xhr.upload.onprogress`
+- **取消上传**：`signal.addEventListener('abort', () => xhr.abort())`
+- **Promise 封装**：`return new Promise(...)`
+
+这三个点组合起来，就能把对象存储直传封装成一个可复用、可等待、可取消的前端上传能力。
