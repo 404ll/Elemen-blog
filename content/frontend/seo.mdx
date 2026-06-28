@@ -1,0 +1,314 @@
+---
+title: "SEO 工程化实践笔记"
+date: "2026-06-28"
+excerpt: "从前端工程视角梳理 SEO 的抓取、索引、canonical、多语言、metadata、结构化数据、渲染性能与上线后的数据闭环。"
+category: "frontend"
+tags: ["SEO", "Next.js", "Frontend"]
+draft: false
+---
+
+# SEO 工程化实践笔记
+
+SEO 工程化不是“给页面补一个 title”。它更像一套面向搜索引擎的产品交付系统：让重要页面能被发现、被正确理解、被稳定索引，并且在内容和路由持续增长时仍然可维护。
+
+这份笔记先按工程分层梳理 SEO，再总结新页面接入和 Code Review 时可以复用的检查点。
+
+## 一句话模型
+
+一个页面想从搜索获得流量，需要依次过关：
+
+1. **能被发现**：robots、sitemap、内链没有挡住它。
+2. **能被抓取**：服务器能稳定返回页面和关键资源。
+3. **值得索引**：页面有质量门槛，不和参数页、重复页互相打架。
+4. **权威 URL 清楚**：canonical 指向唯一主版本。
+5. **语言关系清楚**：hreflang 告诉搜索引擎各语言版本如何对应。
+6. **内容可理解**：metadata 和 JSON-LD 让页面语义明确。
+7. **体验过得去**：渲染、性能、图片、缓存不会拖垮抓取和转化。
+8. **上线后能复盘**：Search Console / 日志 / 数据分析能支持迭代。
+
+## 1. Crawling：让搜索引擎发现正确的页面
+
+### 要解决的问题
+
+搜索引擎每天能抓的 URL 有限。工程上要把抓取预算花在真正有价值的页面上，而不是登录页、接口、参数页、废弃路径和 preview 环境。
+
+### 实践清单
+
+- 生产环境和非生产环境使用不同 robots 策略。
+- 非生产环境默认 `disallow: /`，避免 preview / staging 被索引。
+- `robots.txt` 中屏蔽 API、内部路由、登录后页面、无意义参数入口。
+- 根 sitemap 作为 sitemap index，列出各业务子 sitemap。
+- 内容量大的 sitemap 分片，避免单文件过大。
+- sitemap 中只放希望被搜索引擎发现的 URL，不把所有内部 URL 都塞进去。
+- 对 CMS、UGC、动态内容这类页面，要有稳定的数据源和兜底策略。
+
+### 值得注意的工程点
+
+真实项目里的 sitemap 通常要注意几个处理：
+
+- 根 `sitemap.ts` 不直接放所有页面，而是列出多个子 sitemap。
+- 内容详情 / 主题文章这类大集合使用 `generateSitemaps()` 分片。
+- `SITEMAP_MAX_URLS` 取 5000，而不是协议上限 50000，让分片更稳。
+- CMS 抖动返回空结果时不缓存空 sitemap，避免“短暂失败”变成“长时间空索引”。
+- robots 会在非生产环境阻止全站抓取。
+
+## 2. Indexing：决定哪些页面应该进入索引
+
+### 要解决的问题
+
+不是所有能访问的页面都应该被索引。动态筛选页、低质量内容页、重复语言页、个人结果页，都可能浪费抓取预算或稀释主页面权重。
+
+### 实践清单
+
+- 给页面建立明确的索引策略：`index` / `noindex` / `follow`。
+- 对搜索页、筛选页、排序页、分页页谨慎开放索引。
+- 对 UGC / CMS 内容建立质量门槛。
+- 允许运营或编辑通过 CMS 字段覆盖索引状态。
+- `noindex, follow` 适合“页面不收录，但页面上的链接仍有价值”的场景。
+- `noindex, nofollow` 适合个人结果、隐私内容、无公共价值页面。
+- sitemap 与页面 robots 必须一致：不要在 sitemap 里推一个页面自己 `noindex` 的 URL。
+
+### 值得注意的工程点
+
+内容详情页不是简单地“所有详情都 index”。它综合了三层判断：
+
+- locale 是否在 “可索引语言”白名单中。
+- CMS `meta.indexed` 是否显式打开或关闭。
+- 没有 CMS 覆盖时，再走推荐标记 / 访问量等业务质量门槛。
+
+这类策略适合内容库、模板库、UGC 广场。它承认“页面很多”不等于“都值得收录”。
+
+## 3. Canonicalization：给重复内容指定权威 URL
+
+### 要解决的问题
+
+同一内容经常会有多个 URL：
+
+- 带 query 的筛选 URL
+- 同一详情页的旧 slug 和新 slug
+- 入口页和探索页
+- 默认语言与带 locale prefix 的 URL
+- CMS 生成 URL 与前端路由 URL
+
+canonical 的作用是告诉搜索引擎哪个 URL 是主版本。
+
+### 实践清单
+
+- 每个可索引页面都应该有 canonical。
+- canonical 应该是绝对 URL。
+- 参数页通常 canonical 到无参数的干净 URL。
+- 动态探索页如果只是浏览体验，canonical 回对应入口页。
+- 改 slug 时考虑 redirect 与 canonical 的配合。
+- canonical helper 要集中维护，不要每个页面手写。
+
+### Next.js 写法
+
+```ts
+return {
+  alternates: {
+    canonical: generateCanonical(locale, path),
+  },
+};
+```
+
+## 4. International SEO：处理多语言版本
+
+### 要解决的问题
+
+多语言站点不能只靠 URL 看起来不同。搜索引擎需要知道这些页面是同一内容的不同语言版本，否则容易出现：
+
+- 英文页面抢中文 query。
+- 低质量翻译页进入索引。
+- 默认语言和 locale prefix 页面重复。
+- sitemap 里推了 16 份页面，但页面自身没有 hreflang 对应关系。
+
+### 实践清单
+
+- 用 hreflang 输出所有语言版本。
+- 增加 `x-default`。
+- 默认语言是否带 prefix 要统一。
+- sitemap 也要输出语言 alternates。
+- 不是所有 locale 都必须参与索引，尤其是机器翻译或内容不足的 locale。
+- 页面 metadata 和 sitemap 使用同一套 locale 配置。
+
+### 常见坑
+
+- 页面 metadata 有 hreflang，但 sitemap 没有。
+- sitemap 有所有 locale，但页面 robots 对其中一些 locale 是 `noindex`。
+- `zh-CN` / `en-US` 大小写不规范。
+- 默认语言同时存在 `/page` 和 `/en-US/page` 两个可索引版本。
+
+## 5. Metadata：让搜索结果和分享卡片可控
+
+### 要解决的问题
+
+metadata 决定页面在搜索结果、社交分享、浏览器和爬虫语义里的第一印象。工程上要保证每类页面都有稳定模板，同时允许 CMS 或业务内容覆盖。
+
+### 实践清单
+
+- 每个页面至少有 title、description、canonical。
+- 可分享页面补 Open Graph 和 Twitter Card。
+- 详情页优先使用内容自己的图片，不要全站共用一张兜底图。
+- CMS 内容页优先使用 CMS `meta.title` / `meta.description`。
+- CMS 不可用时有 i18n fallback，不能让页面渲染失败。
+- Metadata 文案走 i18n，不写 JSX 裸字符串。
+
+### Next.js 写法
+
+```ts
+export async function generateMetadata({ params }): Promise<Metadata> {
+  const { locale } = await params;
+  const path = '/your-page-path';
+
+  return {
+    title: metaTitle,
+    description: metaDescription,
+    alternates: {
+      canonical: generateCanonical(locale, path),
+      languages: generateLanguageAlternates(path),
+    },
+    openGraph: {
+      title: metaTitle,
+      description: metaDescription,
+      images: [{ url: socialImage, width: 1200, height: 630 }],
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: metaTitle,
+      description: metaDescription,
+      images: [socialImage],
+    },
+  };
+}
+```
+
+## 6. Structured Data：把页面升级成实体关系
+
+### 要解决的问题
+
+搜索引擎可以阅读 HTML，但 JSON-LD 能更直接地说明页面是什么、属于谁、和哪些实体有关。结构化数据尤其适合内容页、产品页、FAQ、视频、面包屑。
+
+### 实践清单
+
+- 全站 layout 放 Organization / WebSite。
+- 文章详情页放 Article。
+- 内容详情页放 BreadcrumbList。
+- FAQ 内容真实存在时放 FAQPage。
+- 视频内容放 VideoObject，并提供 thumbnail / embed / content URL。
+- JSON-LD 中的 URL 使用 canonical。
+- 注入 JSON-LD 时转义 `<`，避免脚本注入风险。
+
+### 安全注入写法
+
+```tsx
+<script
+  type="application/ld+json"
+  dangerouslySetInnerHTML={{
+    __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c'),
+  }}
+/>
+```
+
+## 7. Rendering 与性能：让爬虫和用户都拿到稳定页面
+
+### 要解决的问题
+
+搜索引擎可以执行 JavaScript，但工程上仍然应该让关键内容尽早、稳定地出现在服务端返回的 HTML 中。SEO 页面越依赖客户端二次请求，越容易出现抓取不完整、性能差、内容闪烁和缓存不可控。
+
+### 实践清单
+
+- 纯入口页优先静态化。
+- 内容详情页可用 SSG / ISR。
+- 搜索、排序、筛选页如果必须动态，明确 `noindex` 或 canonical 策略。
+- CMS fetch 使用缓存和 tags，避免每次请求都打源站。
+- 关键内容不要只在客户端 useEffect 后出现。
+- 图片走受控 loader / CDN / remotePatterns。
+- 页面大集合不要全量 `generateStaticParams`，避免构建膨胀。
+
+### 典型取舍
+
+内容集合可以把入口页和探索页拆成两个路由：
+
+- 入口页：静态、可索引，承载 SEO 权重。
+- 探索页：动态、支持搜索排序分页，`noindex, follow`，canonical 指回入口页。
+
+这是一个很实用的模式：把“搜索引擎入口”和“用户探索体验”分开设计。
+
+## 8. Data Loop：上线后验证 SEO 是否生效
+
+### 要解决的问题
+
+SEO 工程不是合并代码就结束。上线后要确认页面真的被发现、被抓取、被索引，并带来查询曝光和点击。
+
+### 实践清单
+
+- 在 Search Console 里提交 sitemap。
+- 检查 sitemap 读取状态和 URL 数量。
+- 用 URL Inspection 看页面是否可抓取、是否被索引、Google 选择的 canonical 是谁。
+- 观察 Coverage / Pages 报告中的 `noindex`、duplicate、discovered currently not indexed。
+- 按 query / page / country / device 分析表现。
+- 定期抽查 robots、canonical、hreflang、JSON-LD 是否和预期一致。
+- 对内容库建立索引率指标：提交 URL 数、已索引 URL 数、带来点击 URL 数。
+
+## 新页面 SEO 实现模板
+
+新增一个公开页面时，可以按这个顺序做：
+
+1. 判断页面类型：入口页、内容详情、列表、动态探索页、个人结果页。
+2. 决定索引策略：`index` 还是 `noindex`，是否 `follow`。
+3. 决定 canonical：当前 URL 还是指向主入口页 / 无参数 URL。
+4. 补 metadata：title、description、OG、Twitter。
+5. 补 hreflang：使用统一 helper。
+6. 判断是否加入 sitemap。
+7. 判断是否需要 JSON-LD。
+8. 判断渲染策略：static、ISR、dynamic。
+9. 验证非生产环境不会被索引。
+10. 上线后用 Search Console 验证抓取和索引。
+
+## 页面类型决策表
+
+| 页面类型 | 推荐索引 | canonical | sitemap | 结构化数据 |
+| --- | --- | --- | --- | --- |
+| 静态入口页 | `index, follow` | 自己 | 是 | WebPage / FAQPage |
+| 文章 / 案例详情 | `index, follow` | 自己 | 是 | Article / BreadcrumbList |
+| 内容详情 | 按质量门槛 | 自己 | 仅放可索引集合 | CreativeWork / VideoObject |
+| 探索页 / 搜索结果页 | `noindex, follow` | 主入口页或无参数 URL | 通常否 | 视情况 |
+| 个人结果页 | `noindex, nofollow` | 自己或无 | 否 | 否 |
+| 登录后页面 | robots 屏蔽或 `noindex` | 无 | 否 | 否 |
+| API / 内部路由 | robots 屏蔽 | 无 | 否 | 否 |
+
+## Code Review 检查清单
+
+- 页面是否有 `generateMetadata`？
+- title / description 是否来自 i18n 或 CMS？
+- canonical 是否用统一 helper？
+- hreflang 是否覆盖所有支持 locale？
+- robots 策略是否符合页面类型？
+- sitemap 是否和 robots 策略一致？
+- 动态参数页是否会制造重复索引？
+- OG / Twitter 图片是否是内容相关图片？
+- JSON-LD 是否引用 canonical URL？
+- JSON-LD 是否做了 `<` 转义？
+- 关键内容是否服务端可见？
+- CMS 请求是否有缓存和失败兜底？
+- 非生产环境是否被 robots 阻止？
+
+## 阅读代码时的三个问题
+
+读实现时不要只看“它写了什么标签”，而要问三个问题：
+
+- 这个页面为什么应该或不应该被索引？
+- 这个 URL 的权威版本是谁？
+- sitemap、metadata、robots、页面内容是否互相一致？
+
+## 参考资料
+
+- Google Search Central: SEO Starter Guide
+- Google Search Central: Control crawling and indexing
+- Google Search Central: Consolidate duplicate URLs
+- Google Search Central: Localized versions with hreflang
+- Google Search Central: Structured data
+- Next.js Docs: Metadata API
+- Next.js Docs: `generateMetadata`
+- Next.js Docs: sitemap and robots metadata files
