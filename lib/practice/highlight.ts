@@ -3,6 +3,7 @@
  * 服务端组件调用；单例 Promise 避免构建时重复初始化 highlighter
  */
 import { createHighlighter, type Highlighter } from "shiki";
+import type { PracticeCodeLanguage } from "./types";
 
 let highlighterPromise: Promise<Highlighter> | null = null;
 
@@ -11,7 +12,7 @@ async function getHighlighter() {
   if (!highlighterPromise) {
     highlighterPromise = createHighlighter({
       themes: ["one-dark-pro"],
-      langs: ["javascript", "jsx"],
+      langs: ["javascript", "jsx", "css", "html"],
     });
   }
   return highlighterPromise;
@@ -20,7 +21,7 @@ async function getHighlighter() {
 /** 将源码转为带样式的 HTML，由 PracticeCodeBlock 通过 dangerouslySetInnerHTML 渲染 */
 export async function highlightCode(
   code: string,
-  lang: "javascript" | "jsx"
+  lang: PracticeCodeLanguage
 ): Promise<string> {
   const highlighter = await getHighlighter();
   return highlighter.codeToHtml(code, {

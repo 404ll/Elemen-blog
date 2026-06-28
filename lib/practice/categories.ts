@@ -10,6 +10,7 @@ export const CATEGORY_LABELS: Record<PracticeCategory, string> = {
   async: "异步",
   react: "React",
   oop: "OOP",
+  css: "CSS",
 };
 
 /** 侧栏分组顺序（与 manifest 内题目顺序无关） */
@@ -19,6 +20,7 @@ export const CATEGORY_ORDER: PracticeCategory[] = [
   "oop",
   "async",
   "react",
+  "css",
 ];
 
 /** 难度 → 详情页徽章文案 */

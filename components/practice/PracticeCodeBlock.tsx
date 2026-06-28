@@ -3,10 +3,11 @@
  * 构建/请求时在服务端调用 Shiki，输出 HTML 后注入 figure
  */
 import { highlightCode } from "@/lib/practice/highlight";
+import type { PracticeCodeLanguage } from "@/lib/practice/types";
 
 type PracticeCodeBlockProps = {
   code: string;
-  lang: "javascript" | "jsx";
+  lang: PracticeCodeLanguage;
 };
 
 export default async function PracticeCodeBlock({

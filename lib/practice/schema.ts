@@ -17,7 +17,7 @@ export const PracticeProblemSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   collection: z.enum(["handwriting", "work"]).optional(),
-  category: z.enum(["array", "function", "async", "react", "oop"]),
+  category: z.enum(["array", "function", "async", "react", "oop", "css"]),
   groupId: z.string().min(1).optional(),
   difficulty: z.enum(["easy", "medium", "hard"]),
   tags: z.array(z.string()).optional(),
