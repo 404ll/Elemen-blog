@@ -1,0 +1,324 @@
+---
+title: "集合站的数据是怎么自动长出来的？"
+date: "2026-07-11"
+excerpt: "从一个集合页出发，顺着数据来源、RSS、云端浏览器抓取和 AI 结构化，把内容 pipeline 梳理清楚。"
+category: "ai"
+tags: ["workflow", "pipeline", "RSS", "Cloudflare", "AI"]
+draft: false
+---
+
+这次是从 `x-viral-articles` 这个集合页往回追数据来源。
+
+最后整理出的链路是：
+
+```text
+发现候选
+  -> 抓取正文和媒体
+  -> 做质量判断
+  -> AI 结构化
+  -> 写入 CMS
+  -> 前台读取展示
+```
+
+后面主要看三件事：候选怎么发现，正文怎么抓，AI 怎么把原始内容整理成 CMS 能用的字段。
+
+## 候选从哪里来
+
+我一开始以为抓取就是从外部平台把内容抓下来。
+
+后来发现，在真正抓正文之前，还有一个更早的问题：系统要先知道「有哪些内容值得抓」。
+
+这一步可以先叫候选发现。正文抓取还在后面。
+
+候选来源大概有几种：
+
+- 搜索接口：按关键词、时间窗口、浏览量门槛找高互动内容
+- RSS 作者包：持续跟踪一批重点作者的新内容
+- 人工 URL：临时补采某一条指定内容
+
+搜索接口很好理解，它更像从全网里捞热点。RSS 作者包对我来说是新的东西。
+
+我之前没有认真接触过 RSS，所以一开始看到 `rssify`、`pack`、`feed` 这些词，会下意识把它和正文抓取混在一起。拆开之后才理解，它在这里更像一份可订阅的更新清单。
+
+RSS / Atom feed 本质上是一个结构化 XML。它告诉消费方：最近有哪些新内容，它们的 ID 是什么，链接是什么，作者是谁，发布时间是什么，有多少互动。
+
+一个简化后的 entry 大概是这样：
+
+```xml
+<entry>
+  <id>1234567890</id>
+  <title>short.example/xxx</title>
+  <published>2026-07-11T09:30:00Z</published>
+  <link href="social.example/status/1234567890" rel="alternate" />
+
+  <author>
+    <name>Author Name</name>
+  </author>
+
+  <summary>short.example/xxx</summary>
+  <authorDesc>followers: 100000; bio: ...</authorDesc>
+
+  <isXLongformArticle>true</isXLongformArticle>
+
+  <engagement>
+    <reposts>120</reposts>
+    <replies>50</replies>
+    <likes>3000</likes>
+    <bookmarks>100</bookmarks>
+    <views>500000</views>
+  </engagement>
+</entry>
+```
+
+这份 entry 里最关键的是候选信息：
+
+- 外部内容 ID
+- 内容链接
+- 作者信息
+- 发布时间
+- 互动数据
+- 是否是长文
+
+所以 RSS 在这条链路里的作用，可以理解成：
+
+```text
+把一批重点作者的新内容
+  -> 变成稳定、可轮询、可解析的候选输入
+```
+
+这和搜索接口正好互补。搜索接口偏向发现已经有高互动的内容；作者包 feed 偏向保证重点作者的新内容不会漏掉。两路数据最后都会被转成统一的候选结构，后面的抓取和 AI 分析不需要关心它最初来自哪里。
+
+到这里，我对 RSS 的理解就清楚了一点：它负责提供一个稳定入口，让系统知道下一步应该处理哪些外部内容。完整正文会交给后面的抓取环节。
+
+## 正文怎么抓
+
+知道候选之后，才进入真正的抓取。
+
+普通网页可能直接请求 HTML 就够了：
+
+```text
+请求页面 HTML
+  -> 解析 title
+  -> 解析 description
+  -> 解析 body
+  -> 提取图片
+```
+
+但 X 长文这种页面没有这么简单。正文、图片、视频都可能依赖前端渲染，页面加载完成之前，HTML 里未必有完整内容。
+
+这里就出现了 `cf-browser-worker`。
+
+我对它的第一反应是：这不就有点像浏览器插件吗？打开一个页面，然后通过 elements / DOM 结构去抓指定内容。
+
+这个类比对理解它很有帮助。
+
+浏览器插件式的思路大概是：
+
+```text
+打开页面
+  -> 等页面渲染
+  -> 读取 DOM
+  -> 找到目标节点
+  -> 抽文字、图片、链接
+```
+
+`cf-browser-worker` 做的事情很接近。它不跑在用户自己的 Chrome 里，运行位置换成了 Cloudflare 的浏览器环境。后端通过 API 调它，它在云端打开页面，等页面渲染，再把正文和媒体抽出来。
+
+可以把它理解成一个后端 pipeline 可调用的「云端浏览器」：
+
+```text
+CMS 发起抓取请求
+  -> worker 打开目标页面
+  -> 等待页面渲染
+  -> 读取 DOM
+  -> 抽取长文正文
+  -> 提取封面和正文图片
+  -> 监听网络请求
+  -> 找到视频资源
+  -> 返回统一 JSON
+```
+
+返回结构大概会包含这些东西：
+
+```ts
+type ExtractXArticleResult = {
+  ok: true
+  finalUrl: string
+  title: string | null
+  articleMarkdown: string | null
+  coverImage?: string | null
+  imageUrls: string[]
+  videoUrls: string[]
+  videoElements: Array<{
+    src: string | null
+    poster: string | null
+    matchedVideoUrl: string | null
+  }>
+  durationMs: number
+}
+```
+
+这里最让我理解这个方案价值的是视频。
+
+页面上看到的视频元素，有时拿到的是 `blob:` URL。这个地址只在当前浏览器 session 里有效，拿出来放到别的地方不一定能播放。
+
+但浏览器打开页面的时候，真实的视频资源会经过网络请求加载。worker 可以在运行时监听这些请求，从里面找到更可用的资源：
+
+```text
+video.example/...m3u8
+video.example/...mp4
+```
+
+所以它做的事情已经超过下载网页源码，真正用到的是浏览器运行时：
+
+- 渲染后的 DOM
+- 页面里的懒加载内容
+- 实际发出的网络请求
+- 真实媒体资源
+
+这也解释了为什么 X 长文会更依赖这种浏览器抓取。抓取结果如果一开始就是残缺的，后面再接 AI，也只是对残缺材料做加工。
+
+## AI 到底做什么
+
+抓取完成后，系统拿到的是原始材料。
+
+这些材料包括标题、正文 Markdown、作者信息、图片、视频、评论和互动数据。集合站真正想展示和检索的，还需要再整理成稳定字段。
+
+CMS 需要的是更稳定的结构：
+
+- 语言
+- 英文标题
+- 英文正文
+- 描述
+- 摘要
+- SEO 标题
+- SEO 描述
+- slug
+- 是否适合内容创作场景
+- 是否有安全风险
+
+这就是 AI 结构化的作用。
+
+我一开始没太理解的是：既然已经传了 system prompt 和 schema，为什么 prompt 里还要写 `TITLE / AUTHOR / BODY` 这些结构？
+
+后来把它拆开就顺了：
+
+```text
+systemPrompt
+  -> 告诉模型处理规则
+
+prompt
+  -> 提供这一次要分析的材料
+
+schema
+  -> 定义程序能接受的输出结构
+```
+
+`systemPrompt` 像长期规则。它告诉模型怎么翻译，怎么保留 Markdown，怎么判断内容是否相关，怎么做 moderation。
+
+`prompt` 是本次输入。没有它，模型知道规则，也不知道现在要分析哪篇文章。
+
+`schema` 是程序侧的验收标准。模型可以生成，但生成结果必须能通过 schema 校验，业务代码才会继续往后走。
+
+简化后的 schema 类似这样：
+
+```ts
+import { z } from 'zod'
+
+const ArticleAnalysisSchema = z.object({
+  language: z.string(),
+  englishTitle: z.string(),
+  englishBody: z.string(),
+  description: z.string(),
+  summary: z.string(),
+  seoTitle: z.string(),
+  seoDescription: z.string(),
+  slug: z.string(),
+  isContentCreationRelated: z.boolean(),
+  political: z.boolean(),
+  sexual: z.boolean(),
+  moderationReason: z.string(),
+})
+```
+
+调用时大概是这样：
+
+```ts
+const { data } = await aihubmix.generateJSON({
+  systemPrompt: SYSTEM_PROMPT,
+  schema: ArticleAnalysisSchema,
+  prompt: `
+Analyze this article and return JSON per the schema.
+
+TITLE:
+${title}
+
+AUTHOR:
+${authorContext}
+
+TOP READER REPLIES:
+${repliesContext}
+
+BODY:
+${body}
+`,
+  config: { temperature: 0.2 },
+})
+```
+
+Zod 校验发生在模型返回之后、业务代码拿到 `data` 之前：
+
+```text
+模型返回 JSON
+  -> generateJSON 用 schema 校验
+  -> 校验通过，返回 data
+  -> 校验失败，抛异常
+```
+
+所以 schema 更像后置验收。它不能保证模型永远不犯错，但可以保证不合格的结果不会被业务代码当成正常数据继续写入 CMS。
+
+这也是为什么外层会做有限重试：
+
+```text
+结构化失败
+  -> 重试
+
+重试后仍失败
+  -> 放弃这次入库
+```
+
+这里我真正学到的是：AI 在这条链路里更像一个数据加工节点。它把抓取来的非结构化材料，变成程序可以校验、CMS 可以存储、前台可以消费的字段。
+
+## 现在再看这条链路
+
+把这次理解压缩一下，我会这样复盘：
+
+```text
+候选从哪里来？
+  RSS / 搜索 / 人工 URL
+
+同一篇内容怎么识别？
+  sourcePlatform + sourceItemId
+
+正文怎么抓？
+  静态页面可以普通抓取
+  动态页面需要浏览器渲染
+
+AI 在做什么？
+  翻译、摘要、SEO、审核、结构化
+
+前台做什么？
+  从 CMS 读取已经加工好的内容
+```
+
+以后再遇到类似集合站，我会先沿着这几个问题往回拆：
+
+```text
+候选来源
+  -> 外部 ID
+  -> 抓取方式
+  -> AI 加工职责
+  -> CMS 和前台边界
+```
+
+这比一上来读页面代码更有效。页面代码通常只能告诉我数据怎么展示；沿着这条链路往回看，才能看到内容是怎么被生产出来的。
