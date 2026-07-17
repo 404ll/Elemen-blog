@@ -1,0 +1,373 @@
+---
+title: "从 Selection API 到划词高亮阅读器：选区到底如何变成一段可恢复的标记"
+date: "2026-07-17"
+excerpt: "从“Selection API 里的 document 是什么”出发，理解 Selection、Range、<mark> 与 DOM 文本节点，并做出一个划词高亮阅读器。"
+category: "frontend"
+tags: ["DOM", "Selection API", "JavaScript", "Web API"]
+draft: false
+---
+
+网页里选中一段文字，旁边弹出工具栏；点一下，文字变黄；刷新后高亮还在。
+
+微信读书、Notion、飞书文档都有类似体验。开始做之前，我的问题其实很基础：
+
+> Selection API 里说的“文档”是什么？浏览器究竟记录了什么，才能知道我选中了哪一段文字？
+
+沿着这个问题往下看，会碰到四件事：定位选区、包裹 DOM、保存位置、取消后的清理。把它们串起来，就得到一个最小划词高亮阅读器。
+
+## 这次真正弄清了什么
+
+1. `document` 是当前网页的 DOM 树；选区并不只是字符串，而是 DOM 节点和节点内偏移量。
+2. `Selection` 表示用户当前的选中状态，`Range` 表示一段确定的文档范围。
+3. 高亮的本质是在 Range 对应的位置插入一个 `<mark>`；真正复杂的是跨标签、持久化和撤销后的 DOM 清理。
+4. DOM 操作像外科手术：拆开的文本节点不会自动合并，需要主动调用 `normalize()`。
+
+## 先处理一个容易混进来的问题：compositionstart
+
+查资料时还遇到 `compositionstart`。它和选区看起来都和“文字输入”有关，但不属于同一条链路。
+
+`compositionstart` 是输入法组合输入开始时触发的事件，例如中文拼音还在组词、还没最终提交到输入框的阶段。它主要服务于 `input`、`textarea`、富文本编辑器这类输入场景；划词阅读器的核心则是页面内容上的 `Selection` 与 `Range`。两者都属于浏览器处理文本交互的能力，但本文只沿着“阅读内容被选中”这条线展开。
+
+资料：[MDN：compositionstart](https://developer.mozilla.org/en-US/docs/Web/API/Element/compositionstart_event)
+
+## document、Selection 与 Range：浏览器到底记录了什么
+
+Selection API 所说的 document，就是当前网页对应的 DOM 文档，也就是 JavaScript 中的 `document` 对象所代表的节点树。用户拖动鼠标选中文字时，浏览器选中的不是一段脱离页面的纯文本，而是这棵树里的一段范围。
+
+例如：
+
+```html
+<p>第一段<span>第二段</span>第三段</p>
+```
+
+如果选中了其中的文字，底层需要知道的不是只有“选中了几个字”，还包括：
+
+- 从哪个 DOM 节点开始；
+- 在这个节点的第几个字符开始；
+- 到哪个 DOM 节点结束；
+- 在那个节点的第几个字符结束。
+
+这就是 `Range` 的工作。
+
+资料：[MDN：Selection API](https://developer.mozilla.org/en-US/docs/Web/API/Selection_API)
+
+### Selection：用户现在选中了什么
+
+通过 `window.getSelection()` 可以拿到当前页面的 `Selection`：
+
+```js
+const selection = window.getSelection();
+console.log(selection?.toString());
+```
+
+它表示用户当前选中的内容，或者光标所在的位置。要注意，`Selection` 不是一个固定快照：用户重新拖选、取消选择或移动光标后，同一个“当前选区”会随之变化。
+
+它有两对端点：
+
+```js
+selection.anchorNode;
+selection.anchorOffset;
+
+selection.focusNode;
+selection.focusOffset;
+```
+
+`anchor` 是鼠标按下的位置，`focus` 是鼠标松开的位置。因此从右往左拖选时，锚点会在焦点后面。
+
+还有一个常见坑：`<input>` 和 `<textarea>` 的选择范围通常应通过 `selectionStart` / `selectionEnd` 读取，不要用 `window.getSelection()` 去拿。
+
+### Range：一段确定的 DOM 范围
+
+`Range` 用更适合操作的方式描述边界：
+
+```js
+const range = selection.getRangeAt(0);
+
+range.startContainer;
+range.startOffset;
+
+range.endContainer;
+range.endOffset;
+```
+
+它的 `start` 总在文档顺序的前面，`end` 总在后面。可以把两者理解为：
+
+- `Selection`：用户此刻手里正在划的那一笔；
+- `Range`：这一笔在 DOM 树中划出的确定范围。
+
+## 第一步：选区出现后，工具栏怎么贴上去
+
+选中文字后，先从 `Selection` 取出 `Range`，再用 `getBoundingClientRect()` 获取选区在视口中的位置：
+
+```js
+const selection = window.getSelection();
+
+if (selection && !selection.isCollapsed) {
+  const range = selection.getRangeAt(0);
+  const rect = range.getBoundingClientRect();
+}
+```
+
+`rect.left`、`rect.top`、`rect.width`、`rect.height` 都是相对浏览器视口的坐标。因此工具栏适合用 `position: fixed`：
+
+```js
+let left = rect.left + rect.width / 2 - toolbarWidth / 2;
+let top = rect.top - toolbarHeight - 10;
+
+left = Math.max(8, Math.min(left, window.innerWidth - toolbarWidth - 8));
+
+if (top < 8) {
+  top = rect.bottom + 10;
+}
+```
+
+这里要处理两类边界：
+
+- 选区靠近左右边缘时，工具栏不能溢出屏幕；
+- 选区靠近顶部时，工具栏应该翻到选区下方。
+
+工具栏下面常见的小三角形，也就是 `#toolbar::after`，通常是 CSS 伪元素画出来的：
+
+```css
+#toolbar::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #222;
+  border-bottom: 0;
+}
+```
+
+一个宽高为 `0` 的元素只保留某一侧边框颜色，就会显示为三角形。它不是额外的 HTML 节点，而是 CSS 生成的视觉装饰。
+
+## 第二步：高亮就是增加一个 `<mark>`
+
+用户点击“高亮”后，要做的事情很朴素：用一个 `<mark>` 包住 Range 内的内容。
+
+```html
+<!-- 高亮前 -->
+<p>理解浏览器才是根本</p>
+
+<!-- 高亮后 -->
+<p><mark class="highlight" data-id="hl-1">理解浏览器才是根本</mark></p>
+```
+
+`<mark>` 和 `<span>` 一样默认是行内元素，不会独占一行；区别在语义。
+
+- `<span>` 是没有特别语义的通用行内容器；
+- `<mark>` 表示“这一段内容被标记、值得注意”。
+
+所以阅读器里的高亮用 `<mark>` 比 `<span class="highlight">` 更贴切。
+
+最直接的包裹方式是：
+
+```js
+const mark = document.createElement("mark");
+mark.className = "highlight";
+mark.dataset.id = id;
+
+range.surroundContents(mark);
+```
+
+### `surroundContents()` 真正的限制
+
+“跨标签一定会失败”这个理解并不准确。
+
+`surroundContents()` 的限制是：Range 不能**部分包含非文本节点**。如果一个元素节点被完整选中，可以正常包裹；但如果选区从某个 `<em>` 的内部开始、又延伸到它的外部，就只切到了一部分 `<em>`，此时会抛异常。
+
+资料：[MDN：Range.surroundContents()](https://developer.mozilla.org/en-US/docs/Web/API/Range/surroundContents)
+
+因此可以先优先使用它，失败后再降级：
+
+```js
+function wrapRangeWithMark(range, id) {
+  const mark = document.createElement("mark");
+  mark.className = "highlight";
+  mark.dataset.id = id;
+
+  try {
+    range.surroundContents(mark);
+    return mark;
+  } catch {
+    try {
+      const fragment = range.extractContents();
+      mark.appendChild(fragment);
+      range.insertNode(mark);
+      return mark;
+    } catch {
+      return null;
+    }
+  }
+}
+```
+
+`extractContents()` 会把选区内容取成 `DocumentFragment`，再插入 `<mark>`。它能处理更多情况，但也可能重组原有 DOM；复杂列表、表格或嵌套富文本里，要额外做测试。
+
+## 第三步：刷新后，怎么知道该恢复到哪里
+
+一个 Range 的边界是：
+
+```text
+startContainer + startOffset
+endContainer + endOffset
+```
+
+offset 是数字，可以直接保存；难点在于 `startContainer` 和 `endContainer` 是 DOM 节点，不能直接放进 `localStorage`。
+
+一种基础方案是，把节点在阅读容器内的位置转成相对 XPath：
+
+```js
+function getNodePath(node, reader) {
+  const parts = [];
+
+  for (let current = node; current && current !== reader; current = current.parentNode) {
+    if (current.nodeType === Node.TEXT_NODE) {
+      let index = 1;
+      for (let sibling = current.previousSibling; sibling; sibling = sibling.previousSibling) {
+        if (sibling.nodeType === Node.TEXT_NODE) index++;
+      }
+      parts.unshift(`text()[${index}]`);
+    }
+
+    if (current.nodeType === Node.ELEMENT_NODE) {
+      const tag = current.tagName.toLowerCase();
+      let index = 1;
+
+      for (let sibling = current.previousSibling; sibling; sibling = sibling.previousSibling) {
+        if (
+          sibling.nodeType === Node.ELEMENT_NODE &&
+          sibling.tagName.toLowerCase() === tag
+        ) {
+          index++;
+        }
+      }
+
+      parts.unshift(`${tag}[${index}]`);
+    }
+  }
+
+  return `./${parts.join("/")}`;
+}
+```
+
+例如阅读容器是：
+
+```html
+<div id="reader">
+  <p>第一段</p>
+  <p>第二段</p>
+</div>
+```
+
+“第二段”的文本节点路径可以是 `./p[2]/text()[1]`。恢复时以 `reader` 为上下文求值：
+
+```js
+function findNode(path, reader) {
+  return document.evaluate(
+    path,
+    reader,
+    null,
+    XPathResult.FIRST_ORDERED_NODE_TYPE,
+    null
+  ).singleNodeValue;
+}
+```
+
+保存的数据可以长这样：
+
+```json
+{
+  "id": "hl-1",
+  "startPath": "./p[3]/text()[1]",
+  "startOffset": 5,
+  "endPath": "./p[3]/text()[1]",
+  "endOffset": 12,
+  "text": "理解浏览器"
+}
+```
+
+最重要的顺序是：
+
+1. 在 DOM 变化前记录路径和 offset；
+2. 再包裹成 `<mark>`；
+3. 最后把记录写进 `localStorage`。
+
+### XPath 方案的边界
+
+XPath 很适合解释“节点位置如何持久化”，也足够做一个结构稳定的小阅读器 demo。
+
+但它不是生产级锚定方案。文章正文改动、插入其他高亮、富文本结构调整，都可能让节点路径失效。实际产品通常会额外保存：
+
+- 选中文字本身；
+- 文本在整篇文章中的字符偏移；
+- 前后少量上下文，用于重新匹配。
+
+恢复时找不到节点不要报错；跳过这条记录，并在后续保存时清理失效数据。持久化的重点不是“永远准确”，而是数据失效时功能仍然能正常使用。
+
+## 第四步：取消高亮后，为什么还要 `normalize()`
+
+取消高亮时，把 `<mark>` 里面的子节点搬回父节点，再移除 `<mark>`：
+
+```js
+function removeHighlight(mark) {
+  const parent = mark.parentNode;
+  if (!parent) return;
+
+  while (mark.firstChild) {
+    parent.insertBefore(mark.firstChild, mark);
+  }
+
+  mark.remove();
+  parent.normalize();
+}
+```
+
+`normalize()` 是这里容易被忽略的一步。
+
+原始 DOM：
+
+```text
+<p>
+  TextNode("你好世界")
+</p>
+```
+
+高亮“世界”后，浏览器需要把原来的文本节点切开：
+
+```text
+<p>
+  TextNode("你好")
+  <mark>
+    TextNode("世界")
+  </mark>
+</p>
+```
+
+拆掉 `<mark>` 后，得到的是：
+
+```text
+<p>
+  TextNode("你好")
+  TextNode("世界")
+</p>
+```
+
+HTML 看起来还是“你好世界”，但 DOM 中已经是两个独立的文本节点。`insertBefore()` 和 `remove()` 只完成节点移动或删除，并不会顺便判断相邻文本节点是否应该合并。
+
+`parent.normalize()` 会递归清理空文本节点，并把相邻文本节点合并回一个：
+
+```text
+TextNode("你好") + TextNode("世界")
+→ TextNode("你好世界")
+```
+
+这能避免后续 XPath 计数混乱、再次选中时意外跨节点，以及重复操作后产生大量碎片节点。
+
+资料：[MDN：Node.normalize()](https://developer.mozilla.org/en-US/docs/Web/API/Node/normalize)
+
+一句话记住：
+
+> DOM 操作是外科手术。切开的文本节点不会自己愈合，`normalize()` 就是最后的缝针。
