@@ -1,0 +1,248 @@
+---
+title: "从一个 sitemap.xml 到动态生成和分片"
+date: "2026-07-13"
+excerpt: "把 sitemap index、子 sitemap、Next.js Metadata Route、ISR 缓存和内容分片串成一条可维护的数据流。"
+category: "frontend"
+tags: ["SEO", "Next.js", "Sitemap", "ISR"]
+draft: false
+---
+
+# 从一个 sitemap.xml 到动态生成和分片
+
+这次想弄清的不是“怎么输出一个 XML”，而是网站内容越来越多之后，sitemap 到底应该怎样组织。
+
+一开始很容易把 `/sitemap.xml`、`/sitemaps/articles/sitemap.xml` 和普通业务页面混在一起。后来把它们按层级拆开看，事情就清楚了：根 sitemap 负责列目录，子 sitemap 负责列页面；内容型子 sitemap 再负责从数据源取内容、过滤、分片和缓存。
+
+## 先记住这张图
+
+```text
+robots.txt
+  ↓ 告诉搜索引擎根入口
+
+/sitemap.xml
+  ↓ sitemap index：列出子 sitemap 文件
+
+/sitemaps/site-pages/sitemap.xml
+/sitemaps/articles/sitemap/0.xml
+/sitemaps/articles/sitemap/1.xml
+  ↓ urlset：列出真正希望被收录的页面 URL
+
+/articles/{slug}
+  ↓ 真正的内容页
+```
+
+最重要的边界是：**子 sitemap 本身不是普通业务页面，也不是根 index。它是一个 XML 文件，里面装着普通页面 URL。**
+
+## 1. 根 sitemap 是目录，子 sitemap 是清单
+
+当页面不多时，`/sitemap.xml` 可以直接输出全部 URL。
+
+内容开始分成文章、工具、Prompt、技能、落地页等实体后，更适合让根路径输出 sitemap index：
+
+```xml
+<sitemapindex>
+  <sitemap>
+    <loc>https://example.com/sitemaps/site-pages/sitemap.xml</loc>
+  </sitemap>
+  <sitemap>
+    <loc>https://example.com/sitemaps/articles/sitemap/0.xml</loc>
+  </sitemap>
+</sitemapindex>
+```
+
+`site-pages` 这个子 sitemap 的内容则是另一种 XML：
+
+```xml
+<urlset>
+  <url><loc>https://example.com/</loc></url>
+  <url><loc>https://example.com/pricing</loc></url>
+  <url><loc>https://example.com/download</loc></url>
+</urlset>
+```
+
+所以可以这样理解：
+
+- `sitemapindex`：告诉爬虫还有哪些清单要读。
+- `urlset`：告诉爬虫真正有哪些页面值得发现。
+- 业务页面：清单中的 URL 最终指向的 HTML 页面。
+
+这样分组不会直接提高排名，但它会让维护边界清楚：某个 URL 应该归哪个实体、是否重复提交、某一类内容出了问题要查哪条数据链路，都更容易判断。
+
+## 2. Next.js 中两种生成 XML 的方式
+
+在 Next.js App Router 中，常见有两种写法。
+
+### 子 sitemap：`sitemap.ts`
+
+`sitemap.ts` 是 Metadata Route。函数返回结构化 URL 数组，Next.js 负责把它序列化为 XML：
+
+```ts
+import type { MetadataRoute } from 'next';
+
+export default function sitemap(): MetadataRoute.Sitemap {
+  return [
+    {
+      url: 'https://example.com/pricing',
+      lastModified: new Date(),
+    },
+  ];
+}
+```
+
+它会对应一个 `.xml` 子 sitemap URL。这里不需要自己拼 `<urlset>` 字符串。
+
+### 根 index：`route.ts`
+
+如果根路径要输出的是 `sitemapindex`，通常使用 Route Handler：
+
+```ts
+export async function GET() {
+  const urls = await buildChildSitemapUrls();
+  const xml = renderSitemapIndexXml(urls);
+
+  return new Response(xml, {
+    headers: { 'Content-Type': 'application/xml; charset=utf-8' },
+  });
+}
+```
+
+原因很直接：根 index 与普通 `MetadataRoute.Sitemap` 的输出格式不同。前者是“子 sitemap 地址列表”，后者是“页面地址列表”。
+
+## 3. 所谓动态 sitemap，其实是数据驱动的静态产物
+
+“动态”容易让人以为每次爬虫请求都重新查数据库、重新组装 XML。更稳的做法是：**URL 来自动态数据，但 sitemap 按缓存周期重新生成。**
+
+例如文章详情页的链路：
+
+```text
+CMS / 内容 API
+  ↓
+查询已发布且允许收录的文章
+  ↓
+转换成 { slug, updatedAt }
+  ↓
+生成 URL、lastModified、hreflang
+  ↓
+Next.js 缓存并输出 sitemap XML
+```
+
+在 Next.js 中可以配合 ISR：
+
+```ts
+export const dynamic = 'force-static';
+export const revalidate = 3600;
+```
+
+这表示 sitemap 在缓存期内作为静态内容返回；到期后，下一次访问会触发再生成。对搜索引擎来说它是稳定的 XML，对应用来说内容又会逐步更新。
+
+数据源本身也值得缓存，但缓存的应该是轻量路径数据，而不是已经膨胀过的完整 sitemap 条目：
+
+```ts
+type SitemapPath = {
+  slug: string;
+  updatedAt: string;
+};
+```
+
+后面再根据 locale 展开 URL。这样一个内容详情页生成多语言 alternates 时，不会把巨大的对象反复放进缓存。
+
+## 4. 内容多了为什么要分片
+
+一个 sitemap 文件有协议上限，但工程上通常不会把它塞满。较小的分片有几个好处：单文件更轻、失败影响范围更小、重新生成更容易定位。
+
+例如每片最多 5,000 条：
+
+```ts
+const SITEMAP_PAGE_SIZE = 5000;
+
+export async function generateSitemaps() {
+  const total = await getIndexableArticleCount();
+  const count = Math.max(1, Math.ceil(total / SITEMAP_PAGE_SIZE));
+
+  return Array.from({ length: count }, (_, id) => ({ id }));
+}
+
+export default async function sitemap({ id }: { id: number }) {
+  const entries = await buildArticleSitemapEntries();
+  const start = id * SITEMAP_PAGE_SIZE;
+
+  return entries.slice(start, start + SITEMAP_PAGE_SIZE);
+}
+```
+
+于是根 index 不需要知道每篇文章的 URL，只要列出：
+
+```text
+/sitemaps/articles/sitemap/0.xml
+/sitemaps/articles/sitemap/1.xml
+```
+
+这也是分片的核心：**根 index 管文件，分片文件管页面。**
+
+## 5. `flatMap` 在 sitemap 里解决什么问题
+
+一个内容路径通常不只产生一个 URL。多语言站点会把同一篇内容展开成多个 locale URL：
+
+```ts
+function buildLocalizedEntries(path: string) {
+  return [
+    { url: `https://example.com${path}` },
+    { url: `https://example.com/zh-CN${path}` },
+  ];
+}
+```
+
+如果有两篇文章，普通 `map` 会得到嵌套数组：
+
+```ts
+articles.map((article) => buildLocalizedEntries(`/articles/${article.slug}`));
+
+// [
+//   [en 文章 A, zh 文章 A],
+//   [en 文章 B, zh 文章 B],
+// ]
+```
+
+但 sitemap 最终需要一维 URL 数组。`flatMap` 相当于 `map(...).flat()`：
+
+```ts
+articles.flatMap((article) => buildLocalizedEntries(`/articles/${article.slug}`));
+
+// [en 文章 A, zh 文章 A, en 文章 B, zh 文章 B]
+```
+
+因此 sitemap 中常见两层展开：先把固定入口展开为多语言 URL，再把每个详情页展开为多语言 URL，最后去重。
+
+## 6. sitemap 不应该和页面索引策略打架
+
+sitemap 的含义不是“所有能访问的 URL”，而是“我希望搜索引擎发现并考虑收录的 canonical URL”。
+
+一个带搜索、排序和分页的探索页，通常有大量组合：
+
+```text
+/explore?q=cache
+/explore?sort=popular
+/explore?page=2
+```
+
+如果产品希望这些页面不独立参与搜索结果，它们应该：
+
+- 使用 `noindex,follow`；
+- canonical 回固定入口页；
+- 不出现在 sitemap。
+
+真正应该进 sitemap 的是固定入口、内容详情页和有独立策展价值的专题页。否则 sitemap 一边主动提交 URL，页面一边要求 `noindex`，信号会互相矛盾，还会把抓取预算花在大量相似列表上。
+
+## 7. 我现在会怎样检查一个 sitemap 方案
+
+以后遇到 sitemap 调整，我会按这个顺序看：
+
+1. 这个 URL 是固定入口、内容详情、筛选状态，还是内部流程页？
+2. 它的 robots 和 canonical 分别是什么？
+3. 它是否已经在另一个 sitemap 出现过？
+4. 内容是否来自 CMS/API，是否需要质量过滤和缓存？
+5. 内容量会不会增长到需要分片？
+6. 根 index 是否列出了所有子 sitemap 与动态分片？
+7. 多语言 URL 和 hreflang 是否与页面的索引策略一致？
+
+最终我会把 sitemap 看成一套小型内容发布管道：数据源决定候选页面，索引策略决定哪些页面留下，子 sitemap 按实体组织，根 index 把它们交给搜索引擎。
