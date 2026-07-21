@@ -1,0 +1,323 @@
+---
+title: "从一次 CMS 请求看懂 React cache 与 Next Data Cache"
+date: "2026-07-21"
+excerpt: "沿着一段真实的数据查询代码，弄清函数为什么能作为参数、force-cache 跨了哪些请求，以及 revalidate 和 tag 到底刷新什么。"
+category: "frontend"
+tags: ["nextjs", "react", "data-cache", "cache", "cms"]
+draft: false
+---
+
+这次是从一段很普通的服务端查询代码开始的：外层有一个 `cache()`，里面调用 CMS，请求配置里又出现了 `force-cache`、`revalidate` 和 `tags`。
+
+真正让我卡住的不是 API 名字，而是几个更具体的问题：
+
+- 为什么一个函数可以直接放进另一个函数的括号里？
+- 这段 CMS 请求到底查了什么？
+- `Data Cache` 说的“跨请求”究竟跨了什么？
+- `revalidateTag()` 到底刷新了什么东西？
+
+沿着这些问题拆开后，整条链路可以归纳成一句话：
+
+> React `cache()` 包装的是数据函数；Next Data Cache 保存的是服务端 `fetch` 返回的响应；`revalidate` 和 `tag` 决定这份响应缓存什么时候需要重新获取。
+
+## 先看懂代码的外形
+
+下面是一段经过简化和泛化的代码：
+
+```ts
+export const getCatalogItems = cache(
+  async ({
+    locale,
+    model,
+    limit = 12,
+  }: {
+    locale: string;
+    model: string;
+    limit?: number;
+  }) => {
+    const response = await fetchCollection(
+      CollectionType.Contents,
+      {
+        locale,
+        depth: 2,
+        limit: Math.max(limit * 4, limit),
+        sort: ["-views", "-publishedAt"],
+        where: {
+          and: [buildBaseWhere(), { model: { equals: model } }],
+        },
+        select: CONTENT_SELECT,
+      },
+      {
+        cache: "force-cache",
+        next: {
+          revalidate: 60 * 60,
+          tags: ["contents", "content-library"],
+        },
+      },
+    );
+
+    return response.docs
+      .map(mapContent)
+      .filter(Boolean)
+      .slice(0, limit);
+  },
+);
+```
+
+最外层的结构是：
+
+```ts
+const getCatalogItems = cache(一个异步函数);
+```
+
+这里的异步箭头函数是一个普通的函数值，因此可以作为参数传给 `cache()`。把匿名函数改成有名字的函数，会更直观：
+
+```ts
+async function loadCatalogItems(params: Params) {
+  // 查询和处理数据
+}
+
+export const getCatalogItems = cache(loadCatalogItems);
+```
+
+也就是说，`cache()` 接收原始函数，再返回一个具有记忆能力的新函数。外部调用时仍然像调用普通函数一样：
+
+```ts
+await getCatalogItems({
+  locale: "zh-CN",
+  model: "image-model",
+  limit: 12,
+});
+```
+
+## 这个 CMS 请求到底做了什么
+
+`fetchCollection()` 的三个参数可以分别理解为：
+
+```ts
+fetchCollection(
+  查询哪个集合,
+  查询条件,
+  fetch 和缓存配置,
+);
+```
+
+上面的查询可以近似翻译成：
+
+```sql
+SELECT 指定字段
+FROM contents
+WHERE 符合基础条件
+  AND model = 'image-model'
+ORDER BY views DESC, publishedAt DESC
+LIMIT 48;
+```
+
+几个容易混淆的字段：
+
+- `depth: 2`：最多展开两层关联数据，不是只查询两条记录。
+- `limit * 4`：调用方最终需要 12 条，但映射和过滤可能丢掉一部分数据，所以先取 48 条候选项。
+- `sort` 中的 `-`：代表降序，先看浏览量，再看发布时间。
+- `where.and`：基础条件和指定模型必须同时成立。
+- `select`：只返回页面确实需要的字段，减少响应体积。
+
+CMS 返回的数据通常类似：
+
+```ts
+{
+  docs: [
+    { id: 1, title: "Content A" },
+    { id: 2, title: "Content B" },
+  ],
+  totalDocs: 48,
+  hasNextPage: false,
+}
+```
+
+之后代码再执行 `map → filter → slice`，把 CMS 原始结构转换成页面结构，移除无法使用的记录，最后只留下真正需要的数量。
+
+## 两个 cache 不是同一层
+
+这段代码里其实有两层容易被叫成“缓存”的东西。
+
+| 层 | 缓存什么 | 作用范围 | 主要解决什么问题 |
+| --- | --- | --- | --- |
+| React `cache()` | 数据函数的调用结果 | 一次服务端请求或渲染过程 | 同一次渲染里避免重复计算或重复调用 |
+| Next Data Cache | 服务端 `fetch` 的响应 | 跨多个页面请求 | 不同请求之间避免反复访问 CMS |
+
+React `cache()` 更像本次服务端渲染里的记忆。一次请求结束后，不能把它理解成长期的数据仓库。
+
+Next Data Cache 缓存的则是 `fetch` 得到的响应。它可以被后续页面请求继续使用，因此才有“跨请求”的说法。
+
+## “跨请求”到底跨了什么
+
+这里的请求，指用户访问网站时产生的 HTTP 页面请求。
+
+没有 Data Cache 时：
+
+```text
+用户 A 打开页面 → Next.js 请求 CMS → 返回数据
+用户 B 打开页面 → Next.js 再次请求 CMS → 返回相同数据
+```
+
+使用 `force-cache` 后：
+
+```text
+用户 A 打开页面
+  → Next.js 检查 Data Cache
+  → 没有命中
+  → 请求 CMS
+  → 保存 CMS 响应
+
+用户 B 打开同一页面
+  → Next.js 检查 Data Cache
+  → 命中缓存
+  → 直接返回缓存响应
+  → 不访问 CMS
+```
+
+代码中的 `fetch()` 依然执行了，只是 Next.js 在真正发出网络请求前先检查 Data Cache。
+
+可以把缓存记录想象成：
+
+```ts
+{
+  key: "请求 URL + 查询参数 + fetch 配置",
+  value: "CMS 返回的 Response",
+  tags: ["contents", "content-library"],
+  revalidate: 3600,
+}
+```
+
+因此，只有缓存 key 相同的请求才能复用。不同语言、模型、分页和筛选条件通常会形成不同缓存记录：
+
+```text
+zh-CN + model-a → 缓存 A
+en-US + model-a → 缓存 B
+zh-CN + model-b → 缓存 C
+```
+
+## `revalidate` 是过期时间吗
+
+可以先把它理解成缓存有效期，但更准确的说法是“重新验证间隔”。
+
+```ts
+next: {
+  revalidate: 60 * 60,
+}
+```
+
+表示这份请求结果可以缓存一小时。一小时到了以后，Next.js 不会凭空启动一个定时任务访问 CMS；通常要等下一次有人用到这份数据时，才触发重新验证。
+
+在 stale-while-revalidate 语义下，过程大致是：
+
+```text
+缓存有效期内
+  → 直接返回缓存
+
+超过重新验证时间后的首次请求
+  → 可以先返回旧缓存
+  → 后台重新访问 CMS
+
+重新验证完成后的请求
+  → 返回新缓存
+```
+
+所以 `revalidate` 解决的是：即使没有人主动通知数据发生变化，缓存也不会永远停留在旧版本。
+
+## tag 到底刷新了什么
+
+这是这次最值得记住的边界：
+
+> tag 刷新的是 Next.js 服务器保存的 `fetch` 响应缓存。
+
+它不刷新浏览器，不刷新当前页面，也不修改 CMS 数据。
+
+假设第一次请求时，CMS 返回：
+
+```ts
+{ id: 1, title: "旧标题" }
+```
+
+Next Data Cache 保存了这个响应。后来内容编辑者在 CMS 中改成：
+
+```ts
+{ id: 1, title: "新标题" }
+```
+
+CMS 已经是新数据，但服务器仍可能命中旧的 Data Cache，所以页面暂时还会得到“旧标题”。这时可以按数据标签触发重新验证：
+
+```ts
+import { revalidateTag } from "next/cache";
+
+revalidateTag("content-library", "max");
+```
+
+这段代码表达的是：
+
+```text
+找到所有带 content-library 标签的 Data Cache 记录
+  ↓
+把它们标记为 stale
+  ↓
+下次再次用到这些数据时触发重新验证
+  ↓
+重新请求 CMS
+  ↓
+用“新标题”更新缓存
+```
+
+`tags` 本身只是贴在缓存记录上的标签：
+
+```ts
+tags: ["contents", "content-library"]
+```
+
+它们不会自动执行刷新，也不是 CMS 的 `where` 查询条件。只有其他代码调用 `revalidateTag()`，标签才会参与缓存失效。
+
+一条缓存可以同时带多个 tag，是为了支持不同粒度的更新：
+
+```text
+contents        → 较宽，所有内容相关缓存
+content-library → 较窄，只针对内容资料库
+```
+
+只要重新验证其中任意一个 tag，这条缓存就会受到影响。
+
+## 把整条链路串起来
+
+最后可以用下面这张图快速复盘：
+
+```text
+页面调用 getCatalogItems(params)
+  ↓
+React cache 检查本次服务端请求里是否调用过
+  ↓
+执行 fetchCollection(...)
+  ↓
+Next.js 根据 URL 和配置检查 Data Cache
+  ├─ 命中且仍然新鲜 → 返回缓存的 CMS Response
+  └─ 未命中或需要重新验证 → 访问 CMS，再保存 Response
+  ↓
+map → filter → slice
+  ↓
+得到页面真正需要的数据
+```
+
+下次再看到类似代码，我会按下面的顺序检查：
+
+1. 外层函数包装器接收了哪个函数？
+2. 真实数据请求最终生成了什么 URL 和查询参数？
+3. 缓存保存的是函数结果、HTTP Response，还是整页 HTML？
+4. 缓存只活在一次渲染里，还是可以跨页面请求？
+5. 它通过时间失效，还是通过事件和 tag 主动失效？
+6. 所谓“刷新”，最终会不会重新访问真正的数据源？
+
+只要先回答“缓存的到底是什么”，`force-cache`、`revalidate` 和 `tags` 就不会再显得抽象。
+
+## 参考资料
+
+- [React `cache`](https://react.dev/reference/react/cache)
+- [Next.js `fetch` API](https://nextjs.org/docs/app/api-reference/functions/fetch)
+- [Next.js Caching and Revalidating](https://nextjs.org/docs/app/getting-started/caching-and-revalidating)
+- [Next.js `revalidateTag`](https://nextjs.org/docs/app/api-reference/functions/revalidateTag)
