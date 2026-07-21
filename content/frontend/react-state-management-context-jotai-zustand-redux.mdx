@@ -1,0 +1,500 @@
+---
+title: "Context、Jotai、Zustand、Redux：状态到底存在哪里？"
+date: "2026-07-21"
+excerpt: "用同一组用户、订阅和积分状态，对比 React Context、Jotai、Zustand 与 Redux Toolkit 的存储位置、读写方式和更新链路。"
+category: "frontend"
+tags: ["react", "context", "jotai", "zustand", "redux", "状态管理"]
+draft: false
+---
+
+这次的起点是一行很短的代码：
+
+```ts
+const setUser = useSetAtom(userAtom);
+```
+
+语法并不复杂：`useSetAtom()` 返回一个写入函数，调用 `setUser(user)` 就能更新用户状态。真正让我没有想清楚的是：**这份数据到底写到了哪里？**
+
+沿着这个问题继续看，会自然遇到 React Context、Jotai、Zustand 和 Redux。它们都能让多个组件共享状态，但背后的组织模型并不相同。
+
+## 先记住四个结论
+
+1. 这四种方案默认保存的都是当前应用运行时内存，不会自动写入数据库或 `localStorage`。
+2. Context 自己更接近数据传递机制，状态通常真正保存在 Provider 的 `useState` 或 `useReducer` 中。
+3. Jotai 把状态拆成 atom，atom 更像定位状态的 key，值保存在 Jotai Store 中。
+4. Zustand 和 Redux 都有独立 Store；Zustand 直接调用 action，Redux 通过 `dispatch(action)` 描述状态变化。
+
+## 用同一个场景比较
+
+假设页面启动时需要获得三份数据：
+
+```ts
+type AppState = {
+  user: User | null;
+  subscription: Subscription | null;
+  creditAccount: CreditAccount | null;
+};
+```
+
+数据流是：
+
+```text
+浏览器启动
+  ├─ 请求当前用户
+  ├─ 请求订阅信息
+  └─ 请求积分账户
+        ↓
+写入共享状态
+        ↓
+Header 读取 user
+Pricing 读取 subscription
+GenerateButton 读取 creditAccount
+```
+
+接下来只改变“共享状态怎么组织”，业务目标保持不变。
+
+## Context：状态在 Provider 组件里
+
+先创建 Context：
+
+```tsx
+import { createContext, useContext, useState } from "react";
+
+type UserContextValue = {
+  user: User | null;
+  setUser: (user: User | null) => void;
+};
+
+const UserContext = createContext<UserContextValue | null>(null);
+```
+
+然后在 Provider 中创建状态：
+
+```tsx
+function UserProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+
+  return (
+    <UserContext.Provider value={{ user, setUser }}>
+      {children}
+    </UserContext.Provider>
+  );
+}
+```
+
+这里真正保存数据的是：
+
+```ts
+const [user, setUser] = useState(null);
+```
+
+Context 负责把 `user` 和 `setUser` 从 Provider 向下传给组件树：
+
+```text
+UserProvider 的 useState
+        ↓
+UserContext.Provider
+        ↓
+Header / Profile / Settings
+```
+
+读取和写入都通过 `useContext()`：
+
+```tsx
+function Header() {
+  const context = useContext(UserContext);
+  if (!context) return null;
+
+  return <span>{context.user?.name}</span>;
+}
+```
+
+```tsx
+function UserBootstrap() {
+  const context = useContext(UserContext);
+
+  async function initialize() {
+    const user = await loadCurrentUser();
+    context?.setUser(user);
+  }
+
+  // 在适当的初始化时机调用 initialize()
+  return null;
+}
+```
+
+可以把 Context 理解为：
+
+```text
+状态：Provider 的 useState
+传递：Context
+读取：useContext
+修改：Provider 提供的 setter
+```
+
+## Jotai：状态按 atom 拆开
+
+Jotai 不要求先创建一个包含全部字段的大对象，而是为每份状态定义 atom：
+
+```ts
+import { atom } from "jotai";
+
+export const userAtom = atom<User | null>(null);
+export const subscriptionAtom = atom<Subscription | null>(null);
+export const creditAccountAtom = atom<CreditAccount | null>(null);
+```
+
+`userAtom` 可以理解成一把唯一的钥匙。Jotai Store 根据这把钥匙找到对应的值：
+
+```text
+Jotai Store
+├── userAtom          → null
+├── subscriptionAtom  → null
+└── creditAccountAtom → null
+```
+
+写入用户：
+
+```tsx
+const setUser = useSetAtom(userAtom);
+
+setUser(user);
+```
+
+可以近似理解成：
+
+```ts
+jotaiStore.set(userAtom, user);
+```
+
+读取用户：
+
+```tsx
+const user = useAtomValue(userAtom);
+```
+
+可以近似理解成：
+
+```ts
+const user = jotaiStore.get(userAtom);
+```
+
+因此三种常见 Hook 可以这样记：
+
+```ts
+// 只读取
+const user = useAtomValue(userAtom);
+
+// 只写入
+const setUser = useSetAtom(userAtom);
+
+// 同时读取和写入
+const [user, setUser] = useAtom(userAtom);
+```
+
+Jotai 的核心模型是：
+
+```text
+状态定义：atom
+状态保存：Jotai Store
+读取：useAtomValue(atom)
+修改：useSetAtom(atom)
+```
+
+## Zustand：一个 Store 放状态和 action
+
+Zustand 通常把相关状态和修改方法放进同一个 Store：
+
+```ts
+import { create } from "zustand";
+
+type UserStore = AppState & {
+  setUser: (user: User | null) => void;
+  setSubscription: (subscription: Subscription | null) => void;
+  setCreditAccount: (creditAccount: CreditAccount | null) => void;
+};
+
+export const useUserStore = create<UserStore>((set) => ({
+  user: null,
+  subscription: null,
+  creditAccount: null,
+
+  setUser: (user) => set({ user }),
+  setSubscription: (subscription) => set({ subscription }),
+  setCreditAccount: (creditAccount) => set({ creditAccount }),
+}));
+```
+
+Store 可以想成：
+
+```text
+UserStore
+├── user
+├── subscription
+├── creditAccount
+├── setUser()
+├── setSubscription()
+└── setCreditAccount()
+```
+
+读取时使用 selector：
+
+```tsx
+const user = useUserStore((state) => state.user);
+```
+
+这表示当前组件只选择并订阅 `user`。
+
+写入时选择 action：
+
+```tsx
+const setUser = useUserStore((state) => state.setUser);
+
+setUser(user);
+```
+
+也可以把异步初始化写成 Store action：
+
+```ts
+const useUserStore = create<UserStore>((set) => ({
+  user: null,
+
+  initializeUser: async () => {
+    const user = await loadCurrentUser();
+    set({ user });
+  },
+}));
+```
+
+Zustand 的核心模型是：
+
+```text
+状态定义和保存：Store
+读取：selector
+修改：Store action
+```
+
+## Redux Toolkit：先描述发生了什么
+
+Redux 也使用集中 Store，但修改状态时不会直接拿到 `setUser()`。它先发出 action，再由 reducer 决定状态如何变化。
+
+现代 Redux 通常使用 Redux Toolkit：
+
+```ts
+import { configureStore, createSlice, PayloadAction } from "@reduxjs/toolkit";
+
+type UserState = {
+  currentUser: User | null;
+};
+
+const initialState: UserState = {
+  currentUser: null,
+};
+
+const userSlice = createSlice({
+  name: "user",
+  initialState,
+  reducers: {
+    userReceived(state, action: PayloadAction<User | null>) {
+      state.currentUser = action.payload;
+    },
+  },
+});
+
+export const { userReceived } = userSlice.actions;
+
+export const store = configureStore({
+  reducer: {
+    user: userSlice.reducer,
+  },
+});
+```
+
+写入用户时：
+
+```tsx
+const dispatch = useAppDispatch();
+
+dispatch(userReceived(user));
+```
+
+完整过程是：
+
+```text
+dispatch(userReceived(user))
+        ↓
+产生 action
+{
+  type: "user/userReceived",
+  payload: user
+}
+        ↓
+userSlice.reducer 处理 action
+        ↓
+更新 Redux Store
+```
+
+读取时使用 selector：
+
+```tsx
+const user = useAppSelector((state) => state.user.currentUser);
+```
+
+Redux 的核心模型是：
+
+```text
+状态保存：Redux Store
+描述变化：action
+执行变化：reducer
+发出变化：dispatch
+读取：selector
+```
+
+## 同一次 `setUser`，四条不同路径
+
+把同一个动作放在一起比较：
+
+| 方案 | 写入代码 | 数据最终进入哪里 |
+| --- | --- | --- |
+| Context | `setUser(user)` | Provider 组件的 `useState` |
+| Jotai | `setUser(user)` | Jotai Store 中 `userAtom` 对应的位置 |
+| Zustand | `setUser(user)` | Zustand Store 的 `user` 字段 |
+| Redux Toolkit | `dispatch(userReceived(user))` | reducer 更新的 Redux Store state tree |
+
+表面上 Context、Jotai、Zustand 都出现了 `setUser(user)`，但 setter 的来源不同：
+
+```text
+Context → useState 创建的 setter
+Jotai   → 绑定到 atom 的 Store setter
+Zustand → Store 中自己定义的 action
+Redux   → 不直接 set，而是 dispatch action
+```
+
+## 更新后谁会重新渲染
+
+### Context
+
+当 Provider 的 `value` 发生变化时，读取这个 Context 的消费者会重新渲染。
+
+如果把很多字段放进同一个 Context：
+
+```tsx
+value={{ user, subscription, creditAccount }}
+```
+
+更新 `creditAccount` 时，读取这整个 Context 的消费者都可能进入重新渲染。可以通过拆分 Context 和稳定 `value` 等方式缩小范围。
+
+### Jotai
+
+组件按 atom 订阅：
+
+```tsx
+const user = useAtomValue(userAtom);
+```
+
+更新 `creditAccountAtom` 时，只读取 `userAtom` 的组件通常不会受到影响。
+
+### Zustand
+
+组件按 selector 订阅：
+
+```tsx
+const user = useUserStore((state) => state.user);
+```
+
+只要 selector 得到的 `user` 没变化，其他字段更新通常不会让该组件重新渲染。
+
+### Redux
+
+Redux 组件也通过 selector 选择数据：
+
+```tsx
+const user = useAppSelector((state) => state.user.currentUser);
+```
+
+`useSelector` 会比较本次和上次选中的结果。选中结果没有变化时，组件通常不会因为其他 state 字段变化而重新渲染。
+
+## Provider 和共享范围
+
+| 方案 | 是否需要 Provider | 共享范围 |
+| --- | --- | --- |
+| Context | 需要 | 对应 Provider 的组件子树 |
+| Jotai | 可选 | 默认 Store，或者指定 Provider 子树 |
+| Zustand | 通常不需要 | 导入同一 Store 的调用方 |
+| Redux | React 中通常需要 | Redux Provider 的组件子树 |
+
+Provider 不只是语法要求，它还决定状态实例的作用域。例如同一个页面放置两个不同的 Provider，可以得到两份彼此隔离的状态。
+
+## 它们会自动持久化吗
+
+默认都不会：
+
+```text
+Context → 当前应用内存
+Jotai   → 当前 Jotai Store 内存
+Zustand → 当前 Zustand Store 内存
+Redux   → 当前 Redux Store 内存
+```
+
+刷新页面后，JavaScript 运行环境重新创建，状态通常回到初始值。
+
+需要刷新后保留时，必须额外加入持久化：
+
+- Context：自行读写 `localStorage` 或其他存储。
+- Jotai：可以使用 `atomWithStorage`。
+- Zustand：可以使用 `persist` middleware。
+- Redux：可以自行持久化，或使用专门的持久化方案。
+
+状态管理和持久化解决的是两个不同问题：
+
+```text
+状态管理 → 当前应用运行期间，数据怎么共享和更新
+持久化   → 页面刷新或进程重启后，数据怎么保留下来
+```
+
+## 如何建立选择模型
+
+可以先按下面的方向理解，而不是把它当成绝对选型规则。
+
+### Context
+
+适合组件树范围明确、更新频率不高的数据，例如主题、locale、依赖对象和简单用户上下文。
+
+### Jotai
+
+适合很多小而独立的状态，以及需要把 atom 继续组合成派生状态的场景。思维方式偏向“先定义最小状态，再组合”。
+
+### Zustand
+
+适合把一个业务域的 state 和 action 放在一起，同时希望 API 保持直接、轻量。思维方式偏向“创建一个可直接调用的 Store”。
+
+### Redux Toolkit
+
+适合状态变化需要清晰事件记录、团队协作边界、DevTools、中间件和可追踪更新链路的复杂应用。思维方式偏向“先描述发生了什么，再由 reducer 更新状态”。
+
+## 以后怎么读状态管理代码
+
+下次再遇到新的状态管理方案，可以先不背 API，按下面的顺序追踪：
+
+1. 状态最初在哪里定义？
+2. 运行时的值实际存在哪个 Store 或组件里？
+3. 组件通过什么方式订阅？
+4. 写入时是直接调用 setter、调用 action，还是 dispatch 事件？
+5. 某个字段变化后，哪些组件会重新渲染？
+6. 页面刷新后状态是否还在？如果还在，持久化发生在哪里？
+
+最重要的问题仍然是最开始的那个：
+
+> 当我调用这个写入函数时，数据最终被保存到了哪里？
+
+只要沿着“定义 → Store → 写入 → 订阅 → 重新渲染”追下去，不同状态管理库就只是对同一组问题给出了不同答案。
+
+## 参考资料
+
+- [React `createContext`](https://react.dev/reference/react/createContext)
+- [React `useContext`](https://react.dev/reference/react/useContext)
+- [Jotai Core — Atom](https://jotai.org/docs/core/atom)
+- [Jotai Core — Store](https://jotai.org/docs/core/store)
+- [Zustand Introduction](https://zustand.docs.pmnd.rs/getting-started/introduction)
+- [Redux Getting Started](https://redux.js.org/introduction/getting-started)
+- [Redux Toolkit Getting Started](https://redux-toolkit.js.org/introduction/getting-started)
