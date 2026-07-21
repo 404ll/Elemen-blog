@@ -17,10 +17,10 @@
     "Noto Sans Mono CJK SC", "Microsoft YaHei Mono", "PingFang SC", monospace;
 
   /* Colors - Light */
-  --background: 255 255 255;
-  --foreground: 17 24 39;
+  --background: 242 241 237;
+  --foreground: 25 25 22;
 
-  --primary: 59 130 246;
+  --primary: 240 90 40;
   --primary-foreground: 255 255 255;
 
   --secondary: 244 244 245;
@@ -30,12 +30,11 @@
   --muted-foreground: 113 113 122;
 
   --border: 229 229 230;
-  --ring: 59 130 246;
+  --ring: 240 90 40;
 
   --radius: 0.5rem;
 
-  /* Background Gradient */
-  --gradient-bg: linear-gradient(180deg, #fff4e6 0%, #fafaf8 100%);
+  --gradient-bg: #f2f1ed;
 }
 
 .dark {
@@ -51,7 +50,7 @@
   --border: 39 39 42;
   --ring: 96 165 250;
 
-  --gradient-bg: linear-gradient(180deg, #1a0f00 0%, #0f0f0e 100%);
+  --gradient-bg: #121210;
 }
 
 /* =========================================================
@@ -67,9 +66,10 @@ html {
     min-height: 100vh;
     --font-site-mono: var(--font-jetbrains-mono), "SFMono-Regular", "SF Mono", "Cascadia Mono",
       "Noto Sans Mono CJK SC", "Microsoft YaHei Mono", "PingFang SC", monospace;
-    font-family: var(--font-site-mono);
+    --font-site-sans: var(--font-zenmaru), -apple-system, BlinkMacSystemFont, "Segoe UI",
+      "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-family: var(--font-site-sans);
     background: var(--gradient-bg);
-    background-attachment: fixed;
     color: rgb(var(--foreground));
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -103,19 +103,19 @@ button:disabled {
 }
 
 ::selection {
-  background: rgb(var(--primary) / 0.25);
+  background: rgb(var(--primary) / 0.22);
 }
 
 /* =========================================================
       Typography (Blog Baseline)
       ========================================================= */
 .font-bitcount {
-  font-family: var(--font-site-mono);
+  font-family: var(--font-bitcount), var(--font-site-mono);
   letter-spacing: 0.02em;
 }
 
 .font-zenmaru {
-  font-family: var(--font-site-mono);
+  font-family: var(--font-site-sans);
 }
 
 .font-mono {
@@ -170,7 +170,7 @@ pre code {
   background-color: rgb(5, 70, 141);
   padding: 0.2rem 0.5rem;
   border-radius: 0.3rem;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
 }
 /* =========================================================
       rehype-pretty-code — Mac 风格代码块

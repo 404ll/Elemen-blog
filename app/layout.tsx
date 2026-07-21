@@ -54,8 +54,11 @@ const zenMaruGothicFont = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Elemen's Blog",
-  description: "Elemen's Blog",
+  title: {
+    default: "Elemen / 个人知识库",
+    template: "%s | Elemen",
+  },
+  description: "记录前端、AI、算法与工程实践中的真实问题，让零散的理解彼此连接。",
   icons: {
     icon: [
       { url: '/logo.JPG', type: 'image/jpg' },
@@ -71,16 +74,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="zh-CN" suppressHydrationWarning>
       <body
-        className={`${bitcountFont.variable} ${zenMaruGothicFont.variable} ${monoFont.variable} bg-gradient-bg antialiased container-custom`}
+        className={`${bitcountFont.variable} ${zenMaruGothicFont.variable} ${monoFont.variable} antialiased`}
       >
         <ThemeProvider>
           <ObservabilityClient />
           <Navbar />
-          <div className="pt-6">
-            {children}
-          </div>
+          {children}
         </ThemeProvider>
       </body>
     </html>

@@ -6,8 +6,13 @@ import { useState, useMemo } from "react";
 import Fuse from "fuse.js";
 import type { Post } from "@/types";
 
-export default function BlogClient({ posts }: { posts: Post[] }) {
-  const [searchTerm, setSearchTerm] = useState("");
+type BlogClientProps = {
+  posts: Post[];
+  initialSearchTerm?: string;
+};
+
+export default function BlogClient({ posts, initialSearchTerm = "" }: BlogClientProps) {
+  const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
 
   // 创建 Fuse 实例用于模糊搜索
   const fuse = useMemo(() => new Fuse(posts, {
@@ -46,9 +51,12 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
 
         {/* 搜索框 */}
         <div className="relative">
+          <label htmlFor="article-search" className="sr-only">搜索文章</label>
           <input
-            type="text"
-            placeholder="搜索文章..."
+            id="article-search"
+            name="q"
+            type="search"
+            placeholder="搜索文章…"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full px-4 py-3 pl-12 rounded-xl border border-gray-200 bg-white/90 backdrop-blur-sm
@@ -57,6 +65,7 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
                        transition-all"
           />
           <svg
+            aria-hidden="true"
             className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
             fill="none"
             stroke="currentColor"
@@ -77,7 +86,7 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
 
         {/* 搜索结果计数 */}
         {searchTerm && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-gray-500 dark:text-gray-400" aria-live="polite">
             找到 {filteredPosts.length} 篇文章
           </p>
         )}
@@ -87,10 +96,3 @@ export default function BlogClient({ posts }: { posts: Post[] }) {
     </div>
   );
 }
-
-
-
-
-
-
-
