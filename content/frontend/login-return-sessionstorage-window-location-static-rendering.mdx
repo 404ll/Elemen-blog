@@ -1,0 +1,560 @@
+---
+title: "登录回跳为什么要同时用 next、sessionStorage 和 window.location？"
+date: "2026-07-22"
+excerpt: "从一次登录回跳与草稿恢复问题出发，理解 URL、sessionStorage、window.location、静态构建和 Suspense 各自负责什么。"
+category: "frontend"
+tags: ["nextjs", "authentication", "sessionstorage", "window-location", "suspense", "ssg"]
+draft: false
+---
+
+这次问题最初看起来只是：用户在工具页点击生成，登录之后怎么还留在原来的页面？
+
+继续追下去，问题逐渐变成了五个：
+
+1. 既然希望登录后回到原页面，为什么还要带 `next`？
+2. 原页面的 query 参数会不会丢失？
+3. 输入框里的 prompt、附件和模型设置应该放在哪里？
+4. 为什么加入 `useSearchParams()` 后，本地开发正常，生产构建却失败？
+5. 为什么在点击事件里读取 `window.location`，又可以保住静态构建？
+
+它们其实都在问同一件事：**一段状态应该由谁保存，又应该在什么时间读取？**
+
+## 先记住完整答案
+
+一次“登录后回到原页面并恢复草稿”的流程里，至少有三种不同状态：
+
+| 状态 | 例子 | 合适的载体 |
+| --- | --- | --- |
+| 身份状态 | 用户是否已经登录 | Cookie / 服务端 Session |
+| 导航状态 | 登录后回到哪个路径 | 登录 URL 的 `next` 参数 |
+| 临时业务状态 | prompt、附件 URL、模型和模板 | 当前标签页的 `sessionStorage` |
+
+因此最终链路是：
+
+```text
+用户在工具页填写草稿
+        ↓
+点击真正的生成按钮
+        ↓
+发现尚未登录
+        ↓
+sessionStorage 保存草稿
+next 保存当前 pathname + search + hash
+        ↓
+跳到登录页
+        ↓
+登录成功后按 next 回到原页面
+        ↓
+原页面从 sessionStorage 一次性恢复草稿
+        ↓
+用户再次确认并主动提交
+```
+
+`next` 和 `sessionStorage` 并不重复：一个负责“回哪里”，另一个负责“带回什么”。
+
+## 一、为什么“原路返回”反而更需要 next？
+
+假设用户当前位于：
+
+```text
+/zh/tool?campaign=spring#generator
+```
+
+当浏览器进入 `/sign-in` 后，登录页面对的是一个新的请求。它不会天然知道用户是从哪个业务页面来的，也不应该把 `Referer` 当成可靠的业务协议。
+
+所以来源页面需要显式告诉登录页：
+
+```text
+登录成功后，请回到 /zh/tool?campaign=spring#generator
+```
+
+这个约定通常叫 `next`、`returnTo`、`redirect` 或 `callbackUrl`。名字可以不同，职责相同。
+
+```ts
+function buildSignInHref(next: string) {
+  const params = new URLSearchParams({ next });
+  return `/sign-in?${params.toString()}`;
+}
+```
+
+生成的地址类似：
+
+```text
+/sign-in?next=%2Fzh%2Ftool%3Fcampaign%3Dspring%23generator
+```
+
+这里必须编码，因为原地址本身也包含 `?`、`&` 和 `#`。尤其是 `#`：未编码的 hash 会被浏览器当成登录页自己的 fragment，不会作为 HTTP 请求的一部分发送给服务端。
+
+### next 应该保存到什么程度？
+
+完整返回地址通常由三部分组成：
+
+```ts
+const next =
+  window.location.pathname +
+  window.location.search +
+  window.location.hash;
+```
+
+以刚才的 URL 为例：
+
+```text
+pathname = /zh/tool
+search   = ?campaign=spring
+hash     = #generator
+```
+
+只保存 `pathname`，登录回来仍能打开工具页，但营销归因、筛选条件、预填参数和页面锚点都可能丢失。
+
+### next 也是一个安全边界
+
+登录服务不能无条件跳转到任意 `next`，否则攻击者可以构造这样的地址：
+
+```text
+/sign-in?next=https://phishing.example
+```
+
+用户在真实网站完成登录后，却被带到钓鱼站点。这类问题叫 Open Redirect。
+
+更稳妥的处理是只接受同源地址：
+
+```ts
+function getSafeReturnTo(raw: string, origin: string) {
+  const target = new URL(raw, origin);
+
+  if (target.origin !== origin) return "/";
+
+  return `${target.pathname}${target.search}${target.hash}`;
+}
+```
+
+生产实现还应根据系统情况限制协议、允许的 host 和默认回退路径。
+
+## 二、为什么不把 prompt 也放进 next？
+
+可以把短筛选条件放进 URL，但不适合把完整草稿塞进去：
+
+```text
+/sign-in?next=/tool?prompt=一段很长的内容&files=...
+```
+
+主要问题有：
+
+- URL 会进入浏览器历史、访问日志、监控系统和分享链接，隐私边界更差；
+- URL 有实际长度限制，长 prompt 和附件信息容易失控；
+- 嵌套 query 需要多层编码，很容易出现覆盖、截断或重复解码；
+- 文件对象本身不能放进 URL；
+- 导航协议会被迫理解大量业务字段，耦合越来越深。
+
+所以可以建立一条简单规则：
+
+```text
+会改变“页面身份”、值得复制分享的状态 → URL
+只为完成当前操作、短期存在的状态       → sessionStorage
+需要跨设备、长期保存的业务数据           → 服务端
+```
+
+## 三、sessionStorage 到底是什么？
+
+`sessionStorage` 是浏览器 `Window` 上的 Web Storage API。它提供同步的字符串键值存储：
+
+```ts
+sessionStorage.setItem("pending-draft", JSON.stringify(draft));
+
+const raw = sessionStorage.getItem("pending-draft");
+
+sessionStorage.removeItem("pending-draft");
+```
+
+它最重要的隔离维度是：
+
+```text
+sessionStorage = origin × 顶层浏览上下文（通常就是标签页）
+```
+
+其中 origin 由三部分共同决定：
+
+```text
+协议 + 域名 + 端口
+```
+
+下面这些地址的存储空间都不同：
+
+```text
+https://example.com
+http://example.com
+https://app.example.com
+https://example.com:3000
+```
+
+同一个 origin、同一个标签页内刷新或跳走再回来，数据通常仍在；关闭标签页后，这个 page session 才结束。新标签页拥有不同的 session storage 区域，不应该把跨标签页恢复建立在它上面。
+
+这也解释了为什么登录流程最好在当前标签页完成。如果业务要求打开新标签页、跨设备继续，`sessionStorage` 就不再是可靠方案，需要服务端临时草稿 ID 或其他协议。
+
+### 它保存的是字符串，不是 JavaScript 对象
+
+写入对象时需要先序列化：
+
+```ts
+type PendingDraft = {
+  version: 1;
+  pathname: string;
+  savedAt: number;
+  prompt: string;
+  files?: Array<{ name: string; url: string }>;
+  context?: {
+    model?: string;
+    templateId?: string;
+  };
+};
+```
+
+这里保存的是已经上传后的文件 URL，而不是浏览器的 `File` 对象。`File` 包含浏览器管理的二进制引用，直接 `JSON.stringify(file)` 并不能得到可恢复的文件内容。
+
+因此一条更完整的提交顺序是：
+
+```text
+校验输入
+  ↓
+先上传本地文件，得到 URL
+  ↓
+保存 prompt + 文件 URL + 页面设置
+  ↓
+进入登录流程
+```
+
+### 为什么还需要 pathname、TTL、version 和一次性消费？
+
+只保存一份裸 prompt 很容易恢复到错误页面，或者在很久以后突然出现。更稳妥的草稿结构会增加四层约束：
+
+```ts
+const draft = {
+  version: 1,
+  pathname: window.location.pathname,
+  savedAt: Date.now(),
+  prompt,
+  files,
+  context,
+};
+```
+
+- `pathname`：只有回到目标页面才能消费；登录中间页不能提前拿走草稿；
+- `savedAt`：例如超过十分钟就失效，避免陈旧状态突然恢复；
+- `version`：以后数据结构升级时，可以安全丢弃旧格式；
+- 一次性消费：成功读取后立即删除，避免每次刷新都重复注入。
+
+可以把读取逻辑简化成：
+
+```ts
+function consumeDraft(pathname: string) {
+  const raw = sessionStorage.getItem("pending-draft");
+  if (!raw) return null;
+
+  const draft = JSON.parse(raw) as PendingDraft;
+
+  // 路径不匹配时先保留，避免登录中间页误消费
+  if (draft.pathname !== pathname) return null;
+
+  sessionStorage.removeItem("pending-draft");
+
+  const expired = Date.now() - draft.savedAt > 10 * 60 * 1000;
+  if (draft.version !== 1 || expired) return null;
+
+  return draft;
+}
+```
+
+真实代码还应该用 `try/catch` 包住读写：用户可能禁用存储，浏览器可能抛出 `SecurityError`，数据也可能损坏或超过配额。由于 Web Storage 是同步 API，还应控制体积，不能把大文件或大量数据塞进去阻塞主线程。
+
+## 四、window.location 为什么只能在浏览器里读？
+
+`window` 代表当前浏览器窗口，`window.location` 代表这个窗口正在显示的 URL。
+
+问题在于，Next.js 应用不只在浏览器执行。它至少会经历：
+
+```text
+构建阶段：Node.js 执行并预渲染页面
+请求阶段：服务端按请求生成内容（动态页面）
+浏览器阶段：加载 HTML 与 JavaScript，完成 hydration
+```
+
+前两个阶段都没有真实浏览器，因此没有 `window`、`document` 和 `sessionStorage`。
+
+即使文件顶部写了：
+
+```ts
+"use client";
+```
+
+也不等于这段组件代码只会在浏览器执行。Client Component 仍可能在构建或初次请求时被预渲染成 HTML；`"use client"` 表示它拥有客户端交互边界，并会把相应 JavaScript 发送给浏览器。
+
+所以在渲染期间直接读取会出问题：
+
+```tsx
+// 构建时没有 window
+const next = window.location.pathname;
+```
+
+保护读取的最低要求是：
+
+```ts
+if (typeof window === "undefined") return;
+```
+
+但这还没有解释为什么点击事件更合适。
+
+## 五、为什么在点击事件里读 window.location 可以保住静态构建？
+
+构建工具需要执行组件的渲染逻辑，才能提前生成 HTML；但它不会替用户点击按钮。
+
+```tsx
+function GenerateButton() {
+  function handleClick() {
+    const next =
+      window.location.pathname +
+      window.location.search +
+      window.location.hash;
+
+    openLoginDialog({ next });
+  }
+
+  return <button onClick={handleClick}>Generate</button>;
+}
+```
+
+两类代码执行时间不同：
+
+```text
+组件渲染逻辑 → build / server / browser 都可能执行
+事件处理函数 → hydration 完成后，由真实用户操作触发
+```
+
+到了用户点击时，浏览器必然已经存在，地址栏里也有真正的 query 和 hash。这个值不参与首屏 HTML 的计算，因此页面仍然可以静态预渲染。
+
+这次最终形成的设计原则是：
+
+> 如果当前 URL 只在用户执行某个动作时需要，就在该事件里读取；不要为了点击后的导航，把 request-time 状态提前变成 render-time 依赖。
+
+事件里捕获的 `next` 还可以先写入组件状态，再让弹窗渲染一个真实的 `<a href="...">`。这样登录链接支持复制地址、右键打开和无障碍工具，而不是只能依赖按钮里的命令式跳转。
+
+## 六、useSearchParams 为什么会让静态构建失败？
+
+`useSearchParams()` 的作用是在**渲染期间**读取当前 URL 的 query：
+
+```tsx
+const searchParams = useSearchParams();
+const campaign = searchParams.get("campaign");
+```
+
+但是静态构建发生时没有某个用户的真实请求。构建系统知道 `/tool`，却不知道未来访问者会带：
+
+```text
+?campaign=spring
+?campaign=summer
+?sort=popular
+```
+
+当静态页面中的 Client Component 调用 `useSearchParams()` 时，Next.js 需要把依赖当前 query 的部分留到客户端渲染。`Suspense` 边界就是这部分的边界声明。
+
+```tsx
+<Suspense fallback={<SearchFallback />}>
+  <SearchDependentContent />
+</Suspense>
+```
+
+边界外的页面外壳仍可以预渲染，边界内的内容等浏览器拿到真实 query 后再完成。没有边界时，框架无法把影响范围限制在一个小区域，生产构建会报告 `useSearchParams()` 缺少 Suspense 边界。
+
+### Suspense 不等于懒加载
+
+`React.lazy()` 经常和 `<Suspense>` 一起出现，所以容易把 Suspense 理解成“懒加载组件”。更准确的理解是：
+
+> Suspense 是渲染等待边界。子树暂时无法完成时，先展示 fallback，并限制等待影响的范围。
+
+它可以承接多种“暂时不能完成”：
+
+- `React.lazy()` 还在下载组件代码；
+- 支持 Suspense 的数据源还在等待数据；
+- Next.js 某个子树必须等到请求时或客户端才能得到 URL 状态；
+- 流式渲染中，服务端稍后再发送动态片段。
+
+所以它和懒加载有关，但两者不是同义词。
+
+## 七、静态构建到底有什么意义？
+
+静态构建可以理解为：**部署前先把不依赖具体用户的页面算好。**
+
+```text
+源代码
+  ↓ next build
+HTML + RSC Payload + JavaScript + 静态资源
+  ↓ 部署到 CDN
+用户请求时直接返回已有结果
+```
+
+它的价值包括：
+
+- 首屏更快：用户不必等待服务器为每次访问重新渲染；
+- 更容易分发到 CDN；
+- 服务端计算更少；
+- 公共 Landing、文章和产品介绍页更适合被搜索引擎读取；
+- 构建阶段会提前暴露“把浏览器环境误当成构建环境”的代码。
+
+静态页面并不是没有 JavaScript。用户拿到预生成 HTML 后，React 仍会 hydration，绑定事件并让页面可交互。
+
+```text
+静态构建解决“第一份 HTML 从哪里来”
+hydration 解决“页面如何变得可交互”
+```
+
+这也解释了“以前为什么没有出现”：开发模式通常按访问即时编译，不会完整复现生产构建对所有静态路由的预渲染检查。直到 `next build` 真正遍历语言和页面变体，渲染期依赖 `useSearchParams()` 的问题才集中暴露。
+
+## 八、三种读取 query 的方式怎么选？
+
+### 情况一：query 会改变页面首屏内容
+
+例如搜索结果页的 `?q=react`。这属于渲染输入，可以由 Page 接收 `searchParams`，再根据页面的缓存与渲染策略传给子组件。
+
+### 情况二：只有一小块客户端 UI 依赖 query
+
+把调用 `useSearchParams()` 的组件缩小，并放进 `<Suspense>`：
+
+```tsx
+<StaticLandingShell>
+  <Suspense fallback={<FilterSkeleton />}>
+    <ClientFilter />
+  </Suspense>
+</StaticLandingShell>
+```
+
+### 情况三：只有用户点击时才需要当前地址
+
+直接在事件处理函数里读取 `window.location`。这正是登录回跳链接的场景，不需要让整个页面在渲染期间订阅 query。
+
+```text
+影响渲染 → searchParams / useSearchParams
+只影响点击后的动作 → window.location in event handler
+```
+
+## 九、一个可复用的最小实现
+
+下面保留这套设计的骨架，不包含具体产品代码。
+
+```ts
+type BrowserLocation = Pick<Location, "pathname" | "search" | "hash">;
+
+function getCurrentReturnTo(location: BrowserLocation) {
+  return `${location.pathname}${location.search}${location.hash}`;
+}
+
+function buildSignInHref(next: string) {
+  return `/sign-in?${new URLSearchParams({ next })}`;
+}
+```
+
+在用户提交时保存草稿并捕获返回地址：
+
+```tsx
+function handleGenerate() {
+  if (isLoggedIn) {
+    generate();
+    return;
+  }
+
+  saveDraft({
+    pathname: window.location.pathname,
+    prompt,
+    files: uploadedFiles,
+    context: { model, templateId },
+  });
+
+  const next = getCurrentReturnTo(window.location);
+  setLoginHref(buildSignInHref(next));
+  setLoginDialogOpen(true);
+}
+```
+
+回到页面后，只进行一次外部存储恢复：
+
+```tsx
+useMountEffect(() => {
+  const draft = consumeDraft(window.location.pathname);
+  if (!draft) return;
+
+  setPrompt(draft.prompt);
+  setFiles(draft.files ?? []);
+  setModel(draft.context?.model ?? DEFAULT_MODEL);
+});
+```
+
+这里用 `useMountEffect` 表达“挂载时与浏览器外部存储同步一次”。没有这层项目封装时，底层通常是一个空依赖数组的 `useEffect`。恢复 sessionStorage 属于外部系统同步；普通的派生值仍应在渲染期间直接计算。
+
+恢复完成后不要自动提交。登录、页面跳转和文件恢复都可能让用户离开原来的上下文，自动生成还可能产生费用。更稳妥的做法是恢复编辑现场，让用户再次确认。
+
+## 十、面试模块
+
+### 1. `sessionStorage`、`localStorage` 和 Cookie 有什么区别？
+
+回答主线：
+
+- `sessionStorage`：按 origin 和标签页隔离，关闭标签页后结束，适合当前操作的临时草稿；
+- `localStorage`：按 origin 隔离，可跨标签页并长期保留，适合非敏感的长期客户端偏好；
+- Cookie：可以随 HTTP 请求发送，适合服务端需要参与判断的会话标识，但要考虑 `HttpOnly`、`Secure`、`SameSite` 和体积限制。
+
+### 2. 为什么 `"use client"` 组件里仍然不能随便访问 window？
+
+因为 Client Component 仍可能参与服务端或构建期预渲染。`"use client"` 声明的是客户端组件边界和交互能力，不是“文件只在浏览器执行”。`window` 应放在事件处理、挂载后的外部同步，或带环境判断的浏览器分支中。
+
+### 3. 为什么 `useSearchParams()` 需要 Suspense？
+
+静态构建不知道未来请求的 query。调用 `useSearchParams()` 的子树需要延迟到客户端获得真实 URL 后完成。Suspense 标出这棵动态子树，使外部静态壳仍可预渲染；缺少边界可能导致整页 CSR bailout，因此生产构建会阻止这种写法。
+
+### 4. Suspense 就是懒加载吗？
+
+不是。Suspense 是“等待边界”，`React.lazy()` 只是会触发等待的一种来源。数据读取、动态渲染和流式服务端内容也可以使用 Suspense。
+
+### 5. 为什么 next 和 sessionStorage 要同时存在？
+
+`next` 是导航协议，告诉登录系统成功后去哪里；`sessionStorage` 是临时业务状态，保存页面里不适合进入 URL 的草稿。没有 `next`，登录系统不知道返回页；没有 `sessionStorage`，回到页面后只有地址，没有编辑现场。
+
+### 6. sessionStorage 能跨子域和端口共享吗？
+
+不能。Web Storage 受同源策略限制，协议、域名或端口任一不同就属于不同 origin。跨 origin 登录可以在返回原 origin 后重新读取原来的存储，但登录页本身不能读取它；如果流程换了新标签页，也不能把恢复建立在原标签页的 storage 上。
+
+### 7. 如何防止 next 参数造成 Open Redirect？
+
+不要直接相信客户端传来的地址。服务端应解析目标 URL，限制为同源相对路径或明确的 host allowlist，并为非法值提供安全默认页。
+
+### 8. 为什么不能直接把 File 对象 JSON.stringify 后存起来？
+
+`File` 是浏览器管理的二进制对象，不是普通可枚举 JSON 数据。应先上传得到稳定 URL，只保存名称、URL 和必要元数据；若确实需要离线保存二进制，应考虑 IndexedDB，而不是 Web Storage。
+
+### 9. 本地开发正常，next build 失败，应该先想到什么？
+
+检查代码是否在渲染期依赖了只存在于真实请求或浏览器的值，例如 `window`、`document`、`sessionStorage`、`useSearchParams()`、cookies 或 headers。然后判断这个值究竟影响首屏渲染，还是只在用户事件中需要，再选择动态渲染、Suspense 隔离或事件时读取。
+
+### 60 秒回答模板
+
+> 登录回跳需要拆分导航状态和业务草稿。当前路径、query、hash 编码进 `next`，让认证系统知道成功后返回哪里；长 prompt、附件 URL 和模型设置放在同标签页、同 origin 的 `sessionStorage`，并通过 pathname、TTL、version 和一次性消费限制恢复范围。公共页面要保持静态预渲染时，不应只为点击后的跳转在渲染期调用 `useSearchParams()`；可以在用户点击事件中读取 `window.location`。事件只在 hydration 后的浏览器执行，不参与 build。如果 query 确实影响渲染，再把依赖它的最小子树放入 Suspense，或者明确使用请求时渲染。
+
+## 最后的检查清单
+
+遇到“登录回来恢复现场”的需求，可以按这个顺序检查：
+
+1. 登录系统是否有明确的 `next` / `returnTo` 协议？
+2. `next` 是否保留了必要的 pathname、query 和 hash？
+3. 服务端是否验证了返回地址，避免 Open Redirect？
+4. 哪些状态值得进入 URL，哪些只是短期草稿？
+5. `sessionStorage` 是否满足同 origin、同标签页的前提？
+6. 草稿是否包含 pathname、TTL、version 和一次性清理？
+7. 文件是否已经转成可序列化的 URL/元数据？
+8. 浏览器 API 是否只在事件或挂载后的外部同步中读取？
+9. 如果使用 `useSearchParams()`，动态范围是否被缩到最小并放进 Suspense？
+10. 登录回来后是否只恢复草稿，而不是自动执行可能收费的操作？
+
+## 参考资料
+
+- [Next.js：Missing Suspense boundary with useSearchParams](https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout)
+- [Next.js：Static and Dynamic Rendering](https://nextjs.org/learn/dashboard-app/static-and-dynamic-rendering)
+- [MDN：Window.sessionStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage)
+- [MDN：Location](https://developer.mozilla.org/en-US/docs/Web/API/Location)
+- [MDN：Web Storage API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API)
