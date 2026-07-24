@@ -20,52 +20,12 @@ const monoFont = localFont({
   display: 'swap',
   weight: '100 900',
 });
-// Zen Maru Gothic - 日文中文字体（支持中文显示）
-const zenMaruGothicFont = localFont({
-  src: [
-    {
-      path: './fonts/Zen_Maru_Gothic/ZenMaruGothic-Light.ttf',
-      weight: '300',
-      style: 'normal',
-    },
-    {
-      path: './fonts/Zen_Maru_Gothic/ZenMaruGothic-Regular.ttf',
-      weight: '400',
-      style: 'normal',
-    },
-    {
-      path: './fonts/Zen_Maru_Gothic/ZenMaruGothic-Medium.ttf',
-      weight: '500',
-      style: 'normal',
-    },
-    {
-      path: './fonts/Zen_Maru_Gothic/ZenMaruGothic-Bold.ttf',
-      weight: '700',
-      style: 'normal',
-    },
-    {
-      path: './fonts/Zen_Maru_Gothic/ZenMaruGothic-Black.ttf',
-      weight: '900',
-      style: 'normal',
-    },
-  ],
-  variable: '--font-zenmaru',
-  display: 'swap',
-});
-
 export const metadata: Metadata = {
   title: {
     default: "Elemen / 个人知识库",
     template: "%s | Elemen",
   },
   description: "记录前端、AI、算法与工程实践中的真实问题，让零散的理解彼此连接。",
-  icons: {
-    icon: [
-      { url: '/logo.JPG', type: 'image/jpg' },
-    ],
-    shortcut: '/logo.JPG',
-    apple: '/logo.JPG',
-  },
 };
 
 export default function RootLayout({
@@ -76,7 +36,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <body
-        className={`${bitcountFont.variable} ${zenMaruGothicFont.variable} ${monoFont.variable} antialiased`}
+        className={`${bitcountFont.variable} ${monoFont.variable} antialiased`}
       >
         <ThemeProvider>
           <ObservabilityClient />

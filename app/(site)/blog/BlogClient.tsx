@@ -31,8 +31,13 @@ export default function BlogClient({ posts, initialSearchTerm = "" }: BlogClient
     <div className="pt-20 pb-16">
       <div className="max-w-5xl mx-auto px-4 space-y-8">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold font-bitcount tracking-[0.2em] text-gray-800 dark:text-gray-400 font-semibold transition-colors">博客</h1>
-          <p className="text-gray-600 dark:text-gray-400 transition-colors">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-[#f05a28]">
+            Knowledge Base / Notes
+          </p>
+          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-[#191916] transition-colors dark:text-stone-100">
+            博客
+          </h1>
+          <p className="text-[#66635c] transition-colors dark:text-stone-400">
             技术、区块链与折腾记录。
           </p>
           <div className="flex flex-wrap gap-2 pt-2">

@@ -153,7 +153,7 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
             <span className="text-sm">返回文章列表</span>
           </Link>
 
-          <div className="flex flex-wrap items-center gap-3 mb-3">
+          <div className="mb-4 flex flex-wrap items-center gap-3 font-mono">
             {frontmatter.category && (
               <span className="px-3 py-1 rounded-full bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 text-xs font-semibold">
                 {frontmatter.category}
@@ -172,7 +172,7 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
           </div>
 
           {frontmatter.title && (
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 leading-snug mb-3">
+            <h1 className="mb-3 max-w-[26ch] text-balance text-[2rem] font-semibold leading-[1.18] tracking-[-0.035em] text-[#191916] dark:text-stone-100 md:text-[2.5rem]">
               {frontmatter.title}
             </h1>
           )}
@@ -190,12 +190,12 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
 
         {/* Body */}
         <main className="px-4 md:px-8 py-8 min-w-0">
-          <article className="prose prose-slate dark:prose-invert max-w-none">
+          <article className="article-copy mx-auto min-w-0">
             <MDXContent components={mdxComponents} />
           </article>
         </main>
 
-        <div className="px-4 md:px-8 py-6 border-t border-gray-100 dark:border-gray-700 text-center text-gray-400 dark:text-gray-500 text-sm">
+        <div className="border-t border-gray-100 px-4 py-6 text-center font-mono text-xs text-gray-400 dark:border-gray-700 dark:text-gray-500 md:px-8">
           © {new Date().getFullYear()} {frontmatter.author || "Blog Owner"}. All rights reserved.
         </div>
       </div>

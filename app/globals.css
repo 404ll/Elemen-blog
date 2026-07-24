@@ -11,9 +11,9 @@
       ========================================================= */
 :root {
   /* Fonts */
-  --font-bitcount: "Bitcount Prop Single", monospace;
-  --font-zenmaru: "Zen Maru Gothic", sans-serif;
-  --font-site-mono: "SFMono-Regular", "SF Mono", "Cascadia Mono",
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans CJK SC",
+    "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-code-fallback: "SFMono-Regular", "SF Mono", "Cascadia Mono",
     "Noto Sans Mono CJK SC", "Microsoft YaHei Mono", "PingFang SC", monospace;
 
   /* Colors - Light */
@@ -64,13 +64,13 @@ html {
 @layer base {
   body {
     min-height: 100vh;
-    --font-site-mono: var(--font-jetbrains-mono), "SFMono-Regular", "SF Mono", "Cascadia Mono",
-      "Noto Sans Mono CJK SC", "Microsoft YaHei Mono", "PingFang SC", monospace;
-    --font-site-sans: var(--font-zenmaru), -apple-system, BlinkMacSystemFont, "Segoe UI",
-      "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif;
-    font-family: var(--font-site-sans);
+    --font-display: var(--font-bitcount), var(--font-code-fallback);
+    --font-code: var(--font-jetbrains-mono), var(--font-code-fallback);
+    font-family: var(--font-body);
     background: var(--gradient-bg);
     color: rgb(var(--foreground));
+    font-kerning: normal;
+    text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -110,16 +110,21 @@ button:disabled {
       Typography (Blog Baseline)
       ========================================================= */
 .font-bitcount {
-  font-family: var(--font-bitcount), var(--font-site-mono);
+  font-family: var(--font-display);
   letter-spacing: 0.02em;
 }
 
 .font-zenmaru {
-  font-family: var(--font-site-sans);
+  font-family: var(--font-body);
 }
 
 .font-mono {
-  font-family: var(--font-site-mono);
+  font-family: var(--font-code);
+}
+
+.article-copy {
+  max-width: 72ch;
+  text-wrap: pretty;
 }
 
 .fade-bottom {
@@ -147,7 +152,7 @@ button:disabled {
       Inline Code & Code Block Base
       ========================================================= */
 code {
-  font-family: var(--font-site-mono);
+  font-family: var(--font-code);
   font-size: 0.875em;
 }
 
@@ -165,7 +170,7 @@ pre code {
   display: inline-block;
   font-size: 1rem;
   font-weight: bold;
-  font-family: var(--font-site-mono);
+  font-family: var(--font-code);
   color: white;
   background-color: rgb(5, 70, 141);
   padding: 0.2rem 0.5rem;
@@ -213,7 +218,7 @@ figure[data-rehype-pretty-code-figure]::before {
   align-items: center;
   padding-inline: 0.5rem;
   font-size: 0.75rem;
-  font-family: var(--font-site-mono);
+  font-family: var(--font-code);
   color: rgb(156 163 175);
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -253,7 +258,7 @@ figure[data-rehype-pretty-code-figure] pre > code {
   display: grid;
   min-width: 100%;
   counter-reset: line;
-  font-family: var(--font-site-mono);
+  font-family: var(--font-code);
   font-size: 0.875rem;
   line-height: 1.7;
   color: #abb2bf;

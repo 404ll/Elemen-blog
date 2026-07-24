@@ -40,7 +40,7 @@ export const mdxComponents = {
     return (
       <h1
         id={headingId}
-        className="mt-8 mb-4 scroll-m-20 text-2xl font-bold leading-snug tracking-tight text-gray-900 dark:text-gray-100"
+        className="mb-6 mt-12 scroll-m-20 text-balance text-[1.75rem] font-semibold leading-[1.25] tracking-[-0.025em] text-[#191916] dark:text-stone-100 md:text-[2rem]"
         {...props}
       />
     );
@@ -51,7 +51,7 @@ export const mdxComponents = {
     return (
       <h2
         id={headingId}
-        className="mt-8 mb-3 scroll-m-24 border-b border-gray-200/80 dark:border-gray-700/80 pb-2 text-xl font-semibold leading-snug tracking-tight text-gray-900 dark:text-gray-100 first:mt-0"
+        className="mb-5 mt-12 scroll-m-24 border-b border-[#dedbd3] pb-3 text-balance text-2xl font-semibold leading-8 tracking-[-0.02em] text-[#191916] first:mt-0 dark:border-white/15 dark:text-stone-100"
         {...props}
       />
     );
@@ -62,7 +62,7 @@ export const mdxComponents = {
     return (
       <h3
         id={headingId}
-        className="mt-6 mb-2 scroll-m-24 text-lg font-semibold leading-snug tracking-tight text-gray-900 dark:text-gray-100"
+        className="mb-3 mt-9 scroll-m-24 text-balance text-xl font-semibold leading-[1.5] tracking-[-0.015em] text-[#252521] dark:text-stone-100"
         {...props}
       />
     );
@@ -70,7 +70,7 @@ export const mdxComponents = {
 
   h4: (props: BasicProps) => (
     <h4
-      className="mt-5 mb-2 scroll-m-24 text-base font-semibold leading-snug tracking-tight text-gray-900 dark:text-gray-100"
+      className="mb-2 mt-7 scroll-m-24 text-lg font-semibold leading-7 text-[#252521] dark:text-stone-100"
       {...props}
     />
   ),
@@ -91,37 +91,37 @@ export const mdxComponents = {
 
   p: (props: BasicProps) => (
     <p
-      className="text-base leading-7 [&:not(:first-child)]:mt-4 text-gray-700 dark:text-gray-300"
+      className="text-pretty text-[1.0625rem] leading-8 text-[#45433e] [&:not(:first-child)]:mt-5 dark:text-stone-300"
       {...props}
     />
   ),
 
   ul: (props: BasicProps) => (
     <ul
-      className="my-5 ml-6 list-disc [&>li]:mt-2 text-gray-900 dark:text-gray-100"
+      className="my-6 ml-6 list-disc text-[#45433e] marker:text-[#f05a28] [&>li]:mt-2 dark:text-stone-300"
       {...props}
     />
   ),
 
   ol: (props: BasicProps) => (
     <ol
-      className="my-5 ml-6 list-decimal [&>li]:mt-2 text-gray-900 dark:text-gray-100"
+      className="my-6 ml-6 list-decimal text-[#45433e] marker:font-mono marker:text-[#f05a28] [&>li]:mt-2 dark:text-stone-300"
       {...props}
     />
   ),
 
-  li: (props: BasicProps) => <li className="leading-8" {...props} />,
+  li: (props: BasicProps) => <li className="pl-1 text-[1.0625rem] leading-8" {...props} />,
 
   a: (props: BasicProps) => (
     <a
-      className="font-semibold text-blue-600 underline underline-offset-4 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+      className="font-semibold text-[#d94e20] underline decoration-[#f05a28]/35 decoration-1 underline-offset-4 transition-colors hover:text-[#a93612] hover:decoration-[#f05a28] dark:text-orange-300 dark:hover:text-orange-200"
       {...props}
     />
   ),
 
   blockquote: (props: BasicProps) => (
     <blockquote
-      className="mt-8 border-l-4 border-gray-400 pl-6 italic text-gray-800 dark:text-gray-200 dark:border-gray-500 [&>*]:text-gray-800 dark:[&>*]:text-gray-200 bg-gray-100 dark:bg-gray-800/50 p-4 rounded-lg"
+      className="my-8 border-l-2 border-[#f05a28] bg-[#faf3ed] px-5 py-4 text-[#45433e] [&>*]:text-[#45433e] [&>p:first-child]:mt-0 dark:bg-orange-950/20 dark:text-stone-300 dark:[&>*]:text-stone-300"
       {...props}
     />
   ),
@@ -150,14 +150,14 @@ export const mdxComponents = {
 
   th: (props: BasicProps) => (
     <th
-      className="h-12 px-4 text-left align-middle font-semibold text-gray-900 dark:text-gray-100 [&:has([align=center])]:text-center [&:has([align=right])]:text-right"
+      className="h-12 px-4 text-left align-middle font-mono text-sm font-semibold text-[#252521] dark:text-stone-100 [&:has([align=center])]:text-center [&:has([align=right])]:text-right"
       {...props}
     />
   ),
 
   td: (props: BasicProps) => (
     <td
-      className="p-4 align-middle text-gray-900 dark:text-gray-100 [&:has([align=center])]:text-center [&:has([align=right])]:text-right"
+      className="p-4 align-middle text-[0.95rem] leading-7 text-[#45433e] dark:text-stone-300 [&:has([align=center])]:text-center [&:has([align=right])]:text-right"
       {...props}
     />
   ),
@@ -182,7 +182,7 @@ export const mdxComponents = {
     if (!className || !className.startsWith("language-")) {
       return (
         <code
-          className="font-mono text-[0.9em] text-orange-700 dark:text-orange-300"
+          className="rounded border border-orange-200/80 bg-orange-50 px-1.5 py-0.5 font-mono text-[0.88em] font-medium text-orange-800 dark:border-orange-800/60 dark:bg-orange-950/40 dark:text-orange-300"
           {...props}
         >
           {children}
@@ -215,11 +215,11 @@ export const mdxComponents = {
   ),
 
   strong: (props: BasicProps) => (
-    <strong className="font-bold text-gray-900 dark:text-gray-100" {...props} />
+    <strong className="font-semibold text-[#191916] dark:text-stone-100" {...props} />
   ),
 
   em: (props: BasicProps) => (
-    <em className="italic text-gray-900 dark:text-gray-100" {...props} />
+    <em className="italic text-[#34342f] dark:text-stone-200" {...props} />
   ),
 
   del: (props: BasicProps) => (
