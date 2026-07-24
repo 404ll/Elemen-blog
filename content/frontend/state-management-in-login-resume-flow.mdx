@@ -1,0 +1,155 @@
+---
+title: "一次登录续接里，Jotai、Context、Zustand、Redux 怎么选？"
+date: "2026-07-24"
+excerpt: "以真实生成页的登录续接为例，对比 Jotai、Context、Zustand 与 Redux Toolkit 的写法和适用位置。"
+category: "frontend"
+tags: ["react", "jotai", "context", "zustand", "redux", "状态管理"]
+draft: false
+---
+
+之前已经整理过 [Context、Jotai、Zustand、Redux 的通用模型](/blog/frontend/react-state-management-context-jotai-zustand-redux)。这次只记录一个真实生成页是怎么拆状态的。
+
+用户填写 prompt、选择模型和模板、上传文件后点击发送。页面要根据用户和订阅状态决定下一步：
+
+```text
+状态未加载完 → 等待
+未登录       → 登录
+免费用户     → 付费墙
+付费用户     → 进入生成流程
+```
+
+当前代码按生命周期拆分：
+
+- prompt、模型、模板、文件：组件内 `useState`。
+- 用户、订阅及 loading：Jotai。
+- 当前页面子树的主题和 i18n 配置：Context。
+- 跨登录跳转恢复的草稿：`sessionStorage`。
+
+项目没有直接使用 Zustand 和 Redux，下面对应的代码是用同一场景做的改写对比。
+
+## Jotai：把共享状态拆成 atom
+
+这是项目中的真实写法：
+
+```ts
+export const userAtom = atom<User | null>(null);
+export const userLoadingAtom = atom(true);
+export const subscriptionAtom = atom<Subscription | null>(null);
+export const subscriptionLoadingAtom = atom(true);
+
+const user = useAtomValue(userAtom);
+const subscription = useAtomValue(subscriptionAtom);
+```
+
+根部组件请求用户和订阅，再用 `useSetAtom` 写入；导航栏、生成页和付费墙分别订阅自己需要的 atom。
+
+特点：
+
+- 状态粒度小，读写可以分开。
+- 组件只订阅用到的 atom。
+- 适合多处共享的独立查询结果。
+- atom 多时需要良好的命名和目录组织。
+
+## Context：在组件子树里共享数据
+
+项目用 Context 传递提示词页面的主题和配置：
+
+```tsx
+const PromptPageContext =
+  createContext<PromptPageConfig | null>(null);
+
+function PromptPageProvider({ config, children }: Props) {
+  return (
+    <PromptPageContext.Provider value={config}>
+      {children}
+    </PromptPageContext.Provider>
+  );
+}
+
+const config = useContext(PromptPageContext);
+```
+
+特点：
+
+- React 原生，不需要额外状态库。
+- Provider 的范围就是状态的作用域。
+- 适合主题、配置和更新不频繁的数据。
+- `value` 经常变化时，消费者容易一起重新渲染；状态多了通常要拆多个 Context。
+
+## Zustand：把状态和操作放进轻量 store
+
+如果把生成表单改成 Zustand，可以这样写：
+
+```ts
+type GenerationState = {
+  prompt: string;
+  files: UploadedFile[];
+  setPrompt: (prompt: string) => void;
+  restore: (draft: Draft) => void;
+};
+
+export const useGenerationStore =
+  create<GenerationState>()((set) => ({
+    prompt: "",
+    files: [],
+    setPrompt: (prompt) => set({ prompt }),
+    restore: (draft) => set({ ...draft }),
+  }));
+
+const prompt = useGenerationStore((state) => state.prompt);
+```
+
+特点：
+
+- store 同时包含状态和操作，写法比 Redux 短。
+- selector 可以只订阅某个字段。
+- 适合复杂、共享且高频变化的编辑状态。
+- `persist` 可以接浏览器存储，但 TTL、用户校验和消费后删除仍要自己实现。
+
+## Redux Toolkit：把变化写成明确事件
+
+如果续接流程扩展到多个工具，可以用 slice 统一描述事件：
+
+```ts
+const generationSlice = createSlice({
+  name: "generation",
+  initialState,
+  reducers: {
+    draftSaved(state, action: PayloadAction<Draft>) {
+      state.draft = action.payload;
+    },
+    draftRestored(state, action: PayloadAction<Draft>) {
+      state.draft = action.payload;
+      state.status = "ready";
+    },
+    generationCompleted(state) {
+      state.draft = null;
+    },
+  },
+});
+
+const draft = useAppSelector(
+  (state) => state.generation.draft,
+);
+dispatch(draftRestored(savedDraft));
+```
+
+特点：
+
+- action、reducer 和 selector 的职责明确。
+- DevTools、middleware、测试和事件追踪更完整。
+- 适合跨页面、多流程、需要统一治理的状态。
+- 对单个生成页来说，配置和样板代码偏多。
+
+## 这次场景怎么选
+
+| 方案 | 更适合本场景中的什么 | 核心特点 |
+| --- | --- | --- |
+| Jotai | 用户、订阅、loading | 小 atom，按需订阅 |
+| Context | 当前页面的主题和配置 | 原生，子树作用域明确 |
+| Zustand | 复杂共享编辑状态 | 轻量 store，状态和操作放一起 |
+| Redux Toolkit | 多页面续接流程 | action 显式，治理和追踪更强 |
+
+这次项目选择 `useState + Jotai + Context` 是合理的：表单状态只属于当前页面，用户和订阅需要跨组件共享，主题配置只属于页面子树。
+
+还有一个不能混淆的边界：无论用哪种状态库，内存状态都会在整页登录跳转时消失。跨跳转恢复仍然需要 `sessionStorage` 或服务端存储，并单独处理过期、用户归属和一次性消费。登录回跳的完整链路可以参考 [这篇笔记](/blog/frontend/login-return-sessionstorage-window-location-static-rendering)。
