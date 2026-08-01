@@ -1,0 +1,818 @@
+---
+title: "从地址栏到 Next.js Proxy：浏览器导航与路由的完整链路"
+date: "2026-08-01"
+excerpt: "从 URL、History API 和客户端路由一路追到 HTTP 重定向、rewrite 与 Next.js Proxy，弄清地址变化、网络请求和整页刷新之间的边界。"
+category: "frontend"
+tags: ["nextjs", "routing", "history-api", "http", "proxy"]
+draft: false
+---
+
+这次想弄清的是一个看起来很简单、实际跨了浏览器和服务端的问题：地址栏变化时，究竟是浏览器在跳转、History API 在改记录、Next.js 在做客户端导航，还是服务器返回了重定向？`middleware.ts` / `proxy.ts` 又插在了哪里？
+
+先保留最初的理解链路：
+
+```text
+URL
+↓
+浏览器导航
+↓
+历史记录
+↓
+Next.js 客户端路由
+↓
+服务端路由与 HTTP 重定向
+```
+
+这张图更适合用来区分“观察导航的几个层级”，不能把它理解成每次导航都会严格执行的调用栈。比如 `history.pushState()` 只会修改地址与历史记录；`router.push()` 可能使用已经预取的 RSC Payload；一次服务端重定向则会让客户端再请求另一个 URL。
+
+先记住两个最重要的区分：
+
+> 地址栏变化，不等于一定重新请求；重新请求，也不等于一定整页刷新。
+
+## 先把三种导航分开
+
+### 1. 浏览器整页导航
+
+```js
+window.location.href = "/dashboard";
+```
+
+浏览器会导航到新资源。对于普通页面路径，通常会请求新的 HTML，旧 `Document` 被卸载，Network 中可以看到类似：
+
+```text
+GET /dashboard
+Type: document
+```
+
+普通的 `<a href="/dashboard">`、`location.assign()` 和设置 `location.href` 都属于浏览器原生导航。只修改同一页面的 hash 是一个例外：它通常不会重新加载文档。
+
+### 2. Next.js 客户端导航
+
+```js
+router.push("/dashboard");
+```
+
+App Router 不必重新加载整份 HTML。它可以使用预取或客户端 Router Cache 中的数据，也可能向服务端请求新路由所需的 RSC Payload，再合并新的 Server Component 结果并局部更新页面。
+
+因此它的准确描述是：
+
+```text
+可能产生网络请求
+但不是传统的整页刷新
+```
+
+普通站内链接优先使用 `<Link>`，事件处理中的编程式导航再使用 `useRouter()`。
+
+### 3. 只修改地址和历史记录
+
+```js
+history.pushState(null, "", "/dashboard");
+```
+
+从浏览器 API 的语义看，它会创建一条同源历史记录，但不会因为这次调用而加载传入的 URL。浏览器也不会自动替你获取数据、渲染目标页面。
+
+在 Next.js App Router 中还要多记一层：框架把原生 `pushState()` 和 `replaceState()` 集成进了 Router，因此 `usePathname()`、`useSearchParams()` 等读取结果会与新 URL 同步。不过这仍不适合作为一般路由切换的替代品；要进入另一张页面，优先使用 `<Link>` 或 `router.push()`。
+
+## 浏览器原生导航：`window.location`
+
+### `location.href` 与 `location.assign()`
+
+```js
+console.log(window.location.href);
+
+window.location.href = "/dashboard";
+window.location.assign("/dashboard");
+```
+
+对普通页面导航来说，两者通常都意味着：
+
+- 导航到新 URL；
+- 加载新资源；
+- 当前页面进入会话历史，用户可以后退回来。
+
+### `location.replace()`
+
+```js
+window.location.replace("/dashboard");
+```
+
+它同样会导航并加载目标资源，但会替换当前历史记录。典型场景是登录成功后进入控制台，不希望用户后退回登录页。
+
+它和 `history.replaceState()` 名字相似，行为却完全不同：
+
+```js
+// 导航到新资源，替换当前历史项
+location.replace("/new");
+
+// 不加载新 URL，只修改当前历史项
+history.replaceState(null, "", "/new");
+```
+
+### `location.reload()`
+
+```js
+window.location.reload();
+```
+
+它重新加载当前页面，相当于用户点击浏览器刷新按钮。URL 通常不变，但当前文档会重新加载。
+
+### 把 URL 拆开看
+
+```js
+window.location.origin; // https://example.com
+window.location.pathname; // /products/123
+window.location.search; // ?sort=price
+window.location.hash; // #reviews
+```
+
+例如：
+
+```text
+https://example.com/products/123?sort=price#reviews
+```
+
+可以拆成：
+
+```text
+origin   = https://example.com
+pathname = /products/123
+search   = ?sort=price
+hash     = #reviews
+```
+
+## 浏览器 History API
+
+History API 操作的是当前标签页或 frame 的会话历史：
+
+```text
+首页 → 商品列表 → 商品详情
+```
+
+它有两组方法：
+
+- `back()`、`forward()`、`go()`：在已有历史记录中移动；
+- `pushState()`、`replaceState()`：增加或修改历史记录。
+
+### `history.pushState()`
+
+```js
+history.pushState(
+  { page: 2 },
+  "",
+  "/products?page=2",
+);
+```
+
+调用后：
+
+- 地址栏变成 `/products?page=2`；
+- 不会仅因为这次调用就加载该 URL；
+- 当前 `Document` 不会被卸载；
+- 新增一条历史记录；
+- 传入的 URL 必须与当前页面同源。
+
+它适合表示一次可以后退的 UI 状态变化：
+
+```text
+/products?page=1
+↓ pushState
+/products?page=2
+```
+
+### `history.replaceState()`
+
+```js
+history.replaceState(
+  { page: 2 },
+  "",
+  "/products?page=2",
+);
+```
+
+它与 `pushState()` 一样不会主动加载 URL，但会替换当前历史记录，不增加新的后退节点。
+
+例如清理一次性参数：
+
+```js
+const url = new URL(window.location.href);
+
+url.searchParams.delete("payment_success");
+
+history.replaceState(null, "", url);
+```
+
+执行前后：
+
+```text
+/checkout?payment_success=true
+↓
+/checkout
+```
+
+浏览器不会因此重新加载页面。在 Next.js App Router 中，依赖 `useSearchParams()` 的客户端代码可能会观察到查询参数变化。
+
+### `back()`、`forward()` 与 `go()`
+
+```js
+history.back(); // 后退一条
+history.forward(); // 前进一条
+history.go(-2); // 后退两条
+history.go(1); // 前进一条
+history.go(0); // 重新加载当前页面
+```
+
+这些方法是在已有历史记录中移动。移动到不同历史项时，浏览器会恢复对应 URL；究竟是恢复已有 `Document`、触发 SPA 处理，还是进行网络加载，要看历史项和页面实现，不能只凭 `back()` 推断。
+
+### `popstate` 事件
+
+```js
+window.addEventListener("popstate", (event) => {
+  console.log("当前地址：", window.location.href);
+  console.log("历史状态：", event.state);
+});
+```
+
+当当前历史项发生变化时，可以通过 `popstate` 观察它。最需要记住的是：
+
+```js
+history.pushState(null, "", "/a");
+history.replaceState(null, "", "/b");
+```
+
+这两次直接调用本身不会触发 `popstate`；之后通过前进、后退等方式切换到相应历史项时，才会触发。
+
+## URL API 只负责构造地址
+
+`URL` 和 `URLSearchParams` 负责解析、读取与修改 URL 数据，本身不会导航。
+
+```js
+const url = new URL(
+  "/products?page=2#reviews",
+  window.location.origin,
+);
+
+console.log(url.pathname); // /products
+console.log(url.search); // ?page=2
+console.log(url.hash); // #reviews
+
+url.pathname = "/articles";
+url.searchParams.set("page", "3");
+url.searchParams.delete("sort");
+```
+
+此时只是内存中的 `url` 对象变了。还需要明确选择后续动作：
+
+```js
+// 只替换当前地址与历史项
+history.replaceState(null, "", url);
+
+// 进行浏览器导航
+window.location.href = url.toString();
+```
+
+## Hash：发给服务器之前就被截下的一段
+
+URL 中 `#` 后面的部分叫 fragment：
+
+```text
+/docs#installation
+```
+
+修改 hash：
+
+```js
+window.location.hash = "#installation";
+```
+
+一般会修改地址、产生历史项，并滚动到对应 `id` 元素，但不会重新请求整份页面：
+
+```html
+<section id="installation">Installation</section>
+```
+
+可以监听：
+
+```js
+window.addEventListener("hashchange", () => {
+  console.log(window.location.hash);
+});
+```
+
+fragment 不会作为 HTTP 请求目标的一部分发送给服务器。浏览器访问：
+
+```text
+https://example.com/docs#install
+```
+
+服务器看到的仍是：
+
+```http
+GET /docs
+```
+
+因此把带 hash 的回跳地址放进查询参数时，需要编码：
+
+```text
+/sign-in?next=%2Ftool%23generator
+```
+
+否则 `#generator` 会被浏览器理解为登录页自己的 fragment。
+
+另外，`pushState()` 即使把 hash 改了，也不会触发 `hashchange`；它仍遵循 History API 自己的事件规则。
+
+## Next.js App Router 的客户端能力
+
+### `<Link>`
+
+```tsx
+import Link from "next/link";
+
+<Link href="/dashboard">Dashboard</Link>
+```
+
+它是普通站内导航的首选：支持客户端路由、预取、共享 Layout 与历史记录。一次点击是否当场发出请求并不确定，因为相关资源可能已经预取或缓存在客户端。
+
+### `router.push()` 与 `router.replace()`
+
+```tsx
+"use client";
+
+import { useRouter } from "next/navigation";
+
+export function LoginButton() {
+  const router = useRouter();
+
+  function handleSuccess() {
+    router.replace("/dashboard");
+  }
+
+  return <button onClick={handleSuccess}>登录</button>;
+}
+```
+
+二者都会执行 Next.js 客户端路由切换并更新页面，差别在历史记录：
+
+```text
+router.push()    → 新增历史项，可以后退
+router.replace() → 替换当前历史项，不新增后退节点
+```
+
+它们与原生 History API 的关键区别是：
+
+```js
+history.replaceState(null, "", "/dashboard");
+// 浏览器不负责加载 /dashboard；Next.js 会同步 URL 读取状态
+
+router.replace("/dashboard");
+// 执行 Next.js 路由切换，必要时获取路由数据，并更新页面
+```
+
+### `router.refresh()`
+
+```js
+router.refresh();
+```
+
+它会向服务端发出新请求，重新获取并渲染 Server Components，然后把新的 RSC Payload 合并进当前页面。URL 和历史记录不变，未受影响的客户端状态可以保留。
+
+```js
+window.location.reload();
+```
+
+则是浏览器重新加载整个文档。
+
+| API | URL 变化 | 网络请求 | 整页重新加载 |
+| --- | --- | --- | --- |
+| `router.refresh()` | 否 | 是 | 否 |
+| `location.reload()` | 否 | 是 | 是 |
+
+### `router.back()`、`router.forward()` 与 `router.prefetch()`
+
+```js
+router.back();
+router.forward();
+router.prefetch("/dashboard");
+```
+
+前两个方法在浏览器历史中移动。`prefetch()` 则提前获取路由数据，让后续导航更快，但不会立即切换页面。
+
+## 读取当前路由信息
+
+这些 Hook 负责读取，不负责发起导航：
+
+```tsx
+const pathname = usePathname();
+const searchParams = useSearchParams();
+const params = useParams();
+```
+
+假设文件结构是：
+
+```text
+app/products/[id]/page.tsx
+```
+
+当前地址是：
+
+```text
+/products/123?page=2
+```
+
+可以这样区分：
+
+```text
+usePathname()     → /products/123
+useSearchParams() → 查询参数，可读取 page=2
+useParams()       → 动态路由参数 { id: "123" }
+```
+
+## 客户端导航什么时候会碰到服务器
+
+`<Link>` 或 `router.push()` 虽然是客户端导航，但目标页面可能包含 Server Components。客户端需要的不是另一份完整 HTML，而是目标路由的 RSC Payload。
+
+一条常见链路是：
+
+```text
+用户点击 <Link> / 调用 router.push()
+  ↓
+Next.js 客户端 Router 检查预取与 Router Cache
+  ↓ 缺少目标路由数据
+发出 RSC / 路由请求
+  ↓
+Next.js 服务端处理请求
+  ↓
+返回 RSC Payload
+  ↓
+客户端合并结果并更新页面
+  ↓
+浏览器历史与地址栏同步
+```
+
+如果数据已经预取，点击时可能不再发请求；反过来，预取行为本身可能更早就发出请求。因此“看到请求”和“用户已经完成一次页面导航”也不是同一个概念。
+
+## `middleware.ts` / `proxy.ts` 到底在哪一层
+
+从 Next.js 16 开始，官方把 `middleware.ts` 文件约定重命名为 `proxy.ts`，对应的导出函数也从 `middleware` 改为 `proxy`。旧名称表达的是历史概念，下面统一称为 Proxy。
+
+它位于：
+
+> HTTP 请求进入 Next.js 之后，服务端文件系统路由匹配、Route Handler 或页面渲染之前。
+
+把原来的图展开成真正的请求链：
+
+```text
+浏览器整页导航 / Next.js RSC 请求 / 其他 HTTP 请求
+  ↓
+HTTP 请求进入 Next.js
+  ↓
+next.config.ts 的 headers
+  ↓
+next.config.ts 的 redirects
+  ↓
+proxy.ts（原 middleware.ts）
+  ↓
+next.config.ts 的 rewrites 与文件系统路由匹配
+  ↓
+Page / Server Component / Route Handler
+  ↓
+返回 HTML、RSC Payload、JSON 或重定向响应
+  ↓
+浏览器或 Next.js Router 处理响应
+```
+
+官方给出的完整路由处理顺序更细：
+
+```text
+1. next.config.ts headers
+2. next.config.ts redirects
+3. Proxy
+4. beforeFiles rewrites
+5. 文件系统路由（public、_next/static、pages、app 等）
+6. afterFiles rewrites
+7. 动态路由
+8. fallback rewrites
+```
+
+这带来两个重要结论：
+
+1. Proxy 在页面渲染与 Route Handler 之前，但不是所有 Next.js 配置的第一步；匹配到 `next.config.ts redirects` 的请求会更早得到重定向响应。
+2. Proxy 只会在真实请求发生时运行。单独调用原生 `history.pushState()` 不会发请求，因此不会触发 Proxy。
+
+一个最小示例：
+
+```ts
+// proxy.ts（Next.js 16+）
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+export function proxy(request: NextRequest) {
+  if (!request.cookies.has("token")) {
+    return NextResponse.redirect(
+      new URL("/sign-in", request.url),
+    );
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ["/dashboard/:path*"],
+};
+```
+
+访问 `/dashboard` 时：
+
+```text
+请求 /dashboard
+  ↓
+Proxy 检查 Cookie
+  ↓ 没有 token
+返回重定向响应，Location: /sign-in
+  ↓
+客户端导航到 /sign-in
+```
+
+Proxy 可以重定向、rewrite、修改请求或响应头，也可以直接返回响应。它适合基于请求信息做轻量的入口判断，不适合慢速数据获取，也不应该替代服务端接口中的最终认证与授权。
+
+### SPA 导航也可能经过 Proxy
+
+Proxy 不关心用户是手动输入 URL，还是从 `<Link>` 发起导航；它看到的是进入 Next.js 的请求。
+
+```text
+<Link> / router.push()
+  ↓
+需要新的 RSC / 路由数据
+  ↓
+发出请求
+  ↓ 路径命中 matcher
+proxy.ts 执行
+  ↓
+服务端路由与渲染
+```
+
+所以客户端导航并不等于绕过服务端入口层。只要它产生了命中 `matcher` 的 RSC 或路由请求，就可能经过 Proxy。`<Link>` 的预取请求也可能经过这一层，因此 Proxy 逻辑要允许被重复执行，并保持轻量。
+
+相反，下面这句本身不会触发 Proxy：
+
+```js
+history.replaceState(null, "", "/dashboard");
+```
+
+因为没有 HTTP 请求进入 Next.js。
+
+## 服务端重定向：先收到响应，再请求目标地址
+
+### `redirect()`
+
+```tsx
+import { redirect } from "next/navigation";
+
+export default async function Page() {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect("/sign-in");
+  }
+
+  return <Dashboard />;
+}
+```
+
+在 Server Component、Route Handler 或 Server Function 中，`redirect()` 会终止当前控制流并执行临时重定向。一般情况下是 `307`；在 Server Action 中是 `303`；在流式渲染已经开始时，Next.js 会插入客户端可处理的重定向信息。
+
+### `permanentRedirect()`
+
+```tsx
+import { permanentRedirect } from "next/navigation";
+
+permanentRedirect("/new-path");
+```
+
+它用于永久迁移，通常返回 `308`，适合旧 slug、旧用户名 URL 或 canonical 地址变化。
+
+### `notFound()`
+
+```tsx
+import { notFound } from "next/navigation";
+
+if (!product) {
+  notFound();
+}
+```
+
+它不是重定向，而是进入对应的 `not-found.tsx` 处理流程，并返回 404 语义。
+
+## `next.config.ts` 中的固定重定向
+
+静态、可枚举的 URL 迁移更适合放在配置里：
+
+```js
+export default {
+  async redirects() {
+    return [
+      {
+        source: "/download-extension",
+        destination: "/download",
+        permanent: true,
+      },
+    ];
+  },
+};
+```
+
+请求链是：
+
+```text
+GET /download-extension
+  ↓
+308 Location: /download
+  ↓
+客户端再次请求 /download
+```
+
+Next.js 对临时和永久配置重定向分别使用 `307` 和 `308`，这两个状态码会保留原始请求方法。
+
+如果旧 URL 已永久迁移，就应该让服务器返回永久重定向，而不是只在客户端执行：
+
+```js
+history.replaceState(null, "", "/download");
+```
+
+后者没有给客户端或搜索引擎一条 HTTP 层的迁移响应。
+
+## Rewrite：地址不变，服务端目标改变
+
+```js
+export default {
+  async rewrites() {
+    return [
+      {
+        source: "/api/images/:path*",
+        destination: "https://image-service.example/:path*",
+      },
+    ];
+  },
+};
+```
+
+用户请求：
+
+```text
+/api/images/avatar.png
+```
+
+Next.js 内部把它映射到：
+
+```text
+https://image-service.example/avatar.png
+```
+
+但浏览器仍然看到：
+
+```text
+/api/images/avatar.png
+```
+
+可以这样区分：
+
+```text
+redirect
+  → 返回 3xx 和 Location
+  → 客户端知道目标地址
+  → 客户端再发起目标请求
+  → 地址栏通常变化
+
+rewrite
+  → Next.js 内部改写请求目标
+  → 客户端不知道内部目标
+  → 地址栏保持原地址
+```
+
+Proxy 也可以通过 `NextResponse.rewrite()` 动态执行 rewrite；`next.config.ts` 则适合固定规则。
+
+## 一张表放在一起比较
+
+表中的“网络请求”描述的是该调用或导航是否会主动产生请求；预取、缓存、同页 hash 等情况会改变具体结果。
+
+| API / 行为 | 主动产生网络请求 | 整页重新加载 | 地址栏变化 | 历史记录 |
+| --- | --- | --- | --- | --- |
+| 普通 `<a href="/a">` | 通常是 | 通常是 | 是 | 通常新增 |
+| `location.href = "/a"` | 通常是 | 通常是 | 是 | 通常新增 |
+| `location.assign("/a")` | 通常是 | 通常是 | 是 | 通常新增 |
+| `location.replace("/a")` | 通常是 | 通常是 | 是 | 替换当前项 |
+| `location.reload()` | 是 | 是 | 否 | 不新增 |
+| `history.pushState()` | 否 | 否 | 可以 | 新增 |
+| `history.replaceState()` | 否 | 否 | 可以 | 替换当前项 |
+| `<Link>` / `router.push()` | 可能 | 否 | 是 | 新增 |
+| `router.replace()` | 可能 | 否 | 是 | 替换当前项 |
+| `router.refresh()` | 是 | 否 | 否 | 不新增 |
+| HTTP `307` / `308` | 会引导目标请求 | 取决于客户端与入口 | 通常是 | 由导航流程处理 |
+| Next.js rewrite | 原始请求已经存在 | 取决于请求入口 | 否 | 不因 rewrite 新增 |
+
+## 怎么选择
+
+普通站内链接：
+
+```tsx
+<Link href="/products">Products</Link>
+```
+
+事件完成后跳转，并允许后退：
+
+```js
+router.push("/result");
+```
+
+登录完成后跳转，不希望回到登录页：
+
+```js
+router.replace("/dashboard");
+```
+
+在 Next.js 页面里修改筛选参数，并让路由读取状态同步：
+
+```js
+const params = new URLSearchParams(searchParams.toString());
+params.set("sort", "price");
+window.history.pushState(null, "", `?${params.toString()}`);
+```
+
+只清理当前地址上的一次性参数，不增加历史项：
+
+```js
+history.replaceState(null, "", "/products");
+```
+
+重新请求当前路由的 Server Components，但不整页刷新：
+
+```js
+router.refresh();
+```
+
+强制浏览器重新加载：
+
+```js
+location.reload();
+```
+
+跳到外部站点：
+
+```js
+location.href = "https://example.com";
+```
+
+固定旧 URL 永久迁移：使用 `permanentRedirect()` 或 `next.config.ts redirects`。
+
+需要读取 Cookie、Header 或请求 URL 后再决定入口去向：使用 `proxy.ts`，并在真正的服务端数据接口继续做权限校验。
+
+需要服务端换目标但不改变用户看到的地址：使用 rewrite。
+
+## 最终记忆模型
+
+```text
+location
+负责浏览器级资源导航和重新加载
+
+history
+负责会话历史与地址栏，本身不加载目标 URL
+
+Next.js Router
+负责客户端路由切换、RSC 数据获取和 React 更新
+
+Proxy（原 Middleware）
+位于 HTTP 请求入口，在服务端路由匹配与渲染之前拦截请求
+
+redirect / 307 / 308
+告诉客户端目标地址，由客户端继续导航
+
+rewrite
+Next.js 内部更换请求目标，浏览器地址不变
+```
+
+以后再遇到“为什么 URL 变了却没刷新”“为什么 SPA 导航也触发了服务端逻辑”或“middleware 到底算客户端还是服务端”时，按这个顺序检查：
+
+```text
+1. 地址是谁改的：location、history 还是 Next Router？
+2. 有没有产生真实请求：document、RSC、fetch 还是没有请求？
+3. 请求进入 Next.js 后，是否命中 redirects、Proxy 或 rewrite？
+4. 最终返回的是 HTML、RSC Payload、普通响应还是 3xx？
+5. 浏览器历史是新增、替换，还是完全不变？
+```
+
+这五个问题通常足够把“地址栏、请求、刷新、路由”之间的混淆拆开。
+
+## 参考资料
+
+- [Next.js：Linking and Navigating](https://nextjs.org/docs/app/getting-started/linking-and-navigating)
+- [Next.js：useRouter](https://nextjs.org/docs/app/api-reference/functions/use-router)
+- [Next.js：Proxy](https://nextjs.org/docs/app/api-reference/file-conventions/proxy)
+- [Next.js：Redirecting](https://nextjs.org/docs/app/guides/redirecting)
+- [Next.js：redirect](https://nextjs.org/docs/app/api-reference/functions/redirect)
+- [Next.js：permanentRedirect](https://nextjs.org/docs/app/api-reference/functions/permanentRedirect)
+- [Next.js：redirects](https://nextjs.org/docs/app/api-reference/config/next-config-js/redirects)
+- [Next.js：rewrites](https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites)
+- [MDN：Working with the History API](https://developer.mozilla.org/en-US/docs/Web/API/History_API/Working_with_the_History_API)
+- [MDN：pushState](https://developer.mozilla.org/en-US/docs/Web/API/History/pushState)
+- [MDN：popstate](https://developer.mozilla.org/en-US/docs/Web/API/Window/popstate_event)
+- [MDN：hashchange](https://developer.mozilla.org/en-US/docs/Web/API/Window/hashchange_event)
+- [MDN：Navigation API](https://developer.mozilla.org/en-US/docs/Web/API/Navigation_API)
