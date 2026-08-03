@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">推荐向量与查重向量的边界</title>
+  <desc id="desc">同一个 Skill 拆成公开能力视图和内部行为视图。公开视图用于推荐，私密 instructions 只用于内部查重，不应成为用户可见的推荐理由。</desc>
+  <defs>
+    <filter id="rough" x="-3%" y="-3%" width="106%" height="106%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.009" numOctaves="2" seed="29" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.4" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+      <path d="M1 1 L10 6 L1 11" fill="none" stroke="#1f2937" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <style>
+      .ink{stroke:#1f2937;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;filter:url(#rough)}
+      .arrow{fill:none;stroke:#1f2937;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow);filter:url(#rough)}
+      .h1{font:700 42px ui-rounded,"Kaiti SC","PingFang SC",sans-serif;fill:#111827}
+      .h2{font:700 29px ui-rounded,"Kaiti SC","PingFang SC",sans-serif;fill:#111827}
+      .body{font:24px ui-rounded,"Kaiti SC","PingFang SC",sans-serif;fill:#374151}
+      .small{font:21px ui-rounded,"Kaiti SC","PingFang SC",sans-serif;fill:#4b5563}
+      .big-note{font:700 31px ui-rounded,"Kaiti SC","PingFang SC",sans-serif;fill:#c2410c}
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="#fffdf8"/>
+  <text x="80" y="78" class="h1">同一个 Skill，有两种不同的数据视图</text>
+  <path d="M80 96 C335 90 600 101 874 94" class="ink" fill="none" stroke="#4263eb"/>
+
+  <path d="M658 141 C669 124 690 118 714 122 L894 121 C918 128 929 145 924 169 L918 278 C912 299 895 311 872 307 L706 311 C682 306 665 292 665 269 Z" fill="#fef3c7" class="ink"/>
+  <text x="741" y="180" class="h2">Skill</text>
+  <text x="715" y="225" class="body">能力 + 实现</text>
+  <text x="726" y="262" class="small">同一份业务实体</text>
+
+  <path d="M704 314 C645 353 580 383 517 414" class="arrow"/>
+  <path d="M878 314 C938 350 1002 381 1068 415" class="arrow"/>
+
+  <path d="M92 409 C102 389 126 381 156 386 L588 383 C615 391 629 410 623 437 L616 681 C610 707 589 720 559 715 L145 721 C116 715 97 696 96 669 Z" fill="#dbeafe" class="ink"/>
+  <text x="159" y="444" class="h2" fill="#1d4ed8">公开能力视图</text>
+  <text x="159" y="492" class="body">Name</text>
+  <text x="159" y="534" class="body">Description</text>
+  <text x="159" y="576" class="body">Categories</text>
+  <text x="159" y="618" class="body">Public Capabilities / Tools</text>
+  <path d="M153 650 C256 660 361 655 473 650" fill="none" class="ink" stroke="#2563eb"/>
+  <text x="159" y="692" class="small">用户可以在运行前理解它</text>
+
+  <path d="M636 555 C681 553 718 553 756 555" class="arrow"/>
+  <ellipse cx="824" cy="555" rx="74" ry="61" fill="#dcfce7" class="ink"/>
+  <text x="781" y="549" class="h2">推荐</text>
+  <text x="778" y="582" class="small">能否解决问题</text>
+
+  <path d="M977 409 C990 390 1013 383 1041 386 L1469 384 C1498 391 1511 412 1504 438 L1499 680 C1492 705 1471 719 1442 714 L1029 720 C1001 714 982 697 980 670 Z" fill="#ffedd5" class="ink"/>
+  <text x="1040" y="444" class="h2" fill="#c2410c">内部行为视图</text>
+  <text x="1040" y="500" class="body">Instructions</text>
+  <text x="1040" y="542" class="body">Execution Steps</text>
+  <text x="1040" y="584" class="body">Internal Structure</text>
+  <path d="M1035 621 C1135 630 1248 627 1374 621" fill="none" class="ink" stroke="#ea580c"/>
+  <text x="1040" y="668" class="small">权限受控，只用于内部判断</text>
+
+  <path d="M1135 728 C1085 752 1015 773 939 789" class="arrow"/>
+  <ellipse cx="833" cy="802" rx="95" ry="61" fill="#fee2e2" class="ink"/>
+  <text x="789" y="796" class="h2">查重</text>
+  <text x="777" y="830" class="small">内部行为是否重复</text>
+
+  <path d="M110 783 C230 760 360 767 494 783 C575 794 638 820 699 843" fill="none" stroke="#ef4444" stroke-width="4" stroke-linecap="round" filter="url(#rough)"/>
+  <text x="112" y="837" class="big-note">Private instructions ≠ 用户可见的推荐理由</text>
+  <text x="1110" y="827" class="body" fill="#c2410c">推荐理由与用户证据应当对称</text>
+</svg>

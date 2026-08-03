@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">find_skill Tool 调用链</title>
+  <desc id="desc">用户需求经 LLM 触发 find_skill 工具，Facade 组合公开市场检索和已安装 Skill 检索，合并结果后返回给 LLM。</desc>
+  <defs>
+    <filter id="rough" x="-3%" y="-3%" width="106%" height="106%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.008" numOctaves="2" seed="41" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.3" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+      <path d="M1 1 L10 6 L1 11" fill="none" stroke="#1f2937" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <style>
+      .ink{stroke:#1f2937;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;filter:url(#rough)}
+      .arrow{fill:none;stroke:#1f2937;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow);filter:url(#rough)}
+      .dash{fill:none;stroke:#64748b;stroke-width:3;stroke-dasharray:9 12;stroke-linecap:round;marker-end:url(#arrow);filter:url(#rough)}
+      .h1{font:700 42px ui-rounded,"Kaiti SC","PingFang SC",sans-serif;fill:#111827}
+      .h2{font:700 28px ui-rounded,"Kaiti SC","PingFang SC",sans-serif;fill:#111827}
+      .body{font:24px ui-rounded,"Kaiti SC","PingFang SC",sans-serif;fill:#374151}
+      .small{font:21px ui-rounded,"Kaiti SC","PingFang SC",sans-serif;fill:#4b5563}
+      .note{font:700 24px ui-rounded,"Kaiti SC","PingFang SC",sans-serif;fill:#1d4ed8}
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="#fffdf8"/>
+  <text x="80" y="78" class="h1">Agent 调用 find_skill 时，代码是怎么走的？</text>
+  <path d="M80 96 C350 91 624 100 946 94" class="ink" fill="none" stroke="#4263eb"/>
+
+  <ellipse cx="146" cy="238" rx="76" ry="64" fill="#fde68a" class="ink"/>
+  <text x="103" y="231" class="h2">用户</text>
+  <text x="89" y="266" class="small">提出需求</text>
+
+  <path d="M227 238 C270 236 301 236 339 238" class="arrow"/>
+  <path d="M358 173 C369 158 386 153 408 157 L595 154 C617 160 627 176 623 197 L619 279 C614 299 598 310 577 307 L397 311 C376 306 361 294 360 275 Z" fill="#e0e7ff" class="ink"/>
+  <text x="440" y="206" class="h2">LLM</text>
+  <text x="398" y="250" class="body">判断需要找 Skill</text>
+  <text x="409" y="282" class="small">生成 tool call</text>
+
+  <path d="M637 238 C680 236 711 236 751 238" class="arrow"/>
+  <path d="M769 164 C781 149 800 144 824 148 L1056 146 C1079 153 1091 170 1085 193 L1081 288 C1074 310 1057 321 1033 317 L812 321 C790 316 774 301 773 280 Z" fill="#ffedd5" class="ink"/>
+  <text x="833" y="199" class="h2">find_skill Tool</text>
+  <text x="820" y="244" class="body">intent · scope · filters</text>
+  <text x="823" y="282" class="small">协议、错误、结果格式</text>
+
+  <path d="M1099 238 C1140 236 1171 236 1208 238" class="arrow"/>
+  <path d="M1227 169 C1237 154 1254 149 1275 152 L1486 151 C1507 158 1517 174 1512 195 L1508 282 C1502 302 1486 313 1466 309 L1265 313 C1244 308 1229 294 1229 273 Z" fill="#dcfce7" class="ink"/>
+  <text x="1323" y="208" class="h2">Facade</text>
+  <text x="1272" y="251" class="body">组合多个 Retriever</text>
+  <text x="1282" y="286" class="small">业务编排层</text>
+
+  <path d="M1367 327 C1288 376 1173 411 1059 440" class="arrow"/>
+  <path d="M1381 327 C1441 377 1470 413 1482 448" class="arrow"/>
+
+  <path d="M704 431 C715 414 734 409 757 412 L1051 410 C1075 417 1087 434 1082 458 L1077 585 C1071 607 1052 620 1027 616 L746 621 C722 615 707 601 708 578 Z" fill="#dbeafe" class="ink"/>
+  <text x="761" y="467" class="h2">公开市场 Retriever</text>
+  <text x="758" y="513" class="body">search(queryText)</text>
+  <text x="758" y="555" class="small">ANN + BM25 + RRF</text>
+  <text x="758" y="590" class="small">公开 Skill + 多信号排序</text>
+
+  <path d="M1163 433 C1175 417 1194 412 1217 416 L1508 414 C1532 422 1544 440 1538 463 L1534 586 C1528 608 1509 620 1485 616 L1206 621 C1182 615 1167 600 1168 578 Z" fill="#f3e8ff" class="ink"/>
+  <text x="1230" y="469" class="h2">已安装 Retriever</text>
+  <text x="1236" y="514" class="body">数据库关键词查询</text>
+  <text x="1239" y="557" class="small">用户自己的 Skill 集合</text>
+  <text x="1239" y="592" class="small">不依赖向量库</text>
+
+  <path d="M894 631 C938 676 1001 704 1078 727" class="arrow"/>
+  <path d="M1358 631 C1309 678 1246 706 1173 728" class="arrow"/>
+  <path d="M1029 709 C1042 692 1061 687 1084 691 L1230 689 C1254 696 1265 714 1260 737 L1256 812 C1249 834 1232 846 1208 842 L1073 846 C1050 840 1035 825 1035 803 Z" fill="#fef3c7" class="ink"/>
+  <text x="1070" y="745" class="h2">Merge &amp; Rank</text>
+  <text x="1066" y="786" class="small">按 ID 去重 · installed boost</text>
+  <text x="1091" y="819" class="small">排序并截取 Top K</text>
+
+  <path d="M1018 781 C808 812 598 794 493 325" class="dash"/>
+  <text x="522" y="767" class="note">tool result 回到 LLM，再由模型解释或继续执行</text>
+
+  <text x="83" y="866" class="body">Tool 管协议</text>
+  <text x="307" y="866" class="body">Facade 管组合</text>
+  <text x="550" y="866" class="body">Search 管检索</text>
+  <path d="M82 877 C215 870 355 884 475 875" fill="none" class="ink" stroke="#e8590c"/>
+  <path d="M304 877 C435 870 583 885 714 875" fill="none" class="ink" stroke="#4263eb"/>
+</svg>

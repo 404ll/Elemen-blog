@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Skill 推荐检索流程</title>
+  <desc id="desc">公开 Skill 信息建立向量和 BM25 索引，用户 Query 经过 ANN 与 BM25 双路召回，随后通过 RRF 和业务排序返回 Top K。</desc>
+  <defs>
+    <filter id="rough" x="-3%" y="-3%" width="106%" height="106%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.008" numOctaves="2" seed="17" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.2" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+      <path d="M1 1 L10 6 L1 11" fill="none" stroke="#1f2937" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <style>
+      .ink{stroke:#1f2937;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;filter:url(#rough)}
+      .arrow{fill:none;stroke:#1f2937;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow);filter:url(#rough)}
+      .h1{font:700 42px ui-rounded,"Kaiti SC","PingFang SC",sans-serif;fill:#111827}
+      .h2{font:700 28px ui-rounded,"Kaiti SC","PingFang SC",sans-serif;fill:#111827}
+      .body{font:24px ui-rounded,"Kaiti SC","PingFang SC",sans-serif;fill:#374151}
+      .small{font:21px ui-rounded,"Kaiti SC","PingFang SC",sans-serif;fill:#4b5563}
+      .note{font:700 24px ui-rounded,"Kaiti SC","PingFang SC",sans-serif;fill:#e8590c}
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="#fffdf8"/>
+  <text x="82" y="78" class="h1">一次 Skill 推荐是怎么发生的？</text>
+  <path d="M82 94 C310 100 510 88 750 96" class="ink" fill="none" stroke="#4263eb"/>
+
+  <text x="80" y="154" class="h2" fill="#4263eb">① 索引阶段</text>
+  <path d="M76 182 C85 169 103 166 129 169 L382 165 C404 169 415 182 410 204 L404 394 C400 413 383 421 359 418 L102 421 C82 416 72 402 76 381 Z" fill="#dbeafe" class="ink"/>
+  <text x="116" y="223" class="h2">公开 Skill</text>
+  <text x="116" y="269" class="body">Name</text>
+  <text x="116" y="309" class="body">Description</text>
+  <text x="116" y="349" class="body">Categories</text>
+  <text x="116" y="389" class="body">Public Tools</text>
+
+  <path d="M425 290 C480 285 517 286 563 288" class="arrow"/>
+
+  <path d="M582 189 C590 174 610 168 634 171 L917 168 C940 173 950 188 946 209 L940 382 C938 404 920 415 895 411 L615 416 C592 410 578 397 581 375 Z" fill="#ede9fe" class="ink"/>
+  <text x="637" y="226" class="h2">双路索引</text>
+  <rect x="628" y="256" width="270" height="58" rx="15" fill="#c7d2fe" class="ink"/>
+  <text x="664" y="294" class="body">Embedding → Vector</text>
+  <rect x="628" y="335" width="270" height="58" rx="15" fill="#fde68a" class="ink"/>
+  <text x="670" y="373" class="body">Tokenize → BM25</text>
+
+  <path d="M960 290 C1023 286 1066 288 1122 289" class="arrow"/>
+  <path d="M1143 204 C1156 181 1180 170 1208 176 L1484 179 C1502 188 1510 204 1503 226 L1499 372 C1491 396 1470 407 1444 401 L1188 404 C1164 399 1148 386 1146 363 Z" fill="#dcfce7" class="ink"/>
+  <text x="1218" y="249" class="h2">向量数据库</text>
+  <text x="1200" y="300" class="body">vector index</text>
+  <text x="1200" y="343" class="body">text index</text>
+  <path d="M1377 222 C1410 242 1429 268 1430 302 C1429 337 1408 365 1376 379" fill="none" class="ink" stroke="#16a34a"/>
+
+  <path d="M76 477 C420 485 761 470 1110 480" fill="none" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="10 13" filter="url(#rough)"/>
+  <text x="80" y="542" class="h2" fill="#e8590c">② 查询阶段</text>
+
+  <path d="M78 574 C88 557 109 551 132 556 L369 553 C392 560 403 577 396 600 L392 724 C385 746 366 756 343 752 L118 755 C94 749 80 735 78 713 Z" fill="#ffedd5" class="ink"/>
+  <text x="144" y="616" class="h2">用户 Query</text>
+  <text x="115" y="666" class="body">“从图片反推提示词”</text>
+  <path d="M130 703 C188 712 266 711 338 701" fill="none" class="ink" stroke="#e8590c"/>
+
+  <path d="M412 652 C463 648 499 648 546 650" class="arrow"/>
+  <path d="M566 565 C578 550 596 546 618 549 L853 548 C875 554 886 570 881 590 L875 718 C871 739 854 750 832 746 L605 750 C584 746 568 733 568 713 Z" fill="#f3e8ff" class="ink"/>
+  <rect x="607" y="586" width="228" height="55" rx="14" fill="#ddd6fe" class="ink"/>
+  <text x="648" y="622" class="body">ANN 语义召回</text>
+  <rect x="607" y="664" width="228" height="55" rx="14" fill="#fef3c7" class="ink"/>
+  <text x="642" y="700" class="body">BM25 精确召回</text>
+
+  <path d="M895 650 C942 648 972 648 1015 650" class="arrow"/>
+  <ellipse cx="1112" cy="650" rx="82" ry="68" fill="#dbeafe" class="ink"/>
+  <text x="1067" y="642" class="h2">RRF</text>
+  <text x="1066" y="677" class="small">融合名次</text>
+
+  <path d="M1201 650 C1240 648 1266 648 1302 650" class="arrow"/>
+  <path d="M1319 573 C1330 558 1347 552 1367 557 L1515 558 C1536 566 1544 582 1538 603 L1534 710 C1528 730 1511 740 1491 736 L1358 740 C1338 734 1323 720 1321 701 Z" fill="#dcfce7" class="ink"/>
+  <text x="1362" y="616" class="h2">业务排序</text>
+  <text x="1358" y="659" class="small">相关度 · 质量</text>
+  <text x="1358" y="696" class="small">热度 · 新鲜度</text>
+
+  <path d="M1413 754 C1415 785 1415 806 1414 835" class="arrow"/>
+  <text x="1327" y="870" class="note">得到 Top K，而不只是“最像”</text>
+</svg>

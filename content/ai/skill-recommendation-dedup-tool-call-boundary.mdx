@@ -4,6 +4,7 @@ date: "2026-08-03"
 excerpt: "从一个相关 Skill 模块出发，梳理语义召回、关键词召回、去重算法、Tool 调用链，以及为什么用户可见的推荐应该只依赖公开信息。"
 category: "ai"
 tags: ["Recommendation", "Embedding", "RAG", "Agent", "Tool Calling"]
+cover: "/image/skill-recommendation-illustrations/01-recommendation-pipeline.svg"
 draft: false
 ---
 
@@ -23,6 +24,12 @@ draft: false
 2. 推荐与查重可以共享 ANN、BM25、RRF 等技术，但两者使用的数据视图和业务目标不同。
 3. `find_skill` 是面向 Agent 的工具，`search()` 是它下面的一层公开 Skill 检索能力。
 4. 私密 instructions 可以服务内部查重，但不应该悄悄成为公开推荐的正向依据。
+
+<Figure
+  src="/image/skill-recommendation-illustrations/01-recommendation-pipeline.svg"
+  alt="公开 Skill 建立向量和 BM25 索引，查询时经过 ANN、BM25、RRF 与业务排序返回 Top K"
+  caption="推荐不是一次向量比较，而是一条从公开数据、双路召回到业务排序的链路"
+/>
 
 ## 从分类推荐开始
 
@@ -200,6 +207,12 @@ Name + Description + Instructions
 | 公开能力视图 | 是否值得推荐给用户 | 名称、描述、分类、公开能力 |
 | 内部行为视图 | 是否是重复或近似实现 | 执行步骤、instructions、内部结构 |
 
+<Figure
+  src="/image/skill-recommendation-illustrations/02-public-private-vectors.svg"
+  alt="同一个 Skill 的公开能力视图用于推荐，内部行为视图用于查重"
+  caption="推荐理由与用户证据应当对称；私密 instructions 属于内部判断，不属于公开推荐理由"
+/>
+
 查重结果不应该直接被当作推荐结果。一个与当前 Skill 极度相似的候选，可能恰恰是应该折叠掉的重复版本，而不是最应该展示的相关推荐。
 
 相关推荐通常还需要一层多样性控制：
@@ -281,6 +294,12 @@ LLM 读取候选 Skill
     ↓
 向用户解释或继续执行
 ```
+
+<Figure
+  src="/image/skill-recommendation-illustrations/03-tool-call-chain.svg"
+  alt="LLM 调用 find_skill Tool，经 Facade 组合公开市场和已安装 Skill 两路检索，合并后返回工具结果"
+  caption="Tool 管协议，Facade 管候选来源组合，Search 管底层检索"
+/>
 
 这里每层关注的问题不同：
 
