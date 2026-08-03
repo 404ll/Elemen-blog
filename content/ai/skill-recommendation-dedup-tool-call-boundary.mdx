@@ -1,0 +1,341 @@
+---
+title: "从推荐、查重到 Tool：我如何理解 Skill 检索系统"
+date: "2026-08-03"
+excerpt: "从一个相关 Skill 模块出发，梳理语义召回、关键词召回、去重算法、Tool 调用链，以及为什么用户可见的推荐应该只依赖公开信息。"
+category: "ai"
+tags: ["Recommendation", "Embedding", "RAG", "Agent", "Tool Calling"]
+draft: false
+---
+
+这次最开始只是想弄清楚：一个 Skill 详情页底部的「相关 Skill」，到底应该继续依赖分类，还是升级成真正的推荐算法？
+
+顺着代码往下看，我逐渐把几个原本混在一起的概念拆开了：分类只是粗粒度标签，`search()` 是底层检索能力，`find_skill` 是 Agent 可以调用的完整工具，而推荐和查重虽然都使用向量，却在回答两个不同的问题。
+
+其中最值得记住的一条边界是：
+
+> 用户可见的推荐，应该由用户也能看见的证据支持。
+
+如果系统只有读取一个 Skill 的私密 Prompt，才知道它为什么和当前需求相关，那么问题不只是推荐结果难解释，更说明这个 Skill 的公开信息没有把自身能力表达完整。
+
+## 这次真正弄清了什么
+
+1. 推荐系统先召回候选，再综合排序；它不等于「找余弦相似度最高的几个向量」。
+2. 推荐与查重可以共享 ANN、BM25、RRF 等技术，但两者使用的数据视图和业务目标不同。
+3. `find_skill` 是面向 Agent 的工具，`search()` 是它下面的一层公开 Skill 检索能力。
+4. 私密 instructions 可以服务内部查重，但不应该悄悄成为公开推荐的正向依据。
+
+## 从分类推荐开始
+
+最简单的相关内容逻辑通常长这样：
+
+```text
+当前 Skill
+  -> 取第一个分类
+  -> 查询同分类 Skill
+  -> 排除自己
+  -> 取前三个
+```
+
+这种实现不是完全没有价值。分类可以帮助用户浏览，也能在冷启动时提供一个可解释的候选集合。但它只能表达「大概属于哪一类」，无法表达具体任务是否相同。
+
+例如下面几个 Skill 都可能被放进 `images`：
+
+```text
+从图片反推提示词
+生成社交媒体配图
+修复老照片
+把商品图变成插画
+```
+
+它们属于同一个大类，但用户意图完全不同。如果只按分类推荐，候选集合从一开始就太宽，后面的排序再精细也很难补救。
+
+分类更适合承担这些职责：
+
+- 页面导航和筛选
+- 冷启动兜底
+- 推荐中的轻量加分信号
+- 给运营和用户提供可解释的标签
+
+真正的相关性，需要交给语义与文本检索。
+
+## 推荐索引是怎么建立的
+
+推荐系统不会在每次查询时遍历所有 Skill。它会先为公开、可用的 Skill 建立索引。
+
+可以把一条 Skill 的公开投影简化成：
+
+```ts
+type PublicSkillProjection = {
+  name: string;
+  description: string;
+  categories: string[];
+  publicTools: string[];
+};
+```
+
+随后把它整理成一段稳定文本：
+
+```text
+Name: Image to Prompt Generator
+Description: Convert an image into a reusable generation prompt.
+Categories: images
+Tools: image-understanding
+```
+
+这段文本会进入两套索引：
+
+```text
+公开 Skill 文本
+  ├─ Embedding -> 向量索引
+  └─ Tokenize  -> BM25 文本索引
+```
+
+向量索引擅长理解近义表达。例如：
+
+```text
+「从图片反推提示词」
+「extract a prompt from an image」
+「recreate this image's visual prompt」
+```
+
+它们字面不同，但在语义空间里可能非常接近。
+
+BM25 更擅长保留精确名词，例如模型名、工具名或者 `image-to-prompt` 这样的术语。只用向量可能弱化精确词，只用 BM25 又会漏掉同义改写，因此两路召回需要同时存在。
+
+## `search()` 到底做了什么
+
+我一开始把 `search()` 想得有些神秘。实际拆开后，它只是一个输入文本、输出候选 Skill 的后端方法：
+
+```ts
+search({
+  queryText: "I want to extract a prompt from an image",
+  topK: 10,
+  filters: {
+    excludeIds: ["current-skill-id"],
+  },
+});
+```
+
+它内部大致执行：
+
+```text
+queryText
+  ├─ 生成 Query Embedding -> ANN 语义召回
+  └─ 原始文本            -> BM25 关键词召回
+                              ↓
+                          RRF 融合
+                              ↓
+                    回主数据库补齐最新数据
+                              ↓
+                 相关度 + 质量 + 热度 + 新鲜度
+                              ↓
+                            Top K
+```
+
+### ANN：找到语义邻居
+
+ANN（Approximate Nearest Neighbor）是在向量库里快速寻找近邻。它追求的是足够准确且足够快，而不是对所有向量做一次昂贵的精确比较。
+
+### BM25：保住精确词
+
+BM25 根据词频、词在文档中的稀有程度和文档长度计算相关性。它无法真正理解语义，但非常擅长命中那些不能被模糊处理的词。
+
+### RRF：合并不同评分体系
+
+向量距离和 BM25 分数不在同一个数值空间，直接相加很难解释。RRF（Reciprocal Rank Fusion）只看候选在每一路中的名次：
+
+```text
+RRF(document) = sum(1 / (k + rank))
+```
+
+如果一个候选在向量召回和 BM25 中都排名靠前，它会得到更高的融合分数。这样不需要强行把两套原始分数归一到同一尺度。
+
+### 召回之后还要排序
+
+推荐结果不应该只看语义相似度。真实系统通常还会加入：
+
+```text
+finalScore =
+  relevance
+  popularity
+  quality
+  recency
+  product-specific signals
+```
+
+这些信号的权重取决于场景。搜索页可能更关注流行度，详情页的相关模块则应该让语义相关度占更大比重，否则热门 Skill 会长期压住更相关但较新的 Skill。
+
+## 推荐算法和查重算法有什么不同
+
+两者都可以使用向量、BM25 和 RRF，但它们回答的问题不同。
+
+推荐算法问的是：
+
+```text
+这个 Skill 能不能解决用户现在的问题？
+```
+
+因此推荐向量应该描述它的公开能力：
+
+```text
+Name + Description + Categories + Public Capabilities
+```
+
+查重算法问的是：
+
+```text
+这两个 Skill 的内部行为是不是几乎一样？
+```
+
+为了判断行为是否重复，内部查重可能需要读取更深的数据：
+
+```text
+Name + Description + Instructions
+```
+
+这意味着我们其实在维护同一个 Skill 的两种视图：
+
+| 视图 | 解决的问题 | 可以使用的数据 |
+| --- | --- | --- |
+| 公开能力视图 | 是否值得推荐给用户 | 名称、描述、分类、公开能力 |
+| 内部行为视图 | 是否是重复或近似实现 | 执行步骤、instructions、内部结构 |
+
+查重结果不应该直接被当作推荐结果。一个与当前 Skill 极度相似的候选，可能恰恰是应该折叠掉的重复版本，而不是最应该展示的相关推荐。
+
+相关推荐通常还需要一层多样性控制：
+
+```text
+先选最相关的候选
+  -> 后续候选既要相关
+  -> 又不能和已经选中的结果过度相似
+```
+
+这类思想可以用 MMR 表达：
+
+```text
+MMR(candidate) =
+  relevance(candidate)
+  - similarity(candidate, selectedResults)
+```
+
+它避免三张推荐卡片只是同一个场景换了三个名字。没有足够好的结果时，展示一到两个，也比为了凑数塞入重复或不相关内容更好。
+
+## 为什么公开推荐不应该依赖私密 instructions
+
+一个 Skill 可以把名称和能力介绍公开，同时隐藏内部 Prompt、执行步骤和工具编排。用户可以运行它，却不能直接复制作者的实现。
+
+可以把两者类比成：
+
+```text
+Name / Description / Capabilities = API 文档
+Private Instructions               = 服务端实现
+```
+
+这里形成了一个很重要的直觉：**推荐理由和用户证据应该对称。**
+
+假设系统读取私密 instructions 后，判断某个 Skill 特别适合「从图片中恢复光照和镜头参数」，于是把它推荐给用户。但用户能看到的公开描述只有：
+
+```text
+Make your images better.
+```
+
+用户无法判断它为什么相关，也无法在运行前比较几个候选。这种推荐虽然可能在向量上正确，在产品体验上却缺少可验证的依据。
+
+更合理的处理不是让推荐系统继续偷读内部 Prompt，而是先补齐公开能力描述：
+
+```text
+系统只有读私密 Prompt 才知道它能做什么
+                  ↓
+公开信息没有完整表达 Skill 能力
+                  ↓
+补 description / categories / publicCapabilities
+```
+
+因此我会把边界整理成：
+
+- 私密 instructions 可以用于权限受控的内部查重。
+- 公开推荐的召回和正向排序，只依赖公开能力投影。
+- 如果工具名称也属于内部实现，就不应从私密 steps 中直接提取；应该单独声明 `publicCapabilities` 或 `publicTools`。
+- fork、版本和同源关系优先通过明确的数据关系去重，而不是通过私密文本猜测。
+
+这不是说私密信息在任何算法里都不能使用，而是它的用途必须和权限、用户可见性及结果解释保持一致。
+
+## `find_skill` Tool 和 `search()` 的关系
+
+`search()` 是底层检索器，`find_skill` 是给 Agent 使用的完整工具。调用关系可以画成：
+
+```text
+用户提出需求
+    ↓
+LLM 判断需要寻找 Skill
+    ↓ tool call
+find_skill(intent, scope, filters)
+    ↓
+Search Facade
+    ├─ 公开市场 Retriever -> search()
+    └─ 已安装 Retriever   -> 数据库关键词查询
+    ↓
+合并、按 ID 去重、应用已安装加分、截取 Top K
+    ↓ tool result
+LLM 读取候选 Skill
+    ↓
+向用户解释或继续执行
+```
+
+这里每层关注的问题不同：
+
+### Tool 层
+
+负责和 Agent 协议打交道：
+
+- 接收 `intent`、范围、数量和过滤条件
+- 处理 list 模式与 search 模式
+- 把底层错误转换成结构化 tool error
+- 把结果整理成模型能消费的形状
+
+### Facade 层
+
+负责组合多个候选来源：
+
+- 公开市场里的 Skill
+- 当前用户已经安装的 Skill
+- 未来可能增加的团队或社区 Skill
+
+它还会按 ID 去重，并给已安装结果增加产品侧权重。
+
+### Search 层
+
+只关心一件事：
+
+```text
+给我一段 queryText，我返回公开 Skill 的相关候选和分数解释。
+```
+
+它不知道 LLM 最后如何回答，也不负责组织 Tool 协议。
+
+因此，详情页的相关模块不需要绕到 Agent Tool：
+
+```text
+Agent 找 Skill：find_skill -> Facade -> search()
+
+详情页相关推荐：RelatedSkillsQuery -> search()
+```
+
+两条链路复用底层检索能力，但保留各自的业务编排。详情页不需要用户 Space、已安装加分或模型工具返回格式。
+
+## 以后怎么用这套理解
+
+下次再看到推荐、搜索、查重或 Agent Tool，可以按下面的顺序检查：
+
+```text
+1. 索引的是什么数据？
+2. Query 从哪里来？有没有额外的意图改写？
+3. 候选通过哪些 Retriever 召回？
+4. 多路结果如何融合？
+5. 最终排序加入了哪些业务信号？
+6. 去重是在排除同 ID、同版本，还是语义近重复？
+7. 用户能否从公开信息理解推荐原因？
+8. Tool、Facade 和底层 Search 的职责有没有混在一起？
+```
+
+这次最大的变化，是我不再把推荐算法理解成一个孤立的「向量相似度函数」。它是一条从公开数据契约、候选召回、融合排序、去重，到 Tool 编排和用户解释的完整链路。
