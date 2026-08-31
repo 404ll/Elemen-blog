@@ -5,6 +5,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import PracticeCodeBlock from "@/components/practice/PracticeCodeBlock";
+import PracticeHtmlPreview from "@/components/practice/PracticeHtmlPreview";
 import PracticeNav from "@/components/practice/PracticeNav";
 import CodeCopyButton from "@/components/ui/CodeCopyButton";
 import { mdxComponents } from "@/components/ui/MdxContent";
@@ -59,6 +60,9 @@ export default async function PracticeDetailPage({
   );
   const groupTitle = group?.title ?? problem.category;
   const NoteContent = problem.note ? await renderMDX(problem.note) : null;
+  // code.html 约定为不依赖同目录资源的完整可执行文档；index.html 可能引用相邻 CSS。
+  const canPreviewHtml =
+    problem.lang === "html" && problem.entry.endsWith("/code.html");
   // 外链指向子模块仓库中 entry 对应文件
   const githubFileUrl = `${PRACTICE_REPO_URL}/blob/main/${problem.entry}`;
 
@@ -96,6 +100,18 @@ export default async function PracticeDetailPage({
           在 GitHub 查看源码 →
         </Link>
       </div>
+
+      {canPreviewHtml ? (
+        <section className="mb-8 space-y-3">
+          <h3 className="text-lg font-bold text-black dark:text-white">
+            运行预览
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            HTML 练习运行在隔离环境中，可以直接操作并观察结果。
+          </p>
+          <PracticeHtmlPreview html={problem.code} title={problem.title} />
+        </section>
+      ) : null}
 
       <section className="space-y-3">
         <h3 className="text-lg font-bold text-black dark:text-white">
