@@ -32,11 +32,11 @@ const rehypePrettyCodeOptions = {
   },
 } satisfies Options;
 
-export async function renderMDX(source: string) {
+export async function renderMDX(source: string, options: Pick<Options, "theme"> = {}) {
   const compiled = await compile(source, {
     outputFormat: "function-body",
     remarkPlugins: [remarkGfm],
-    rehypePlugins: [[rehypePrettyCode, rehypePrettyCodeOptions]],
+    rehypePlugins: [[rehypePrettyCode, { ...rehypePrettyCodeOptions, ...options }]],
   });
   
   const fn = new Function(String(compiled));

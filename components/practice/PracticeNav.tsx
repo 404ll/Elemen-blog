@@ -16,16 +16,16 @@ export default function PracticeNav({ prev, next }: PracticeNavProps) {
 
   return (
     <nav
-      className="flex justify-between gap-4 pt-6 mt-8 border-t border-dashed border-gray-300 dark:border-gray-600 text-sm"
+      className="practice-adjacent"
       aria-label="题目导航"
     >
       {prev ? (
         <Link
           href={practiceProblemHref(prev)}
-          className="text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors max-w-[45%]"
+          className="practice-adjacent-prev"
         >
-          <span className="font-mono text-xs block mb-0.5">上一题</span>
-          <span className="font-semibold truncate block">{prev.title}</span>
+          <span className="practice-adjacent-label">← 上一篇</span>
+          <span className="practice-adjacent-title">{prev.title}</span>
         </Link>
       ) : (
         <span />
@@ -33,10 +33,10 @@ export default function PracticeNav({ prev, next }: PracticeNavProps) {
       {next ? (
         <Link
           href={practiceProblemHref(next)}
-          className="text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors text-right max-w-[45%] ml-auto"
+          className="practice-adjacent-next"
         >
-          <span className="font-mono text-xs block mb-0.5">下一题</span>
-          <span className="font-semibold truncate block">{next.title}</span>
+          <span className="practice-adjacent-label">下一篇 →</span>
+          <span className="practice-adjacent-title">{next.title}</span>
         </Link>
       ) : null}
     </nav>

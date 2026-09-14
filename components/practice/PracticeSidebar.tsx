@@ -1,204 +1,75 @@
-/**
- * 练习区侧栏：按 manifest groups 分组展示题目链接
- * 桌面端固定左侧栏；移动端抽屉 + 遮罩，选中项高亮并去掉标题前缀「手写 」
- */
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { MenuIcon, XIcon } from "lucide-react";
-import {
-  PRACTICE_COLLECTIONS,
-  practiceProblemHref,
-} from "@/lib/practice/categories";
-import type {
-  PracticeCollection,
-  PracticeGroupWithProblems,
-} from "@/lib/practice/types";
+import { BookOpen, ChevronDown, Search, X } from "lucide-react";
+import { PRACTICE_COLLECTIONS, practiceProblemHref } from "@/lib/practice/categories";
+import type { PracticeCollection, PracticeGroupWithProblems } from "@/lib/practice/types";
 
 type PracticeSidebarProps = {
   groupsByCollection: Record<PracticeCollection, PracticeGroupWithProblems[]>;
   problemCountByCollection: Record<PracticeCollection, number>;
 };
 
-export default function PracticeSidebar({
-  groupsByCollection,
-  problemCountByCollection,
-}: PracticeSidebarProps) {
+export default function PracticeSidebar({ groupsByCollection, problemCountByCollection }: PracticeSidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const activeCollection: PracticeCollection = pathname.startsWith("/practice/work")
-    ? "work"
-    : "handwriting";
-  const activeCollectionMeta = PRACTICE_COLLECTIONS[activeCollection];
-  const groups = groupsByCollection[activeCollection];
-  const problemCount = problemCountByCollection[activeCollection];
+  const collection: PracticeCollection = pathname.startsWith("/practice/work") ? "work" : "handwriting";
+  // A collection switch starts a fresh search and mobile directory.
+  return <PracticeDirectory key={collection} collection={collection} pathname={pathname} groups={groupsByCollection[collection]} count={problemCountByCollection[collection]} />;
+}
 
-  const collectionPicker = (id: string) => (
-    <div className="border-b border-gray-200/80 pb-3 dark:border-gray-700/80">
-      <label
-        htmlFor={id}
-        className="block text-[11px] font-mono uppercase tracking-[0.18em] text-gray-500 dark:text-gray-500"
-      >
-        Collection
-      </label>
-      <select
-        id={id}
-        value={activeCollection}
-        onChange={(event) => {
-          const nextCollection = event.target.value as PracticeCollection;
-          router.push(PRACTICE_COLLECTIONS[nextCollection].href);
-          setOpen(false);
-        }}
-        className="mt-2 w-full rounded-sm border border-gray-300 bg-white px-2.5 py-2 text-sm font-semibold text-gray-900 outline-none transition-colors focus:border-black dark:border-gray-700 dark:bg-[#1a0f00] dark:text-gray-100 dark:focus:border-white"
-      >
-        {Object.values(PRACTICE_COLLECTIONS).map((collection) => (
-          <option key={collection.id} value={collection.id}>
-            {collection.title}
-          </option>
-        ))}
-      </select>
-      <div className="mt-3 rounded-sm border border-gray-200/80 bg-white/55 p-3 dark:border-gray-700/80 dark:bg-white/5">
-        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-          {activeCollectionMeta.title}
-        </p>
-        <p className="mt-1 text-[12px] leading-relaxed text-gray-500 dark:text-gray-500">
-          {activeCollectionMeta.description}
-        </p>
-        <p className="mt-2 text-[11px] font-mono text-gray-500 dark:text-gray-500">
-          {problemCount} 条记录 · {groups.length} 个章节
-        </p>
-      </div>
-    </div>
-  );
-
-  // 桌面侧栏与移动抽屉共用同一份目录 DOM
-  const nav = (
-    <nav className="mt-4 space-y-5" aria-label="练习题目目录">
-      {groups.map((group) => {
-        const activeInGroup = group.items.some(
-          (item) => pathname === `/practice/${item.id}`
-        );
-
-        return (
-          <section
-            key={group.id}
-            className={`border-l pl-3 ${
-              activeInGroup
-                ? "border-black dark:border-white"
-                : "border-gray-300/80 dark:border-gray-700"
-            }`}
-          >
-            <div className="mb-2">
-              <div className="flex items-baseline justify-between gap-3">
-                <h2
-                  className={`text-[13px] font-bold tracking-[0.18em] uppercase ${
-                    activeInGroup
-                      ? "text-black dark:text-white"
-                      : "text-gray-700 dark:text-gray-300"
-                  }`}
-                >
-                  {group.title}
-                </h2>
-                <span className="shrink-0 text-[11px] font-mono text-gray-500 dark:text-gray-500">
-                  {group.items.length}
-                </span>
-              </div>
-              {group.description && (
-                <p className="mt-1 text-[12px] leading-relaxed text-gray-500 dark:text-gray-500">
-                  {group.description}
-                </p>
-              )}
-            </div>
-
-            <ol className="space-y-1">
-              {group.items.map((item, index) => {
-                const href = practiceProblemHref(item);
-                const active = pathname === href;
-                return (
-                  <li key={item.id}>
-                    <Link
-                      href={href}
-                      onClick={() => setOpen(false)}
-                      aria-current={active ? "page" : undefined}
-                      className={`group flex items-start gap-2 rounded-sm px-2.5 py-2 text-sm leading-snug transition-colors ${
-                        active
-                          ? "bg-white/70 font-semibold text-black shadow-[inset_0_0_0_1px_rgb(0_0_0_/_0.08)] dark:bg-white/10 dark:text-white dark:shadow-[inset_0_0_0_1px_rgb(255_255_255_/_0.12)]"
-                          : "text-gray-600 hover:bg-white/45 hover:text-black dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
-                      }`}
-                    >
-                      <span
-                        className={`mt-0.5 w-5 shrink-0 text-[11px] font-mono tabular-nums ${
-                          active
-                            ? "text-black dark:text-white"
-                            : "text-gray-400 dark:text-gray-600"
-                        }`}
-                      >
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <span className="min-w-0 flex-1 break-words">
-                        {item.title.replace(/^手写\s*/, "")}
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ol>
-          </section>
-        );
-      })}
-    </nav>
-  );
+function PracticeDirectory({ collection, pathname, groups, count }: {
+  collection: PracticeCollection;
+  pathname: string;
+  groups: PracticeGroupWithProblems[];
+  count: number;
+}) {
+  const [query, setQuery] = useState("");
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const search = query.trim().toLocaleLowerCase();
+  const filteredGroups = groups.map(group => ({
+    ...group,
+    items: group.items.filter(item => `${item.title} ${item.id} ${item.tags?.join(" ") ?? ""} ${group.title}`.toLocaleLowerCase().includes(search)),
+  })).filter(group => group.items.length > 0);
+  const resultCount = filteredGroups.reduce((total, group) => total + group.items.length, 0);
 
   return (
-    <>
-      <div className="md:hidden flex items-center justify-between gap-3 mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-2 text-sm font-semibold px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-sm"
-          aria-expanded={open}
-          aria-controls="practice-sidebar-drawer"
-        >
-          <MenuIcon className="w-4 h-4" />
-          题目目录
-        </button>
+    <aside className="practice-sidebar">
+      <div className="practice-sidebar-heading">
+        <div className="practice-identity"><BookOpen size={19} aria-hidden="true" /><h1>代码练习</h1></div>
+        <p>日常总结与面试准备</p>
       </div>
-
-      <aside className="hidden md:block w-64 shrink-0 border-r border-gray-200/80 pr-5 dark:border-gray-700/80">
-        {collectionPicker("practice-collection-desktop")}
-        {nav}
-      </aside>
-
-      {open && (
-        <div className="fixed inset-0 z-[60] md:hidden">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/40"
-            aria-label="关闭目录"
-            onClick={() => setOpen(false)}
-          />
-          <aside
-            id="practice-sidebar-drawer"
-            className="absolute left-0 top-0 bottom-0 w-[min(280px,85vw)] bg-[#fff4e6] dark:bg-[#1a0f00] p-4 pt-20 overflow-y-auto border-r border-orange-200/60 dark:border-orange-900/40 shadow-xl"
-          >
-            <div className="flex justify-end mb-2">
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="p-2"
-                aria-label="关闭"
-              >
-                <XIcon className="w-5 h-5" />
-              </button>
-            </div>
-            {collectionPicker("practice-collection-mobile")}
-            {nav}
-          </aside>
+      <nav className="practice-collections" aria-label="练习集合">
+        {Object.values(PRACTICE_COLLECTIONS).map(item => (
+          <Link key={item.id} href={item.href} aria-current={item.id === collection ? "page" : undefined}>{item.title}</Link>
+        ))}
+      </nav>
+      <button type="button" className="practice-directory-toggle" onClick={() => setMobileOpen(!mobileOpen)} aria-expanded={mobileOpen} aria-controls="practice-directory">
+        <span>浏览目录 <span className="practice-count">{count}</span></span><ChevronDown size={16} aria-hidden="true" />
+      </button>
+      <div id="practice-directory" className={`practice-directory ${mobileOpen ? "is-open" : ""}`}>
+        <div className="practice-search">
+          <Search size={15} aria-hidden="true" />
+          <input type="search" aria-label="搜索当前集合的标题、标签或章节" placeholder="搜索标题、标签…" value={query} onChange={event => setQuery(event.target.value)} autoComplete="off" spellCheck={false} />
+          {query && <button type="button" aria-label="清空搜索" onClick={() => setQuery("")}><X size={14} aria-hidden="true" /></button>}
         </div>
-      )}
-    </>
+        <p className="practice-directory-label" aria-live="polite"><span>{search ? "搜索结果" : "全部章节"}</span><span>{search ? resultCount : count} 篇</span></p>
+        <nav className="practice-groups" aria-label="练习题目目录">
+          {filteredGroups.map(group => {
+            const active = group.items.some(item => pathname === practiceProblemHref(item));
+            return (
+              <details key={`${group.id}-${Boolean(search)}-${active}`} open={active || Boolean(search)} className="practice-group">
+                <summary><ChevronDown size={14} aria-hidden="true" /><span>{group.title}</span><span className="practice-count">{group.items.length}</span></summary>
+                <ul>{group.items.map(item => (
+                  <li key={item.id}><Link href={practiceProblemHref(item)} aria-current={pathname === practiceProblemHref(item) ? "page" : undefined} onClick={() => setMobileOpen(false)}><span className="practice-item-dot" aria-hidden="true" /><span>{item.title.replace(/^手写\s*/, "")}</span></Link></li>
+                ))}</ul>
+              </details>
+            );
+          })}
+        </nav>
+        {resultCount === 0 && <p className="practice-empty">没有匹配的记录，试试其他关键词。</p>}
+      </div>
+    </aside>
   );
 }

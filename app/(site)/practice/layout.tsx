@@ -2,6 +2,7 @@
  * /practice 路由布局
  * 服务端读取 manifest 题目列表，左侧 PracticeSidebar + 右侧子路由（索引重定向或详情页）
  */
+import "./practice.css";
 import PracticeSidebar from "@/components/practice/PracticeSidebar";
 import { getAllProblems, getPracticeGroups } from "@/lib/practice/loader";
 
@@ -16,18 +17,9 @@ export default function PracticeLayout({
   const workGroups = getPracticeGroups({ collection: "work" });
 
   return (
-    <div className="pt-20 pb-16 min-h-screen">
-      <div className="max-w-6xl mx-auto px-4">
-        <header className="mb-6 space-y-1">
-          <h1 className="text-3xl font-bold font-bitcount tracking-[0.15em] text-gray-800 dark:text-gray-200">
-            代码练习
-          </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            手写题与工作中收集的代码片段，统一放在这里做轻量归档。
-          </p>
-        </header>
-
-        <div className="flex flex-col md:flex-row gap-6 md:gap-8">
+    <div className="practice-workspace">
+      <a href="#practice-content" className="practice-skip-link">跳到正文</a>
+      <div className="practice-shell">
           <PracticeSidebar
             groupsByCollection={{
               handwriting: handwritingGroups,
@@ -38,8 +30,7 @@ export default function PracticeLayout({
               work: workProblems.length,
             }}
           />
-          <div className="flex-1 min-w-0">{children}</div>
-        </div>
+          <main id="practice-content" tabIndex={-1} className="practice-content">{children}</main>
       </div>
     </div>
   );

@@ -3,7 +3,7 @@
  * generateStaticParams 预渲染全部题目；展示题面、Shiki 高亮源码、复制与上下题导航
  */
 import { notFound } from "next/navigation";
-import Link from "next/link";
+import PracticeHeader from "@/components/practice/PracticeHeader";
 import PracticeCodeBlock from "@/components/practice/PracticeCodeBlock";
 import PracticeHtmlPreview from "@/components/practice/PracticeHtmlPreview";
 import PracticeNav from "@/components/practice/PracticeNav";
@@ -59,71 +59,30 @@ export default async function PracticeDetailPage({
     group.items.some((item) => item.id === problem.id)
   );
   const groupTitle = group?.title ?? problem.category;
-  const NoteContent = problem.note ? await renderMDX(problem.note) : null;
-  // code.html 约定为不依赖同目录资源的完整可执行文档；index.html 可能引用相邻 CSS。
-  const canPreviewHtml =
-    problem.lang === "html" && problem.entry.endsWith("/code.html");
+  const NoteContent = problem.note ? await renderMDX(problem.note, { theme: { light: "github-light", dark: "github-dark" } }) : null;
+  // code.html 是独立可执行文档；index.html 可能依赖同目录资源。
+  const canPreviewHtml = problem.lang === "html" && problem.entry.endsWith("/code.html");
   // 外链指向子模块仓库中 entry 对应文件
   const githubFileUrl = `${PRACTICE_REPO_URL}/blob/main/${problem.entry}`;
 
   return (
-    <article>
-      <p className="text-xs font-mono text-gray-500 dark:text-gray-400 mb-2">
-        手写练习 / {groupTitle} / {problem.id}
-      </p>
-      <h2 className="text-2xl font-bold text-black dark:text-white mb-3">
-        {problem.title}
-      </h2>
-      <div className="flex justify-between mb-6">
-        <div className="flex flex-wrap gap-2">
-        <span className="text-xs font-mono font-bold border-[1.5px] border-current px-2 py-0.5 rounded-none">
-          {groupTitle}
-        </span>
-        <span className="text-xs font-mono font-bold border-[1.5px] border-current px-2 py-0.5 rounded-none">
-          {DIFFICULTY_LABELS[problem.difficulty]}
-        </span>
-        {problem.tags?.map((tag) => (
-          <span
-            key={tag}
-            className="text-xs font-mono border border-gray-400 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-none"
-          >
-            {tag}
-          </span>
-        ))}
-        </div>
-        <Link
-          href={githubFileUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:underline"
-        >
-          在 GitHub 查看源码 →
-        </Link>
-      </div>
-
-      {canPreviewHtml ? (
-        <section className="mb-8 space-y-3">
-          <h3 className="text-lg font-bold text-black dark:text-white">
-            运行预览
-          </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            HTML 练习运行在隔离环境中，可以直接操作并观察结果。
-          </p>
+    <article className="practice-entry">
+      <PracticeHeader problem={problem} collection="handwriting" groupTitle={groupTitle} sourceUrl={githubFileUrl} />
+      {canPreviewHtml && (
+        <section className="practice-section mb-8">
+          <h3 className="practice-section-title">运行预览</h3>
           <PracticeHtmlPreview html={problem.code} title={problem.title} />
         </section>
-      ) : null}
-
-      <section className="space-y-3">
-        <h3 className="text-lg font-bold text-black dark:text-white">
-          源码练习
-        </h3>
-      <PracticeCodeBlock code={problem.code} lang={problem.lang} />
-      <CodeCopyButton />
+      )}
+      <section className="practice-section">
+        <h3 className="practice-section-title">代码实现</h3>
+        <PracticeCodeBlock code={problem.code} lang={problem.lang} />
       </section>
+      <CodeCopyButton />
 
       {NoteContent && (
-        <section className="mt-8 pt-6 border-t border-dashed border-gray-300 dark:border-gray-600">
-          <h3 className="text-lg font-bold text-black dark:text-white mb-3">
+        <section className="practice-section practice-note">
+          <h3 className="practice-section-title">
             笔记记录
           </h3>
           <article className="prose prose-sm dark:prose-invert max-w-none">
