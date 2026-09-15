@@ -72,8 +72,8 @@ export default function Navbar() {
             aria-label="切换显示模式"
             className="rounded-sm p-2 text-[#5f5c56] transition-colors hover:text-[#f05a28] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#f05a28] dark:text-stone-300"
           >
-            <Moon aria-hidden="true" className="h-[18px] w-[18px] dark:hidden" strokeWidth={1.7} />
-            <Sun aria-hidden="true" className="hidden h-[18px] w-[18px] dark:block" strokeWidth={1.7} />
+            <Moon aria-hidden="true" className="h-[18px] w-[18px] dark:hidden!" strokeWidth={1.7} />
+            <Sun aria-hidden="true" className="hidden! h-[18px] w-[18px] dark:block!" strokeWidth={1.7} />
           </button>
           <button
             type="button"
