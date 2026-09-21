@@ -48,6 +48,7 @@ function normalizeOptions(input?: LegacyLoaderInput): Required<PracticeLoaderOpt
 
 /** 根据 entry 扩展名决定 Shiki 语言 id */
 function langFromEntry(entry: string): PracticeCodeLanguage {
+  if (entry.endsWith(".tsx")) return "tsx";
   if (entry.endsWith(".jsx")) return "jsx";
   if (entry.endsWith(".css")) return "css";
   if (entry.endsWith(".html")) return "html";

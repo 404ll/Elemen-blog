@@ -1,6 +1,6 @@
 'use client';
 import ArticleList from "@/components/card/ArticleList";
-import { CATEGORIES, getColorStyle } from "@/constant";
+import { CATEGORIES } from "@/constant";
 import Link from "next/link";
 import { useState, useMemo } from "react";
 import Fuse from "fuse.js";
@@ -28,16 +28,16 @@ export default function BlogClient({ posts, initialSearchTerm = "" }: BlogClient
   }, [searchTerm, fuse, posts]);
 
   return (
-    <div className="pt-20 pb-16">
-      <div className="max-w-5xl mx-auto px-4 space-y-8">
+    <main id="main-content" className="pt-28 pb-16">
+      <div className="max-w-[1080px] mx-auto px-5 sm:px-8 space-y-7">
         <div className="space-y-2">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-[#f05a28]">
+          <p className="text-xs tracking-wide text-[#77746d] dark:text-stone-400">
             Knowledge Base / Notes
           </p>
-          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-[#191916] transition-colors dark:text-stone-100">
+          <h1 className="text-[2rem] font-semibold tracking-[-0.035em] text-[#191916] transition-colors dark:text-stone-100">
             博客
           </h1>
-          <p className="text-[#66635c] transition-colors dark:text-stone-400">
+          <p className="text-sm leading-7 text-[#77746d] dark:text-stone-400">
             技术、区块链与折腾记录。
           </p>
           <div className="flex flex-wrap gap-2 pt-2">
@@ -45,10 +45,9 @@ export default function BlogClient({ posts, initialSearchTerm = "" }: BlogClient
               <Link
                 key={key}
                 href={`/blog/${key}`}
-                className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${getColorStyle(meta.color, 'badge')}`}
+                className="inline-flex items-center rounded-lg border border-[#dedbd4] px-3.5 py-2 text-xs text-[#68655f] transition-colors hover:border-[#bdb6aa] hover:bg-[#fffefa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c45330] dark:border-[#34342f] dark:text-stone-300 dark:hover:bg-[#252521]"
               >
                 <span>{meta.name}</span>
-                <span className="text-gray-500 dark:text-gray-400">→</span>
               </Link>
             ))}
           </div>
@@ -64,14 +63,11 @@ export default function BlogClient({ posts, initialSearchTerm = "" }: BlogClient
             placeholder="搜索文章…"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-3 pl-12 rounded-xl border border-gray-200 bg-white/90 backdrop-blur-sm
-                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                       dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-400
-                       transition-all"
+            className="w-full rounded-xl border border-[#dedbd4] bg-[#fffefa] py-3.5 pl-11 pr-12 text-sm text-[#282824] outline-none placeholder:text-[#87837a] focus:border-[#bc7256] focus:ring-2 focus:ring-[#bc7256]/15 dark:border-[#34342f] dark:bg-[#1b1b18] dark:text-stone-100"
           />
           <svg
             aria-hidden="true"
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#87837a]"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -82,7 +78,7 @@ export default function BlogClient({ posts, initialSearchTerm = "" }: BlogClient
             <button
               onClick={() => setSearchTerm("")}
               aria-label="清空搜索"
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              className="absolute right-4 top-1/2 -translate-y-1/2 rounded p-1 text-[#87837a] hover:text-[#c45330] focus-visible:outline-2 focus-visible:outline-[#c45330]"
             >
               ✕
             </button>
@@ -91,13 +87,13 @@ export default function BlogClient({ posts, initialSearchTerm = "" }: BlogClient
 
         {/* 搜索结果计数 */}
         {searchTerm && (
-          <p className="text-sm text-gray-500 dark:text-gray-400" aria-live="polite">
+          <p className="text-sm text-gray-500 dark:text-[#87837a]" aria-live="polite">
             找到 {filteredPosts.length} 篇文章
           </p>
         )}
 
         <ArticleList posts={filteredPosts} />
       </div>
-    </div>
+    </main>
   );
 }

@@ -123,6 +123,7 @@ test("work note sections are parsed from article markdown", () => {
   assert.match(problem.workNote.code ?? "", /formatMoney/);
   assert.match(problem.workNote.note ?? "", /统一处理空值/);
   assert.equal(problem.workNote.optional.length, 0);
+  assert.equal(problem.lang, "tsx");
 });
 
 test("PracticeManifestSchema rejects empty problems", () => {

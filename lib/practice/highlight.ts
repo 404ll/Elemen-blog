@@ -12,7 +12,7 @@ async function getHighlighter() {
   if (!highlighterPromise) {
     highlighterPromise = createHighlighter({
       themes: ["github-light", "github-dark"],
-      langs: ["javascript", "jsx", "css", "html"],
+      langs: ["javascript", "jsx", "tsx", "css", "html"],
     });
   }
   return highlighterPromise;

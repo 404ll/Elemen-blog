@@ -21,6 +21,8 @@ export default function Navbar() {
     setTheme(resolvedTheme === "dark" ? "light" : "dark");
   };
 
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) return null;
+
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   return (

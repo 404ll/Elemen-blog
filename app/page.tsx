@@ -1,8 +1,10 @@
-import { getAllPosts } from "@/lib/post";
+import { allBlogPosts } from "@/server/cms/posts";
 import HomeClient from "./HomeClient";
 
-export default function Home() {
-  const posts = getAllPosts();
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const posts = await allBlogPosts();
 
   return <HomeClient posts={posts} />;
 }

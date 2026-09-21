@@ -1,5 +1,7 @@
 import { renderMDX } from "@/lib/mdx";
-import { getAllPosts, getPostBySlug, normalizeTags } from "@/lib/post";
+import { getAllPosts, normalizeTags } from "@/lib/post";
+import { allBlogPosts, blogPost } from "@/server/cms/posts";
+import YouMindContent from "@/components/cms/YouMindContent";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Calendar, Clock } from "lucide-react";
@@ -7,11 +9,11 @@ import { mdxComponents } from "@/components/ui/MdxContent";
 import ReadingEnhancements from "@/components/ui/ReadingEnhancements";
 import CodeCopyButton from "@/components/ui/CodeCopyButton";
 import { extractHeadingsFromMdx } from "@/lib/headings";
-import ArticleList from "@/components/card/ArticleList";
+import ArticleCategory from "@/components/card/ArticleCategory";
 import { CATEGORIES } from "@/constant";
 import "./reading.css";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 type BlogPageProps = {
   params: Promise<{ slug: string[] }>;
@@ -28,8 +30,8 @@ function getCategoryMeta(slug: string | null) {
   return CATEGORIES[slug as keyof typeof CATEGORIES] ?? null;
 }
 
-function getPostsByCategory(category: string) {
-  return getAllPosts().filter((post) => post.category === category);
+async function getPostsByCategory(category: string) {
+  return (await allBlogPosts()).filter((post) => post.category === category);
 }
 
 function formatDate(dateString?: string) {
@@ -65,7 +67,7 @@ export async function generateMetadata({ params }: BlogPageProps) {
     };
   }
 
-  const post = getPostBySlug(slug);
+  const post = await blogPost(slug);
   if (!post) return {};
 
   return {
@@ -87,45 +89,16 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
 
   const categoryMeta = getCategoryMeta(slug);
   if (categoryMeta) {
-    const posts = getPostsByCategory(slug);
+    const posts = await getPostsByCategory(slug);
 
-    return (
-      <div className="pt-20 pb-16">
-        <div className="max-w-5xl mx-auto px-4 space-y-8">
-          <header className="space-y-3">
-            <p className="text-3xl font-bitcount tracking-[0.2em] text-gray-800 dark:text-gray-400 font-semibold transition-colors">
-              Category
-            </p>
-            <h1 className="text-xl font-bold text-black dark:text-white transition-colors">
-              {categoryMeta.name}
-            </h1>
-
-            <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 transition-colors">
-              <span className="text-gray-500 dark:text-gray-400">
-                {posts.length > 0 ? `${posts.length} 篇文章` : "暂无文章"}
-              </span>
-            </div>
-          </header>
-
-          {posts.length > 0 ? (
-            <ArticleList posts={posts} />
-          ) : (
-            <div className="bg-white/85 dark:bg-gray-900/85 p-10 text-center border border-black dark:border-white transition-colors">
-              <p className="text-gray-600 dark:text-gray-400 transition-colors">
-                这个分类还没有文章，敬请期待。
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
+    return <ArticleCategory name={categoryMeta.name} posts={posts} />;
   }
 
-  const post = getPostBySlug(slug);
+  const post = await blogPost(slug);
   if (!post) return notFound();
 
   const { frontmatter, content } = post;
-  const MDXContent = await renderMDX(content, { theme: { light: "github-light", dark: "github-dark" } });
+  const MDXContent = post.format === "mdx" ? await renderMDX(content, { theme: { light: "github-light", dark: "github-dark" } }) : null;
 
   const readingMinutes = Math.max(
     1,
@@ -185,7 +158,7 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
         {/* Body */}
         <main id="main-content" className="reading-body">
           <article className="article-copy mx-auto min-w-0">
-            <MDXContent components={mdxComponents} />
+            {MDXContent ? <MDXContent components={mdxComponents} /> : <YouMindContent content={content} />}
           </article>
         </main>
 

@@ -48,7 +48,7 @@
       "groupId": "formatting",
       "difficulty": "easy",
       "tags": ["金额", "格式化"],
-      "entry": "problems/work-money-format/code.js",
+      "entry": "problems/work-money-format/code.tsx",
       "article": "problems/work-money-format/article.md",
       "updatedAt": "2026-06-26"
     }

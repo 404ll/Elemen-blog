@@ -1,0 +1,7 @@
+import Link from "next/link";
+import { Folder, Files } from "lucide-react";
+import { folderPath, inFolder, type SourceFolder } from "@/server/youmind/folders";
+export default function FolderNavigation({ folders, documents, selected }: { folders: SourceFolder[]; documents: { parentGroupId?: string | null }[]; selected: string }) {
+  const ordered = folders.map(folder => ({ folder, path: folderPath(folder.id, folders) })).sort((a, b) => a.path.map(f => f.title).join("/").localeCompare(b.path.map(f => f.title).join("/"), "zh-CN"));
+  return <nav className="cms-folder-nav" aria-label="YouMind 文件夹"><p className="cms-eyebrow">文件夹</p><Link href="/admin" aria-current={selected === "all" ? "page" : undefined}><Files size={15} aria-hidden="true" /><span>全部文章</span><small>{documents.length}</small></Link><Link href="/admin?folder=root" aria-current={selected === "root" ? "page" : undefined}><Folder size={15} aria-hidden="true" /><span>未分组</span><small>{documents.filter(document => !document.parentGroupId).length}</small></Link>{ordered.map(({ folder, path }) => <Link key={folder.id} href={`/admin?folder=${folder.id}`} aria-current={selected === folder.id ? "page" : undefined} title={path.map(f => f.title).join(" / ")} style={{ paddingLeft: 10 + Math.min(path.length - 1, 6) * 12 }}><Folder size={15} aria-hidden="true" /><span>{folder.title || "未命名文件夹"}</span><small>{documents.filter(document => inFolder(document.parentGroupId, folder.id, folders)).length}</small></Link>)}</nav>;
+}

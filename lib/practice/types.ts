@@ -13,7 +13,12 @@ export type PracticeCategory =
   | "css";
 
 /** Shiki 代码高亮语言 */
-export type PracticeCodeLanguage = "javascript" | "jsx" | "css" | "html";
+export type PracticeCodeLanguage =
+  | "javascript"
+  | "jsx"
+  | "tsx"
+  | "css"
+  | "html";
 
 /** 顶层练习集合；缺省题目默认归入 handwriting */
 export type PracticeCollection = "handwriting" | "work";
