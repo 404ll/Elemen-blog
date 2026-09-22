@@ -14,13 +14,42 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   if (!admin) {
     const { error } = await searchParams;
     const githubReady = !!(process.env.CMS_GITHUB_CLIENT_ID && process.env.CMS_GITHUB_CLIENT_SECRET && process.env.CMS_GITHUB_USER && process.env.CMS_SESSION_SECRET && process.env.CMS_ORIGIN);
-    return <main className="cms-login"><p className="cms-eyebrow">ELEMEN / PUBLISHING</p><h1>把创作带到博客。</h1><p>在 YouMind 写作和配图，在这里预览、同步。</p>
-      {error && <p role="alert" className="cms-error">登录未成功。请使用已配置的博客管理员账号，并检查 GitHub 登录设置。</p>}
-      {/* OAuth must use a full navigation rather than an RSC request. */}
-      {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-      {githubReady ? <a className="cms-primary" href="/api/cms/auth/github">使用 GitHub 登录</a> : <p className="cms-muted">线上 GitHub 登录尚未配置。</p>}
-      {localPreviewEnabled() && <form action="/api/cms/auth/local" method="post"><button className="cms-primary">进入本地测试后台</button><p className="cms-help">仅开发环境可用。同步内容只保存在这台电脑。</p></form>}
-    </main>;
+    return (
+      <main className="cms-login">
+        <p className="cms-eyebrow">ELEMEN / PUBLISHING</p>
+        <h1>登录写作工作台</h1>
+        <p>使用博客管理员的 GitHub 账号登录，管理和发布文章。</p>
+        {error && (
+          <p role="alert" className="cms-error">
+            登录未成功。请使用已配置的博客管理员账号，并检查 GitHub 登录设置。
+          </p>
+        )}
+        <div className="cms-login-actions">
+          {githubReady ? (
+            // OAuth must use a full navigation rather than an RSC request.
+            // eslint-disable-next-line @next/next/no-html-link-for-pages
+            <a className="cms-primary" href="/api/cms/auth/github">
+              使用 GitHub 登录
+            </a>
+          ) : (
+            <>
+              <button className="cms-primary" type="button" disabled aria-describedby="login-unavailable">
+                使用 GitHub 登录
+              </button>
+              <p id="login-unavailable" className="cms-help">
+                GitHub 登录暂不可用，请站点管理员完成登录配置后再试。
+              </p>
+            </>
+          )}
+        </div>
+        {localPreviewEnabled() && (
+          <form action="/api/cms/auth/local" method="post">
+            <button className="cms-primary" type="submit">进入本地测试后台</button>
+            <p className="cms-help">仅开发环境可用。同步内容只保存在这台电脑。</p>
+          </form>
+        )}
+      </main>
+    );
   }
   try {
     const boardId = await configuredBoard();

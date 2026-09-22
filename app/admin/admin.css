@@ -13,3 +13,16 @@
 .cms-mobile-session{display:none}@media(max-width:800px){.cms-mobile-session{display:flex;justify-content:space-between;gap:12px;margin:-5px 0 20px;font-size:10px;color:var(--cms-muted)}.cms-mobile-session .cms-dot{margin-right:4px}.cms-mobile-session form{margin-left:auto}}
 @media(min-width:801px){.cms-sidebar{position:sticky;top:0;align-self:start;height:calc(100vh - 76px);min-height:650px}}
 .cms-config-link{margin-top:16px;color:var(--cms-accent)}.cms-folder-nav{margin-top:26px}.cms-folder-nav .cms-eyebrow{margin-bottom:9px}.cms-folder-nav a{display:flex;align-items:center;gap:8px;padding:9px 10px;margin:2px -5px;border-radius:6px;font-size:12px;color:var(--cms-muted)}.cms-folder-nav a:hover,.cms-folder-nav a[aria-current=page]{background:#68795710;color:var(--cms-ink)}.cms-folder-nav a>svg{flex-shrink:0}.cms-folder-nav a>span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.cms-folder-nav small{margin-left:auto;font:10px ui-monospace,monospace}.cms-source-toolbar{display:flex;align-items:center;justify-content:space-between;gap:15px;margin:0 0 15px;font-size:11px;color:var(--cms-muted)}.cms-source-toolbar a{color:var(--cms-accent)}.cms-source-settings{max-width:680px;margin:45px auto;padding:36px;background:var(--cms-bg);border:1px solid var(--cms-line);border-radius:12px}.cms-source-settings>.cms-eyebrow{margin-top:32px}.cms-source-form{margin-top:30px}.cms-source-form>label{display:block;font-size:13px;margin-bottom:12px}.cms-source-form>.cms-primary{margin-top:14px}.cms-settings-note{border-top:1px solid var(--cms-line);padding-top:24px;margin-top:32px}.cms-settings-note h2{font-size:13px;margin-bottom:8px}.cms-settings-note p{font-size:12px;color:var(--cms-muted);line-height:1.9}.cms-mobile-folders{display:none}.cms-dashboard-header h1{overflow-wrap:anywhere;font-size:28px}.cms-sidebar{overflow-y:auto}.cms-sidebar-note{display:none}.cms-sidebar-bottom{padding-top:32px}@media(max-width:800px){.cms-mobile-folders{display:block;border:1px solid var(--cms-line);background:var(--cms-bg);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px}.cms-mobile-folders summary{cursor:pointer}.cms-mobile-folders .cms-folder-nav{margin-top:12px}.cms-source-settings{margin:24px 16px;padding:25px}.cms-dashboard-header h1{font-size:24px}}
+
+.cms-login-actions {
+  margin-top: 28px;
+}
+
+.cms-login-actions .cms-primary {
+  width: 100%;
+}
+
+.cms-login-actions .cms-primary:disabled {
+  cursor: not-allowed;
+  background: var(--cms-ink);
+}
