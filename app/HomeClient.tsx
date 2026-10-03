@@ -54,12 +54,27 @@ export default function HomeClient({ posts }: { posts: Post[] }) {
                 <li key={post.slug}>
                   <article className={styles.card} data-category={post.category}>
                     <Link href={`/blog/${post.slug}`} className={styles.cardLink}>
-                      <div className={styles.cover} data-pattern={index % 3}>
-                        <span className={styles.coverTop}><span>{label}</span><ArrowUpRight size={17} /></span>
-                        <h2>{post.title}</h2>
-                        <span className={styles.coverBottom} aria-hidden="true"><span>学习手记</span><span>Elemen / {String(index + 1).padStart(2, "0")}</span></span>
-                      </div>
+                      {post.cover ? (
+                        <div className={styles.imageCover}>
+                          {/* Source images are served directly by their CDN. */}
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={post.cover}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                      ) : (
+                        <div className={styles.cover} data-pattern={index % 3}>
+                          <span className={styles.coverTop}><span>{label}</span><ArrowUpRight size={17} /></span>
+                          <h2>{post.title}</h2>
+                          <span className={styles.coverBottom} aria-hidden="true"><span>学习手记</span><span>Elemen / {String(index + 1).padStart(2, "0")}</span></span>
+                        </div>
+                      )}
                       <div className={styles.cardBody}>
+                        {post.cover && <h2 className={styles.imageTitle}>{post.title}</h2>}
                         {(post.subtitle || post.excerpt) && <p className={styles.excerpt}>{post.subtitle || post.excerpt}</p>}
                         <div className={styles.meta}>
                           <span className={styles.author}><span className={styles.avatar} aria-hidden="true">e.</span>{post.author || "Elemen"}</span>

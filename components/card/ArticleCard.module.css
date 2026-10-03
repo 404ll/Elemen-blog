@@ -76,3 +76,7 @@
 :global(.dark) .card:hover { border-color: #696155; }
 
 @media (prefers-reduced-motion: reduce) { .card { transition: none; } }
+
+.cover { aspect-ratio: 16 / 9; overflow: hidden; border-radius: 15px 15px 0 0; background: var(--card-tint); }
+.cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.headingWithCover { min-height: auto; gap: 12px; border-radius: 0; }

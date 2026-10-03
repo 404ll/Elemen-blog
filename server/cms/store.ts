@@ -1,5 +1,6 @@
 import { type Client } from "@libsql/client";
 import { randomUUID } from "node:crypto";
+import { extractYouMindCover } from "../../lib/markdown/cover.ts";
 import { CmsError, type PublishedArticle, type PublishInput, type SourceDocument, sourceHash } from "./model.ts";
 
 export function createArticleStore(db: Client) {
@@ -41,6 +42,7 @@ export function createArticleStore(db: Client) {
         const article: PublishedArticle = {
           sourceId: document.id, boardId: document.boardId, sourceHash: hash, sourceUpdatedAt: document.updatedAt,
           revision: randomUUID(), slug, title: document.title, markdown: document.content,
+          cover: extractYouMindCover(document.content),
           category: input.category, excerpt: input.excerpt, tags: [...new Set(input.tags)],
           publishedAt: previous?.publishedAt ?? now, syncedAt: now,
         };

@@ -13,6 +13,30 @@ import { createArticleStore } from "../server/cms/store.ts";
 import { publishSchema, sourceHash, type SourceDocument, type PublishInput } from "../server/cms/model.ts";
 import { cleanYouMindNodes, normalizeYouMindMarkdown, safeImageUrl } from "../lib/markdown/youmind.ts";
 import { signSession, verifySession } from "../server/auth/session.ts";
+import { extractYouMindCover } from "../lib/markdown/cover.ts";
+
+test("cover selects a real supported image, ignoring code and unsafe URLs", () => {
+  const url = "https://cdn.youmindassets.com/gen-images/cover.png";
+  const example = "https://cdn.gooo.ai/example.png";
+  assert.equal(extractYouMindCover(`\`\`\`md\n![example](${example})\n\`\`\`\n\n![unsafe](https://evil.test/a.png)\n\n![{\"alt\":\"封面\",\"width\":1067}](${url})\n\n![later](${example})`), url);
+  assert.equal(extractYouMindCover(`![cover][asset]\n\n[asset]: ${url}`), url);
+  assert.equal(extractYouMindCover(`\`![example](${example})\`\n\n没有封面`), undefined);
+});
+
+test("publishing stores the cover and removes it when the image is removed", async () => {
+  const db = createClient({ url: "file::memory:" });
+  try {
+    const store = createArticleStore(db);
+    const url = "https://cdn.youmindassets.com/gen-images/cover.png";
+    const source = { ...document, content: `![封面](${url})\n\n正文` };
+    const first = await store.publish(source, { ...input, sourceHash: sourceHash(source) });
+    assert.equal((await store.list())[0].cover, url);
+    await store.publish(document, { ...input, expectedRevision: first.revision });
+    assert.equal((await store.list())[0].cover, undefined);
+  } finally {
+    db.close();
+  }
+});
 
 const document: SourceDocument = { $class: "DocumentV3Dto", id: "019fb372-d49d-723d-a38a-93bab2128525", boardId: "019c17cc-8dd9-7f84-b744-03e03737ce7b", title: "测试文章", content: "原文\n\n```ts\nconst x = 1;\n```", updatedAt: "2026-09-21T00:00:00Z" };
 const input: PublishInput = { id: document.id, expectedRevision: null, sourceHash: sourceHash(document), slug: "test-article", category: "ai", excerpt: "", tags: ["Agent"] };

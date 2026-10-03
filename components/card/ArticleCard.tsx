@@ -18,7 +18,20 @@ export default function ArticleCard({ post, displayDate = post.date }: { post: P
 
   return (
     <article className={styles.card} data-category={category}>
-      <div className={styles.heading}>
+      {post.cover && (
+        <div className={styles.cover}>
+          {/* Source images are served directly by their CDN. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={post.cover}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+          />
+        </div>
+      )}
+      <div className={`${styles.heading} ${post.cover ? styles.headingWithCover : ""}`}>
         {category ? (
           <Link href={`/blog/${category}`} className={styles.category}>
             <span aria-hidden="true" className={styles.dot} />

@@ -20,6 +20,7 @@ export type PublishInput = z.infer<typeof publishSchema>;
 export interface PublishedArticle {
   sourceId: string; boardId: string; sourceHash: string; sourceUpdatedAt: string;
   revision: string; slug: string; title: string; markdown: string;
+  cover?: string;
   category: string; excerpt: string; tags: string[]; publishedAt: string; syncedAt: string;
 }
 export function sourceHash(document: Pick<SourceDocument, "title" | "content">) {
