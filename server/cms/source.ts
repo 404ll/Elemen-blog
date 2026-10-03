@@ -15,10 +15,12 @@ export async function getSourceDocument(id: string) {
   return readDocument(id, await configuredBoard());
 }
 export async function saveSource(link: string) {
+  // 提取 UUID 格式的 Board ID。
   const boardId = parseBoardLink(link);
   const store = cmsStore();
   if (!store) throw new CmsError("请先配置线上内容数据库。", 503);
   const { documents, folders } = await listSourceBoard(boardId);
+  // 保存 Board ID 到数据库。
   await store.setBoard(boardId);
   return { boardId, documents: documents.length, folders: folders.length };
 }

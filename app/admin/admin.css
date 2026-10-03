@@ -26,3 +26,19 @@
   cursor: not-allowed;
   background: var(--cms-ink);
 }
+
+.cms-quick-sync {
+  color: var(--cms-accent);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cms-quick-sync:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.cms-articles .cms-row-error {
+  color: #b14335;
+  margin-top: 7px;
+}
