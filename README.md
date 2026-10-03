@@ -1,97 +1,29 @@
-<div align="center">
-  <h1>🧩 Elemen — Pixel Web Tech Blog</h1>
-  <p><strong>Frontend × Web3 · Pixel Aesthetics · MDX Powered</strong></p>
-  
-  <p>
-    <a href="./README.zh.md">中文</a>
-  </p>
-</div>
+# Elemen
 
----
+个人博客。记录开发中遇到的问题、读过的代码和做过的练习。
 
-## 🚀 About This Blog
+## 内容
 
-A personal technical space where **Web2 engineering** meets **Web3 innovation**, built with a fully modern stack:
+- **文章**：Frontend、Backend、AI、Algorithm、Web3，以及零散笔记。
+- **代码练习**：手写题与实践记录，保留思路和源码。
 
-- **Next.js 16 App Router**
-- **React 19**
-- **TypeScript**
-- **TailwindCSS v4**
-- **MDX Content System**
+## 技术栈
 
-I write about frontend engineering, blockchain tech, smart contracts, Move/Solidity, UI/UX, and my component library.
+Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · MDX
 
-The site includes **blog** (`/blog`), **projects** (`/project`), **handwriting practice** (`/practice`, wiki-style index + source display), and **about** (`/about`).
+文章搜索使用 Fuse.js，代码高亮使用 Shiki。
 
----
-
-## 🧰 Tech Stack
-
-| Category | Technology |
-|----------|------------|
-| **Framework** | Next.js 16 (App Router, Server Components, ISR) |
-| **UI** | React 19, TailwindCSS v4, Framer Motion |
-| **Content** | MDX, Shiki (Code Highlighting), Remark GFM |
-| **Search** | Fuse.js (Fuzzy Search) |
-| **DX** | TypeScript, Turbopack, Husky, ESLint |
-
----
-
-## 🎨 Features
-
-- 🔤 **MDX-based article system** — Write with components
-- ✍️ **Handwriting practice** — `practice/` submodule, `/practice` sidebar + source view
-- 🔍 **Fuzzy search** — Instant article search with Fuse.js
-- 🌙 **Dark mode** — System-aware theme switching
-- ⚡ **ISR (Incremental Static Regeneration)** — Fast builds, fresh content
-- 🎮 **Retro pixel aesthetic** — Custom fonts & 2-bit style
-- 📱 **Responsive design** — Mobile-first approach
-
----
-
-## 📁 Project Structure
-
-```
-app/
-├── (site)/
-│   ├── blog/          # Blog list & article pages
-│   ├── practice/      # Handwriting practice (wiki layout)
-│   ├── project/       # Projects showcase
-│   └── about/         # About page
-├── fonts/             # Local fonts (JetBrains Mono, Zen Maru Gothic)
-└── layout.tsx         # Root layout
-
-content/               # MDX articles
-practice/              # git submodule (manifest + source files)
-components/            # Reusable components
-lib/                   # Utilities (MDX, posts, practice)
-scripts/               # Dev scripts (new-post CLI)
-```
-
----
-
-## 🚀 Getting Started
+## 本地运行
 
 ```bash
 git clone --recurse-submodules https://github.com/404ll/Elemen-blog.git
 cd Elemen-blog
-pnpm install
-pnpm dev
+npm install
+npm run dev
 ```
 
-```bash
-# Build for production
-pnpm build
+新建文章：`npm run new-post`。
 
-# Create a new post (interactive CLI)
-npm run new-post
-
-# Sync practice submodule
-pnpm practice:sync
-```
-
----
-
-## 📄 License
+## License
 
 MIT
