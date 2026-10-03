@@ -19,7 +19,15 @@ export default async function YouMindContent({ content }: { content: string }) {
       return <span className="cms-image">
         {/* The source CDN supplies optimized variants; native images also support old documents without dimensions. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={displayUrl} alt={meta?.alt || alt || ""} width={meta?.width} height={meta?.height} loading="lazy" decoding="async" />
+        <img
+          src={displayUrl}
+          alt={meta?.alt || alt || ""}
+          width={meta?.width}
+          height={meta?.height}
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+        />
         {meta?.caption && <span className="cms-caption">{meta.caption}</span>}
       </span>;
     },
