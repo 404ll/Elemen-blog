@@ -1,12 +1,5 @@
 import Link from "next/link";
-import {
-  ArrowUpRight,
-  BookOpen,
-  FileText,
-  LogOut,
-  Plug,
-  Monitor,
-} from "lucide-react";
+import { ArrowUpRight, LogOut, Monitor } from "lucide-react";
 import { currentAdmin, localPreviewEnabled } from "@/server/auth/admin";
 import { configuredBoard } from "@/server/cms/source";
 import { listSourceBoard } from "@/server/youmind/client";
@@ -33,7 +26,6 @@ export default async function AdminPage({
     );
     return (
       <main className="cms-login">
-        <p className="cms-eyebrow">ELEMEN / PUBLISHING</p>
         <h1>登录写作工作台</h1>
         <p>使用博客管理员的 GitHub 账号登录，管理和发布文章。</p>
         {error && (
@@ -147,17 +139,11 @@ export default async function AdminPage({
     return (
       <main className="cms-workspace">
         <aside className="cms-sidebar">
-          <p className="cms-eyebrow">WORKSPACE</p>
           <Link href="/admin" className="cms-sidebar-current">
-            <FileText size={17} aria-hidden="true" />
             文章库 <span>{documents.length}</span>
           </Link>
           <div className="cms-source-card">
-            <span className="cms-source-icon">
-              <BookOpen size={22} aria-hidden="true" />
-            </span>
             <h2>YouMind Board</h2>
-            <p>你的创作，从这里出发。</p>
             <a
               href={`https://youmind.com/boards/${boardId}`}
               target="_blank"
@@ -177,14 +163,6 @@ export default async function AdminPage({
             documents={documents}
             selected={selected}
           />
-          <div className="cms-sidebar-note">
-            <Plug size={16} aria-hidden="true" />
-            <p>
-              在 YouMind 写作和配图，
-              <br />
-              在这里发布完成的作品。
-            </p>
-          </div>
           <div className="cms-sidebar-bottom">
             {admin === "local-preview" && (
               <div className="cms-local">
@@ -205,12 +183,10 @@ export default async function AdminPage({
         <section className="cms-dashboard">
           <header className="cms-dashboard-header">
             <div>
-              <p className="cms-eyebrow">YOUR WORDS, YOUR SPACE</p>
               <h1>
                 {folderTitle}
                 <span className="cms-total">{rows.length}</span>
               </h1>
-              <p className="cms-muted">从灵感到发布，让每一篇好内容被看见。</p>
             </div>
             <a
               className="cms-secondary"

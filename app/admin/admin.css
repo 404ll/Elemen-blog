@@ -42,3 +42,275 @@
   color: #b14335;
   margin-top: 7px;
 }
+
+/* Keep the writing workspace in the same visual language as the blog. */
+.cms-admin {
+  --cms-line: #dedbd4;
+  --cms-muted: #77746d;
+  --cms-bg: #fffefa;
+  --cms-canvas: #f2f1ed;
+  --cms-ink: #191916;
+  --cms-accent: #a45e3f;
+  font-family: inherit;
+}
+
+.dark .cms-admin {
+  --cms-line: #34342f;
+  --cms-muted: #a8a29a;
+  --cms-bg: #1b1b18;
+  --cms-canvas: #121210;
+  --cms-ink: #f5f5f4;
+  --cms-accent: #e3a481;
+}
+
+.cms-appbar {
+  height: 68px;
+  border-bottom-color: var(--cms-line);
+  background: var(--cms-canvas);
+}
+
+.cms-brand {
+  gap: 10px;
+}
+
+.cms-brand-mark {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.cms-brand strong {
+  font-family: var(--font-display);
+  font-size: 19px;
+  letter-spacing: .02em;
+}
+
+.cms-brand-divider {
+  color: var(--cms-line);
+}
+
+.cms-visit {
+  padding: 9px 12px;
+  border-radius: 999px;
+  transition: background .15s, color .15s;
+}
+
+.cms-visit:hover {
+  background: var(--cms-bg);
+  color: var(--cms-ink);
+}
+
+.cms-workspace {
+  grid-template-columns: 232px minmax(0, 1fr);
+  min-height: calc(100vh - 68px);
+}
+
+.cms-sidebar {
+  padding-top: 36px;
+  padding-bottom: 28px;
+}
+
+.cms-sidebar-current,
+.cms-folder-nav a,
+.cms-filters button,
+.cms-logout {
+  border-radius: 999px;
+}
+
+.cms-sidebar-current,
+.cms-folder-nav a:hover,
+.cms-folder-nav a[aria-current=page] {
+  background: color-mix(in srgb, var(--cms-accent) 9%, transparent);
+  color: var(--cms-ink);
+}
+
+.cms-sidebar-current {
+  padding: 12px 14px;
+}
+
+.cms-source-card,
+.cms-library,
+.cms-preview-grid > div,
+.cms-publish-panel,
+.cms-source-settings,
+.cms-login {
+  border-radius: 22px;
+  box-shadow: 0 8px 30px #29292308;
+}
+
+.cms-source-card {
+  margin-top: 26px;
+  padding: 18px;
+}
+
+.cms-source-card > a,
+.cms-config-link,
+.cms-source-toolbar a {
+  color: var(--cms-accent);
+}
+
+.cms-source-card > a:hover,
+.cms-config-link:hover,
+.cms-source-toolbar a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.cms-dot {
+  width: 6px;
+  height: 6px;
+  background: #86a77c;
+}
+
+.cms-dashboard {
+  padding-top: 44px;
+}
+
+.cms-dashboard-header {
+  margin-bottom: 24px;
+}
+
+.cms-dashboard-header h1 {
+  font-size: 30px;
+}
+
+.cms-total {
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: var(--cms-bg);
+}
+
+.cms-primary,
+.cms-secondary {
+  min-height: 42px;
+  border-radius: 999px;
+  padding-inline: 18px;
+}
+
+.cms-primary {
+  background: var(--cms-ink);
+  color: var(--cms-bg);
+}
+
+.cms-primary:hover {
+  background: var(--cms-accent);
+}
+
+.cms-secondary:hover {
+  border-color: var(--cms-accent);
+  color: var(--cms-accent);
+}
+
+.cms-admin :is(input, select, textarea) {
+  border-radius: 14px;
+}
+
+.cms-tools {
+  padding: 16px 18px;
+}
+
+.cms-filters {
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cms-filters button {
+  padding: 9px 13px;
+}
+
+.cms-filters button[aria-pressed=true] {
+  background: color-mix(in srgb, var(--cms-accent) 10%, transparent);
+  color: var(--cms-accent);
+}
+
+.cms-search {
+  width: 215px;
+}
+
+.cms-search input {
+  border-radius: 999px;
+  background: var(--cms-canvas);
+}
+
+.cms-list-heading {
+  background: color-mix(in srgb, var(--cms-canvas) 72%, var(--cms-bg));
+}
+
+.cms-articles > li {
+  min-height: 92px;
+}
+
+.cms-article-main {
+  padding-block: 16px;
+}
+
+.cms-articles h2 {
+  margin-bottom: 6px;
+}
+
+.cms-badge {
+  border-radius: 999px;
+  padding: 6px 9px;
+}
+
+.cms-row-open {
+  color: var(--cms-accent);
+}
+
+.cms-quick-sync {
+  color: var(--cms-accent);
+}
+
+.cms-preview-grid > div,
+.cms-publish-panel {
+  background: var(--cms-bg);
+}
+
+.cms-publish-icon {
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--cms-accent) 10%, transparent);
+}
+
+.cms-mobile-folders {
+  border-radius: 16px;
+}
+
+@media (min-width: 801px) {
+  .cms-sidebar {
+    height: calc(100vh - 68px);
+  }
+}
+
+@media (max-width: 800px) {
+  .cms-workspace {
+    display: block;
+  }
+
+  .cms-appbar {
+    height: 64px;
+  }
+}
+
+@media (max-width: 520px) {
+  .cms-tools {
+    padding: 15px;
+  }
+
+  .cms-filters {
+    justify-content: flex-start;
+    gap: 3px;
+  }
+
+  .cms-filters button {
+    padding: 8px 10px;
+  }
+
+  .cms-search {
+    width: 100%;
+  }
+
+  .cms-source-settings,
+  .cms-login {
+    border-radius: 20px;
+  }
+}

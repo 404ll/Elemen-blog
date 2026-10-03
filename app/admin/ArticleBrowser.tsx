@@ -2,13 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  ArrowRight,
-  ArrowUpRight,
-  FileText,
-  Search,
-  SearchX,
-} from "lucide-react";
+import { ArrowUpRight, Search } from "lucide-react";
 
 type Row = {
   folder: string;
@@ -127,9 +121,6 @@ export default function ArticleBrowser({ rows }: { rows: Row[] }) {
         {visible.map((row) => (
           <li key={row.id}>
             <div className="cms-article-main">
-              <span className={`cms-document-icon cms-icon-${row.status}`}>
-                <FileText size={21} strokeWidth={1.5} aria-hidden="true" />
-              </span>
               <div className="cms-article-text">
                 <h2>
                   <Link href={`/admin/articles/${row.id}`} prefetch={false}>
@@ -188,16 +179,15 @@ export default function ArticleBrowser({ rows }: { rows: Row[] }) {
               prefetch={false}
               aria-label={`预览${row.title}`}
             >
-              预览 <ArrowRight size={16} aria-hidden="true" />
+              预览
             </Link>
           </li>
         ))}
       </ul>
       {visible.length === 0 && (
         <div className="cms-empty">
-          <SearchX size={28} aria-hidden="true" />
           <h2>
-            {rows.length ? "没有找到匹配的文章" : "这里，等待你的第一篇文章"}
+            {rows.length ? "没有找到匹配的文章" : "暂无文章"}
           </h2>
           <p>
             {rows.length
