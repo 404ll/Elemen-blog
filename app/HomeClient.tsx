@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Search } from "lucide-react";
-import KnowledgeRelationMap from "@/components/home/KnowledgeRelationMap";
 import { CATEGORIES } from "@/constant";
 import type { Post } from "@/types";
 import styles from "./HomeClient.module.css";
@@ -23,11 +22,7 @@ export default function HomeClient({ posts }: { posts: Post[] }) {
     <main id="main-content" className={styles.page}>
       <div className={styles.container}>
         <header className={styles.intro}>
-          <div>
-            <p className={styles.eyebrow}>ELEMEN’S NOTES</p>
-            <h1>在这里，记录每一次想明白。</h1>
-            <p className={styles.description}>关于代码、AI，以及那些值得记下来的小发现。</p>
-          </div>
+          <h1>文章</h1>
           <form action="/blog" method="get" role="search" className={styles.search}>
             <Search size={18} aria-hidden="true" />
             <label htmlFor="home-search" className="sr-only">搜索笔记</label>
@@ -48,13 +43,13 @@ export default function HomeClient({ posts }: { posts: Post[] }) {
           </div>
 
           <ol className={styles.grid}>
-            {filteredPosts.slice(0, visibleCount).map((post, index) => {
+            {filteredPosts.slice(0, visibleCount).map((post) => {
               const label = CATEGORIES[post.category as keyof typeof CATEGORIES]?.name ?? post.category ?? "Note";
               return (
                 <li key={post.slug}>
                   <article className={styles.card} data-category={post.category}>
                     <Link href={`/blog/${post.slug}`} className={styles.cardLink}>
-                      {post.cover ? (
+                      {post.cover && (
                         <div className={styles.imageCover}>
                           {/* Source images are served directly by their CDN. */}
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -66,18 +61,13 @@ export default function HomeClient({ posts }: { posts: Post[] }) {
                             referrerPolicy="no-referrer"
                           />
                         </div>
-                      ) : (
-                        <div className={styles.cover} data-pattern={index % 3}>
-                          <span className={styles.coverTop}><span>{label}</span><ArrowUpRight size={17} /></span>
-                          <h2>{post.title}</h2>
-                          <span className={styles.coverBottom} aria-hidden="true"><span>学习手记</span><span>Elemen / {String(index + 1).padStart(2, "0")}</span></span>
-                        </div>
                       )}
                       <div className={styles.cardBody}>
-                        {post.cover && <h2 className={styles.imageTitle}>{post.title}</h2>}
+                        <span className={styles.category}>{label}</span>
+                        <h2 className={styles.title}>{post.title}</h2>
                         {(post.subtitle || post.excerpt) && <p className={styles.excerpt}>{post.subtitle || post.excerpt}</p>}
                         <div className={styles.meta}>
-                          <span className={styles.author}><span className={styles.avatar} aria-hidden="true">e.</span>{post.author || "Elemen"}</span>
+                          <span className={styles.author}>{post.author || "Elemen"}</span>
                           <time dateTime={post.date}>{dateFormatter.format(new Date(post.date)).replaceAll("/", ".")}</time>
                         </div>
                       </div>
@@ -96,15 +86,6 @@ export default function HomeClient({ posts }: { posts: Post[] }) {
           </div>
         </section>
 
-        <details className={styles.explore}>
-          <summary>沿着知识继续探索 <span>知识关系 / 正在整理</span></summary>
-          <div className={styles.exploreBody}>
-            <KnowledgeRelationMap />
-            <div><h2>正在整理</h2><p>Selection → Range → XPath → normalize()</p>
-              <nav aria-label="主题索引">{topics.map(([key, value]) => <Link key={key} href={`/blog/${key}`}>{value.name} <ArrowUpRight size={12} aria-hidden="true" /></Link>)}</nav>
-            </div>
-          </div>
-        </details>
       </div>
     </main>
   );

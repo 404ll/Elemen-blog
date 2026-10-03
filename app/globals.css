@@ -58,6 +58,7 @@
       ========================================================= */
 html {
   scroll-behavior: smooth;
+  overflow-y: scroll;
   -webkit-text-size-adjust: 100%;
 }
 
