@@ -2,6 +2,7 @@
 import Image from 'next/image';
 import { useEffect, useState, useRef } from 'react';
 import { PROFILE } from '@/config/profile';
+import { BriefcaseBusiness, Mail, MapPin, Wrench } from 'lucide-react';
 
 // 打字机 hook：时间驱动，固定速度逐字输出，与网络/数据来源无关
 // indexRef 用 ref 而不是 state，避免每次 tick 都触发 re-render
@@ -31,23 +32,23 @@ export default function AboutPage() {
   const isDone = bio.length === PROFILE.bio.length;
 
   return (
-    <div className="pt-20 pb-16">
+    <div className="pt-28 pb-16">
       <div className="max-w-4xl mx-auto px-4 space-y-8">
         {/* 个人信息卡片 */}
-        <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl p-8 shadow-lg">
+        <div className="rounded-[28px] border border-[#e4e1db] bg-[#fffefa] p-8 shadow-[0_8px_30px_#29292308] dark:border-[#34342f] dark:bg-[#1b1b18]">
           <div className="flex items-center gap-4 mb-6">
             <Image
-              src="/logo.png"
+              src="/brand/flame-mark.png"
               alt="Elemen"
               width={80}
               height={80}
-              className="w-16 h-16 p-2"
+              className="w-16 h-16 rounded-2xl bg-[#f2f1ed] p-1 dark:bg-[#252521]"
             />
             <div>
               <h1 className="text-2xl font-bold text-black dark:text-white mb-2">{PROFILE.name}</h1>
               <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
-                <span>📍 {PROFILE.location}</span>
-                <a href={`mailto:${PROFILE.email}`} className="hover:text-blue-600 dark:hover:text-blue-400">✉️ {PROFILE.email}</a>
+                <span className="inline-flex items-center gap-1.5"><MapPin size={15} aria-hidden="true" />{PROFILE.location}</span>
+                <a href={`mailto:${PROFILE.email}`} className="inline-flex items-center gap-1.5 hover:text-[#a45e3f]"><Mail size={15} aria-hidden="true" />{PROFILE.email}</a>
               </div>
             </div>
           </div>
@@ -72,9 +73,9 @@ export default function AboutPage() {
 
 
         {/* 工作经历 */}
-        <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl p-8 shadow-lg">
+        <div className="rounded-[28px] border border-[#e4e1db] bg-[#fffefa] p-8 shadow-[0_8px_30px_#29292308] dark:border-[#34342f] dark:bg-[#1b1b18]">
           <h2 className="text-2xl font-bold text-black dark:text-white mb-6 flex items-center gap-2">
-            <span>💼</span>
+            <BriefcaseBusiness size={22} strokeWidth={1.8} aria-hidden="true" />
             <span>实习经历</span>
           </h2>
           <div className="space-y-6">
@@ -99,9 +100,9 @@ export default function AboutPage() {
 
 
         {/* 职业技能 */}
-        <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl p-8 shadow-lg">
+        <div className="rounded-[28px] border border-[#e4e1db] bg-[#fffefa] p-8 shadow-[0_8px_30px_#29292308] dark:border-[#34342f] dark:bg-[#1b1b18]">
           <h2 className="text-2xl font-bold text-black dark:text-white mb-6 flex items-center gap-2">
-            <span>🛠️</span>
+            <Wrench size={22} strokeWidth={1.8} aria-hidden="true" />
             <span>职业技能</span>
            </h2>
           <ul className="space-y-3 text-gray-700 dark:text-gray-300 border-l-2 border-black/20 dark:border-white/20 pl-4">

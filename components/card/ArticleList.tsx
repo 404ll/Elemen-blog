@@ -11,7 +11,7 @@ export default function ArticleList({ posts }: { posts: Post[] }) {
   }
 
   return (
-    <ol className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6">
+    <ol className="flex flex-col gap-2.5">
       {posts.map((post) => (
         <li key={post.slug} className="min-w-0">
           <ArticleCard post={post} />

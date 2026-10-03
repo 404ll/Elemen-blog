@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Github, Menu, Moon, Search, Sun, X } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -26,24 +27,23 @@ export default function Navbar() {
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-[#cac7bf]/80 bg-[#f2f1ed]/92 text-[#191916] backdrop-blur-md dark:border-white/15 dark:bg-[#121210]/92 dark:text-stone-50">
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-[#dedbd4]/70 bg-[#f2f1ed]/92 text-[#191916] backdrop-blur-md dark:border-white/10 dark:bg-[#121210]/92 dark:text-stone-50">
       <nav aria-label="主导航" className="mx-auto flex h-16 max-w-[1376px] items-center justify-between px-5 sm:px-8 lg:px-12">
         <Link href="/" className="group inline-flex items-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f05a28]" onClick={() => setMenuOpen(false)}>
-          <span aria-hidden="true" className="h-2 w-2 bg-[#f05a28] transition-transform group-hover:rotate-45 motion-reduce:transition-none" />
+          <Image src="/brand/flame-mark.png" alt="" width={28} height={28} className="h-7 w-7 object-contain transition-transform group-hover:scale-110 motion-reduce:transition-none" />
           <span className="font-bitcount text-base font-semibold tracking-[0.04em] sm:text-lg">Elemen</span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#77746d] dark:text-stone-400">/ KB</span>
         </Link>
 
-        <div className="hidden h-full items-center gap-8 md:flex">
+        <div className="hidden items-center gap-1 rounded-full bg-[#e9e7e1]/70 p-1 md:flex dark:bg-white/5">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               aria-current={isActive(link.href) ? "page" : undefined}
-              className={`relative flex h-full items-center text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-6px] focus-visible:outline-[#f05a28] ${
+              className={`rounded-full px-4 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f05a28] ${
                 isActive(link.href)
-                  ? "font-medium text-[#191916] after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-[#f05a28] dark:text-stone-50"
-                  : "text-[#68655f] hover:text-[#f05a28] dark:text-stone-400"
+                  ? "bg-[#fffefa] font-medium text-[#191916] shadow-sm dark:bg-[#34342f] dark:text-stone-50"
+                  : "text-[#68655f] hover:bg-[#fffefa]/65 hover:text-[#191916] dark:text-stone-400 dark:hover:bg-white/10 dark:hover:text-stone-50"
               }`}
             >
               {link.label}
@@ -55,7 +55,7 @@ export default function Navbar() {
           <Link
             href="/blog"
             aria-label="搜索知识库"
-            className="rounded-sm p-2 text-[#5f5c56] transition-colors hover:text-[#f05a28] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#f05a28] dark:text-stone-300"
+            className="rounded-full p-2.5 text-[#5f5c56] transition-colors hover:bg-[#e9e7e1] hover:text-[#a45e3f] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#f05a28] dark:text-stone-300 dark:hover:bg-white/10"
           >
             <Search aria-hidden="true" className="h-[18px] w-[18px]" strokeWidth={1.7} />
           </Link>
@@ -64,7 +64,7 @@ export default function Navbar() {
             target="_blank"
             rel="noreferrer"
             aria-label="在 GitHub 查看项目（新窗口）"
-            className="hidden rounded-sm p-2 text-[#5f5c56] transition-colors hover:text-[#f05a28] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#f05a28] dark:text-stone-300 sm:block"
+            className="hidden rounded-full p-2.5 text-[#5f5c56] transition-colors hover:bg-[#e9e7e1] hover:text-[#a45e3f] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#f05a28] dark:text-stone-300 dark:hover:bg-white/10 sm:block"
           >
             <Github aria-hidden="true" className="h-[18px] w-[18px]" strokeWidth={1.7} />
           </Link>
@@ -72,7 +72,7 @@ export default function Navbar() {
             type="button"
             onClick={toggleTheme}
             aria-label="切换显示模式"
-            className="rounded-sm p-2 text-[#5f5c56] transition-colors hover:text-[#f05a28] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#f05a28] dark:text-stone-300"
+            className="rounded-full p-2.5 text-[#5f5c56] transition-colors hover:bg-[#e9e7e1] hover:text-[#a45e3f] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#f05a28] dark:text-stone-300 dark:hover:bg-white/10"
           >
             <Moon aria-hidden="true" className="h-[18px] w-[18px] dark:hidden!" strokeWidth={1.7} />
             <Sun aria-hidden="true" className="hidden! h-[18px] w-[18px] dark:block!" strokeWidth={1.7} />
@@ -83,7 +83,7 @@ export default function Navbar() {
             aria-label={menuOpen ? "关闭导航菜单" : "打开导航菜单"}
             aria-expanded={menuOpen}
             aria-controls="mobile-navigation"
-            className="rounded-sm p-2 text-[#5f5c56] transition-colors hover:text-[#f05a28] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#f05a28] dark:text-stone-300 md:hidden"
+            className="rounded-full p-2.5 text-[#5f5c56] transition-colors hover:bg-[#e9e7e1] hover:text-[#a45e3f] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#f05a28] dark:text-stone-300 dark:hover:bg-white/10 md:hidden"
           >
             {menuOpen ? <X aria-hidden="true" className="h-5 w-5" /> : <Menu aria-hidden="true" className="h-5 w-5" />}
           </button>
