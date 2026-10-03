@@ -13,11 +13,13 @@ export function toPost(article: PublishedArticle): Post {
     cover: article.cover ?? extractYouMindCover(article.markdown) };
 }
 export async function allBlogPosts() {
+  // 列表合并仓库 MDX 和数据库快照；相同网址优先保留仓库文章。
   const local = getAllPosts(), existing = new Set(local.map(post => post.slug));
   const synced = (await publishedArticles()).filter(article => !existing.has(article.slug)).map(toPost);
   return sortPostsByDate([...local, ...synced]);
 }
 export async function blogPost(slug: string) {
+  // 返回内容来源标记，正文页据此选择 MDX 或 YouMind Markdown 渲染方式。
   const local = getPostBySlug(slug);
   if (local) return { ...local, format: "mdx" as const };
   const article = (await publishedArticles()).find(article => article.slug === slug);

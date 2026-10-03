@@ -8,6 +8,7 @@ let store: ReturnType<typeof createArticleStore> | undefined;
 export function cmsStore() {
   if (store) return store;
   let url = process.env.CMS_DATABASE_URL;
+  // 本地用 SQLite 文件方便开发；线上必须连接持久化的远程数据库。
   if (!url) {
     if (process.env.NODE_ENV === "production") return null;
     mkdirSync(".data", { recursive: true }); url = "file:.data/cms.db";

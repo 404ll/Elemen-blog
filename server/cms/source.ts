@@ -6,6 +6,7 @@ import { listSourceBoard, readDocument } from "../youmind/client";
 import { parseBoardLink } from "../youmind/folders";
 
 export async function configuredBoard() {
+  // 后台保存的 Board 配置优先；环境变量用于尚未在后台配置时的初始来源。
   const board = z.string().uuid().safeParse(await cmsStore()?.getBoard() ?? process.env.YOUMIND_BOARD_ID);
   if (!board.success) throw new CmsError("请先配置 YOUMIND_BOARD_ID。", 503);
   return board.data;
