@@ -1,12 +1,18 @@
 export type CmsImage = { alt: string; caption?: string; width?: number; height?: number };
-type Node = { type: string; value?: string; url?: string; children?: Node[] };
+type Node = {
+  type: string;
+  value?: string;
+  url?: string;
+  children?: Node[];
+  data?: { hName: string; hProperties: { className: string[] } };
+};
 
 export function safeImageUrl(value: string): string | undefined {
   try {
     const url = new URL(value);
     // Imported images must be publicly addressable; never embed local/private URLs.
     if (url.protocol !== "https:" || url.username || url.password || url.port) return;
-    if (url.hostname !== "cdn.gooo.ai") return;
+    if (url.hostname !== "cdn.gooo.ai" && url.hostname !== "cdn.youmindassets.com") return;
     return url.href;
   } catch { return; }
 }
@@ -42,6 +48,8 @@ export function normalizeYouMindMarkdown(content: string) {
 // Work on Markdown nodes, never on code contents or inline-code examples.
 export function cleanYouMindNodes() {
   return (tree: Node) => {
+    const sourceNumbers = new Map<string, number>();
+
     const citations = (children: Node[]) => {
       const result: Node[] = [];
       for (let i = 0; i < children.length; i++) {
@@ -63,8 +71,24 @@ export function cleanYouMindNodes() {
           if (!Array.isArray(data.links) || !data.links.length || !data.links.every((url: unknown) => typeof url === "string" && /^https?:\/\//i.test(url))) throw new Error("Unsupported citation");
           const start = match.index!;
           if (start) result.push({ type: "text", value: value.slice(0, start) });
+          const sourceLinks: Node[] = [];
           data.links.forEach((url: string, index: number) => {
-            result.push({ type: "text", value: " " }, { type: "link", url, children: [{ type: "text", value: data.links.length > 1 ? `来源 ${index + 1}` : "来源" }] });
+            if (!sourceNumbers.has(url)) {
+              sourceNumbers.set(url, sourceNumbers.size + 1);
+            }
+            if (index > 0) {
+              sourceLinks.push({ type: "text", value: "," });
+            }
+            sourceLinks.push({
+              type: "link",
+              url,
+              children: [{ type: "text", value: String(sourceNumbers.get(url)) }],
+            });
+          });
+          result.push({
+            type: "citation",
+            data: { hName: "sup", hProperties: { className: ["cms-citation"] } },
+            children: sourceLinks,
           });
           const tail = value.slice(start + match[0].length);
           if (tail.includes("[[citation:")) {

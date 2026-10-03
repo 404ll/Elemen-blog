@@ -15,5 +15,20 @@
 .cms-copy .cms-image-unavailable { display: block; padding: 18px; border: 1px dashed #bbb; color: #9e532e; font-size: 14px; }
 .cms-copy pre { white-space: pre; overflow-wrap: normal; tab-size: 2; }
 .cms-copy a { text-decoration: underline; text-underline-offset: 4px; }
+.cms-copy .cms-citation {
+  position: relative;
+  top: -.5em;
+  margin-left: .15em;
+  font-size: .65em;
+  line-height: 0;
+  vertical-align: baseline;
+}
+.cms-copy .cms-citation a {
+  padding: 0 .1em;
+  text-decoration: none;
+}
+.cms-copy .cms-citation a:hover {
+  text-decoration: underline;
+}
 .dark .cms-copy { color: #cccdd1; }.dark .cms-copy :is(h2,h3,strong) { color: #ececf0; }
 @media(max-width:600px) { .cms-copy { font-size:16px;line-height:1.85; }.cms-copy h2{font-size:22px;margin-top:42px}.cms-copy h3{font-size:19px}.cms-copy .cms-image{margin:28px auto 32px} }

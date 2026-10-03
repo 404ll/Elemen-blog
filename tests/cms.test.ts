@@ -49,6 +49,22 @@ test("image JSON metadata is decoded without rewriting examples inside fences", 
   assert.equal(safeImageUrl("https://cdn.gooo.ai.evil.test/a.png"), undefined);
 });
 
+test("YouMind assets CDN images retain metadata and reject lookalike hosts", () => {
+  const url = "https://cdn.youmindassets.com/gen-images/cover.png";
+  const normalized = normalizeYouMindMarkdown(`![{"alt":"封面","width":1067,"height":600}](${url})`);
+
+  assert.equal(normalized.markdown, `![封面](${url})`);
+  assert.deepEqual(normalized.images[url], {
+    alt: "封面",
+    caption: undefined,
+    width: 1067,
+    height: 600,
+  });
+  assert.deepEqual(normalized.warnings, []);
+  assert.equal(safeImageUrl("https://cdn.youmindassets.com.evil.test/cover.png"), undefined);
+  assert.equal(safeImageUrl("http://cdn.youmindassets.com/cover.png"), undefined);
+});
+
 test("Markdown-only render removes editor markers, fixes emphasis, preserves code, and never evaluates expressions", async () => {
   const source = '正文**。**\n\n<EMPTY_PARAGRAPH>\n\n{throw new Error("executed")}\n\n```text\n<EMPTY_PARAGRAPH>\n**。**\n  indented\n```';
   const compiled = await compile(source, { format: "md", outputFormat: "function-body", remarkPlugins: [cleanYouMindNodes] });
@@ -62,11 +78,13 @@ test("Markdown-only render removes editor markers, fixes emphasis, preserves cod
 
 test("YouMind citations become source links while code examples remain literal", async () => {
   const citation = '[[citation:{"links":["https://vercel.com/pricing"]}]]';
-  const compiled = await compile(`正文${citation}，另一处${citation}\n\n\`${citation}\`\n\n\`\`\`text\n${citation}\n\`\`\``, { format: "md", outputFormat: "function-body", remarkPlugins: [remarkGfm, cleanYouMindNodes] });
+  const multiple = '[[citation:{"links":["https://vercel.com/pricing","https://example.com/source"]}]]';
+  const compiled = await compile(`正文${citation}，另一处${citation}\n\n多个来源${multiple}\n\n\`${citation}\`\n\n\`\`\`text\n${citation}\n\`\`\``, { format: "md", outputFormat: "function-body", remarkPlugins: [remarkGfm, cleanYouMindNodes] });
   const { default: Content } = await run(compiled, runtime);
   const html = renderToStaticMarkup(createElement(Content));
-  assert.ok(html.includes('<a href="https://vercel.com/pricing">来源</a>'));
-  assert.equal((html.match(/>来源<\/a>/g) ?? []).length, 2);
+  assert.ok(html.includes('<sup class="cms-citation"><a href="https://vercel.com/pricing">1</a></sup>'));
+  assert.equal((html.match(/>1<\/a>/g) ?? []).length, 3);
+  assert.ok(html.includes('<sup class="cms-citation"><a href="https://vercel.com/pricing">1</a>,<a href="https://example.com/source">2</a></sup>'));
   assert.equal((html.match(/\[\[citation:/g) ?? []).length, 2);
 });
 
