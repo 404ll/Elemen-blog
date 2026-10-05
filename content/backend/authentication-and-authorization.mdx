@@ -1,0 +1,710 @@
+---
+title: "鉴权系统：从身份认证到权限控制"
+date: "2026-10-05"
+excerpt: "从 Authentication 与 Authorization 的区别出发，串起 Session、Token、JWT、权限模型，以及前后端共同完成权限控制的完整链路。"
+category: "backend"
+tags: ["authentication", "authorization", "session", "jwt", "rbac"]
+draft: false
+---
+
+## 摘要
+
+一个完整的鉴权系统主要解决两个问题：**Authentication（身份认证）回答“你是谁”，Authorization（权限控制）回答“你能做什么”。**
+
+用户登录时，服务端首先完成 Authentication，确认当前用户身份。由于 HTTP 请求之间天然相互独立，登录成功以后还需要通过 Session 或 Token 建立登录态，使后续请求能够继续证明“这个请求是谁发出的”。
+
+服务端在收到后续请求时，会通过 Session ID 或 Token 恢复当前用户身份。身份确认以后进入 Authorization 阶段，系统通常通过 Role、Permission，以及更细粒度的 Policy 判断用户是否有权执行某项操作。
+
+前端可以根据 permissions 控制路由、页面和按钮的展示；后端则负责对 API 和具体资源进行真正的权限校验。因此，前端权限控制主要解决用户体验问题，后端权限控制才是真正的安全边界。
+
+整个鉴权系统可以概括为：
+
+```text
+                        用户访问系统
+                             │
+                             ▼
+                     Authentication
+                        身份认证
+                             │
+                  用户名密码 / 第三方登录
+                             │
+                             ▼
+                     登录成功，建立登录态
+                             │
+              ┌──────────────┴──────────────┐
+              ▼                             ▼
+       Session-based                  Token-based
+              │                             │
+      Session + Cookie                 Token / JWT
+              │                             │
+              └──────────────┬──────────────┘
+                             ▼
+                         后续请求
+                             │
+                             ▼
+                Authentication Middleware
+                             │
+                             ▼
+                       恢复用户身份
+                             │
+                             ▼
+                      Authorization
+                         权限控制
+                             │
+                 Role / Permission / Policy
+                             │
+               ┌─────────────┴─────────────┐
+               ▼                           ▼
+           前端权限控制                 后端权限控制
+               │                           │
+      Route / Page / Button       API / Resource / Data
+               │                           │
+               └─────────────┬─────────────┘
+                             ▼
+                         允许 / 拒绝
+```
+
+
+## 1. 鉴权系统解决什么问题？
+
+鉴权系统可以分为两个阶段：Authentication 和 Authorization。
+
+### 1.1 Authentication：你是谁？
+
+Authentication 的目标是确认当前请求对应哪个用户。例如，用户登录时，服务端验证用户名和密码，确认身份后得到 `userId = 1001`：
+
+```text
+username + password
+        ↓
+服务端验证
+        ↓
+确认身份
+        ↓
+userId = 1001
+```
+
+这里解决的是身份问题。即使用户向服务器提交下面的信息，也不能说明他真的就是 `1001`：
+
+```json
+{
+  "userId": 1001
+}
+```
+
+客户端传来的身份信息本身不可信，必须通过密码、Session、Token 等可信凭证完成身份认证。
+
+### 1.2 Authorization：你能做什么？
+
+当服务器已经确认 `userId = 1001`，还需要继续判断：他能不能进入后台、删除文章、修改这条数据，或者管理其他用户？这些属于 Authorization，也就是权限控制。
+
+两者可以用一句话区分：Authentication 是 “Who are you?”，Authorization 是 “What are you allowed to do?”。因此，鉴权系统的核心链路是：**先确认身份，再判断权限。**
+
+## 2. Authentication：如何确认并维持用户身份？
+
+### 2.1 第一次登录：确认用户身份
+
+以用户名密码登录为例，用户输入 `username` 和 `password` 后，前端发送登录请求：
+
+```http
+POST /api/login
+
+{
+  "username": "elemen",
+  "password": "******"
+}
+```
+
+服务端查询用户并验证密码，验证成功后确认用户身份：
+
+```text
+查询用户
+    ↓
+验证密码
+    ↓
+验证成功
+    ↓
+确认：
+
+userId = 1001
+```
+
+到这里，Authentication 已经完成了一次。但还有一个问题：用户接下来访问其他接口时，服务器怎么知道还是这个用户？这就引出了登录态。
+
+### 2.2 为什么需要登录态？
+
+HTTP 请求之间默认是相互独立的。例如，第一个请求是 `POST /login`，服务器确认了 `userId = 1001`；几秒以后，浏览器发送第二个请求 `GET /api/profile`，服务器不会因为刚才登录成功，就天然知道这个请求还是 `userId = 1001` 发出的。
+
+因此，登录成功以后需要建立一种机制，使后续请求能够持续关联到已经完成认证的用户，这就是登录态。可以简单理解为：**登录态，就是让一次 Authentication 的结果能够跨多个 HTTP 请求继续生效。**
+
+目前最常见的两类方案是 Session-based Authentication 和 Token-based Authentication。
+
+### 2.3 Session-based Authentication
+
+Session 模式的核心思想是：服务端保存用户的会话状态，客户端只保存一个用于查找会话的 Session ID。
+
+用户登录成功以后，服务器为 `userId = 1001` 创建 Session，并生成 `sessionId`，例如 `abc123`。服务器保存它与用户的对应关系：
+
+```text
+abc123
+↓
+{
+  userId: 1001
+}
+```
+
+Session 通常可以存放在服务器内存、Redis 或数据库中。服务器通过响应中的 `Set-Cookie` 把 `sessionId` 返回给浏览器：
+
+```http
+Set-Cookie: sessionId=abc123
+```
+
+浏览器之后发送请求时，会自动携带 Cookie：
+
+```http
+Cookie: sessionId=abc123
+```
+
+服务端收到 `sessionId = abc123` 后，查询 Session Store，通过 `abc123 → userId = 1001` 恢复用户身份。因此，Session 模式可以概括为：**客户端保存 sessionId，服务端保存真正的 Session。**
+
+完整链路如下：
+
+```text
+用户登录
+    ↓
+认证成功
+    ↓
+服务器创建 Session
+    ↓
+sessionId → userId
+    ↓
+sessionId 通过 Cookie 返回
+    ↓
+浏览器后续自动携带 Cookie
+    ↓
+服务器查询 Session
+    ↓
+恢复 userId
+```
+
+Session 的一个重要特点是，登录状态主要由服务端控制。例如，服务端可以直接删除 Session，从而让用户立即失去登录状态；代价是服务器需要保存会话状态。
+
+> 如果系统有多台服务器，通常还需要共享 Session Store，例如 Redis：
+>
+> ```text
+> Server A ─┐
+> Server B ─┼── Redis Session Store
+> Server C ─┘
+> ```
+
+### 2.4 Token-based Authentication
+
+Token 模式的核心思想是：登录成功以后，服务端给客户端签发一个身份凭证，后续请求直接携带这个 Token。
+
+例如，服务端确认 `userId = 1001` 后签发 Token 并返回客户端，客户端在后续请求中携带它：
+
+```http
+Authorization: Bearer xxxxxx
+```
+
+服务器读取并验证 Token，确认是否合法、是否过期，然后恢复 `userId`，最终仍然得到 `userId = 1001`。
+
+Token 模式的完整链路如下：
+
+```text
+用户登录
+    ↓
+认证成功
+    ↓
+服务端签发 Token
+    ↓
+客户端保存 Token
+    ↓
+后续请求携带 Token
+    ↓
+服务器验证 Token
+    ↓
+恢复用户身份
+```
+
+> Token 不一定就是 JWT。Token 是一个更大的概念，JWT 是 Token 的一种具体格式。
+
+### 2.5 JWT 是什么？
+
+JWT 通常由三部分组成：
+
+```text
+Header.Payload.Signature
+```
+
+例如，Payload 中可能包含：
+
+```json
+{
+  "sub": "1001",
+  "exp": 1790000000
+}
+```
+
+服务端收到 JWT 后，验证 Signature、检查 `exp`，再从 Payload 中解析出用户身份：
+
+```text
+JWT
+ ↓
+验证 Signature
+ ↓
+检查 exp
+ ↓
+解析 Payload
+ ↓
+sub = 1001
+```
+
+因此，某些 JWT 场景下，服务端不需要像 Session 一样，根据一个 Session ID 去查询对应会话。这也是 JWT 经常被称为“无状态认证”的原因。
+
+> “无状态”并不意味着整个系统完全不保存任何状态。真实系统仍然可能存在 Refresh Token Store、Token blacklist、用户状态、权限信息和 Token version。因此，更准确地说，JWT 可以减少服务器为每个登录会话保存 Session 状态的需要。
+
+### 2.6 Session、Token 和 Cookie 的关系
+
+Cookie、Session、Token 和 JWT 很容易混淆，但它们并不是完全同一层级的概念。Session 和 Token 讨论的是如何维持登录态；Cookie 讨论的是浏览器如何存储和自动携带数据。
+
+常见的组合是把 Session ID 放在 Cookie 中，但 Token 也可以放在 Cookie 中：
+
+```http
+Set-Cookie:
+access_token=xxxxx;
+HttpOnly;
+Secure;
+SameSite=Lax
+```
+
+所以，不要简单理解成 `Session = Cookie`、`Token = LocalStorage`。正确的区分是：Session-based / Token-based 是登录态方案，Cookie / Authorization Header 是凭证的传输方式。
+
+## 3. 后续请求如何恢复用户身份？
+
+无论使用 Session 还是 Token，后续请求最终都要完成同一件事：服务端根据请求中的身份凭证，恢复当前用户身份。可以统一抽象成：
+
+```text
+Request
+    ↓
+Credential
+身份凭证
+    ↓
+验证 Credential
+    ↓
+恢复用户身份
+    ↓
+userId = 1001
+```
+
+在后端，这部分逻辑通常不会让每个业务接口自己实现，而是统一放在 Authentication Middleware 中。例如：
+
+```js
+function authenticate(req, res, next) {
+  const token = getToken(req)
+
+  if (!token) {
+    return res.status(401).end()
+  }
+
+  const payload = verifyToken(token)
+
+  req.user = {
+    id: payload.sub
+  }
+
+  next()
+}
+```
+
+后面的业务接口使用这个中间件：
+
+```js
+app.get(
+  '/api/profile',
+  authenticate,
+  getProfile
+)
+```
+
+进入 `getProfile` 时，就可以认为 `req.user.id` 已经是当前经过认证的用户。
+
+如果是 Session，请求会沿着 `Request → Cookie → sessionId → Session Store → userId` 恢复身份；如果是 Token，则沿着 `Request → Token → verifyToken → userId` 恢复身份。虽然实现不同，但结果完全一致：恢复当前用户身份。
+
+### 3.1 为什么不能相信客户端传来的 userId？
+
+例如，下面这种设计会让客户端在请求中提交 `userId`：
+
+```http
+DELETE /api/article/123
+
+{
+  "userId": 1001
+}
+```
+
+后端不能直接认为这个请求就是 `1001` 发出的，因为客户端完全可以修改这个字段：
+
+```json
+{
+  "userId": 1
+}
+```
+
+`req.body.userId` 属于客户端声明，而 `req.user.id` 应该来自已经验证过的 Session 或 Token。因此，身份信息应该来自认证上下文，而不是客户端自己提交的身份字段。
+
+### 3.2 Authentication 失败：401
+
+如果身份认证失败，例如没有携带凭证、Token 过期、Token 非法或 Session 已失效，服务端通常返回：
+
+```http
+401 Unauthorized
+```
+
+它表达的核心含义是：当前请求还没有通过身份认证，也就是“我还不能确认你是谁”。
+
+## 4. Authorization：如何判断用户能做什么？
+
+当 Authentication 完成以后，后端已经知道 `userId = 1001`，接下来需要回答“这个用户有没有权限执行当前操作”，这就是 Authorization。例如：
+
+```text
+GET /articles
+需要 article:read
+
+POST /articles
+需要 article:create
+
+DELETE /articles/:id
+需要 article:delete
+```
+
+最常见的权限模型之一是 RBAC。
+
+### 4.1 RBAC：User → Role → Permission
+
+RBAC 全称是 Role-Based Access Control，核心关系是 `User → Role → Permission`。
+
+例如，用户 Elemen 拥有 `editor` 角色，这个角色拥有 `article:read`、`article:create` 和 `article:update` 权限；`admin` 则可能拥有 `article:read`、`article:create`、`article:update`、`article:delete` 和 `user:manage` 权限。
+
+因此，系统不需要给每个用户单独配置所有权限，而是给用户分配角色，再由角色组织权限。典型的数据库结构可能包含 `users`、`roles`、`permissions`、`user_roles` 和 `role_permissions`，关系如下：
+
+```text
+User
+ ↓
+user_roles
+ ↓
+Role
+ ↓
+role_permissions
+ ↓
+Permission
+```
+
+### 4.2 为什么业务代码应该判断 Permission，而不是 Role？
+
+一种简单但扩展性较差的做法是直接判断角色：
+
+```js
+if (user.role === 'admin') {
+  deleteArticle()
+}
+```
+
+问题在于，后续如果增加 `superAdmin`、`contentManager`、`moderator` 等角色，业务代码可能逐渐变成：
+
+```js
+if (
+  role === 'admin' ||
+  role === 'superAdmin' ||
+  role === 'contentManager'
+) {
+  deleteArticle()
+}
+```
+
+更好的方式是判断具体权限：
+
+```js
+can('article:delete')
+```
+
+或者：
+
+```js
+authorize('article:delete')
+```
+
+也就是说，Role 负责组织权限，Permission 负责表达业务能力。业务接口真正关心的是当前用户有没有 `article:delete`，而不是当前用户是不是 `admin`。
+
+于是，删除接口可以写成：
+
+```js
+app.delete(
+  '/api/articles/:id',
+  authenticate,
+  authorize('article:delete'),
+  deleteArticle
+)
+```
+
+完整链路如下：
+
+```text
+DELETE /api/articles/123
+        ↓
+authenticate
+        ↓
+恢复 userId
+        ↓
+authorize('article:delete')
+        ↓
+检查 Permission
+        ↓
+允许 / 拒绝
+```
+
+### 4.3 Policy：有权限，不代表能操作所有资源
+
+单纯 Permission 有时候还不够。例如，一个用户拥有 `article:update`，并不一定意味着他可以修改系统里的所有文章，实际业务可能要求用户只能修改自己写的文章。
+
+那么，还需要检查 `article.authorId === user.id`：
+
+```js
+const canUpdate =
+  user.permissions.includes('article:update') &&
+  article.authorId === user.id
+```
+
+这里已经不只是简单判断 Permission，而是在判断具体资源，可以理解为 Policy：
+
+```text
+User
++
+Permission
++
+Resource
++
+Context
+↓
+最终是否允许操作
+```
+
+三者的区别是：Role 表示你属于什么角色，Permission 表示你拥有什么能力，Policy 则判断当前条件下，你能不能对这个具体资源执行操作。例如，`editor` 拥有 `article:update`，但 Policy 仍然可以限制他只能修改自己的文章。
+
+> 更复杂的系统还可能根据 `user.departmentId`、`resource.departmentId`、`resource.ownerId`、`resource.status` 和当前时间进行判断。这种根据属性做权限判断的思想通常属于 ABAC（Attribute-Based Access Control）。实际项目中经常采用 RBAC + 资源级 Policy，复杂场景进一步演变为 RBAC + ABAC。
+
+### 4.4 Authorization 失败：403
+
+如果用户已经通过 Authentication，确认了 `userId = 1001`，但没有 `article:delete`，那么就是 Authentication 成功、Authorization 失败。服务端通常返回：
+
+```http
+403 Forbidden
+```
+
+因此可以这样区分：**401 表示“我还不知道你是谁”，403 表示“我知道你是谁，但你不能做这件事”。**
+
+## 5. 前后端如何共同完成权限控制？
+
+权限系统最终会同时落在前端和后端，但它们的职责不同。
+
+### 5.1 前端权限控制
+
+后端通常可以通过 `GET /api/me` 返回当前用户信息：
+
+```json
+{
+  "id": 1001,
+  "role": "editor",
+  "permissions": [
+    "article:read",
+    "article:create",
+    "article:update"
+  ]
+}
+```
+
+前端将 `user` 和 `permissions` 保存在 Auth Store 中，然后根据 permissions 做不同层级的控制。
+
+#### 路由级权限
+
+例如，`/admin/articles` 需要 `article:update`，`/admin/users` 需要 `user:manage`。没有权限时跳转到 `/403`，没有登录时跳转到 `/login`。
+
+#### 页面级权限
+
+同一个页面中，不同用户看到的内容可以不同。例如，普通用户只能查看文章，`editor` 可以查看和编辑，`admin` 可以查看、编辑和删除。
+
+#### 按钮级权限
+
+例如，通过权限组件控制删除按钮：
+
+```jsx
+<Permission permission="article:delete">
+  <DeleteButton />
+</Permission>
+```
+
+如果当前用户没有 `article:delete`，就不展示删除按钮。因此，前端权限控制可以概括为根据 permissions 控制 Route、Page 和 Button，主要解决界面展示、交互体验和操作入口的问题。
+
+### 5.2 为什么前端权限控制不能作为安全边界？
+
+前端代码运行在用户自己的设备上。用户可以修改 JavaScript、localStorage 或前端状态，也可以通过 DevTools 发请求，或者使用 curl / Postman 调接口。
+
+例如，即使前端没有展示删除按钮，用户依然可以直接发送：
+
+```http
+DELETE /api/articles/123
+```
+
+所以，隐藏按钮不等于禁止操作。前端权限控制只能做到不给用户展示入口，真正决定这个请求能不能执行的必须是后端。
+
+### 5.3 后端权限控制
+
+后端完整链路一般是：
+
+```text
+Request
+  ↓
+Authentication Middleware
+  ↓
+确认身份
+  ↓
+Authorization Middleware
+  ↓
+检查 Permission
+  ↓
+Policy / Resource Check
+  ↓
+Controller / Service
+  ↓
+Database
+```
+
+例如：
+
+```js
+app.delete(
+  '/api/articles/:id',
+  authenticate,
+  authorize('article:delete'),
+  deleteArticle
+)
+```
+
+其中，`authenticate` 回答“你是谁”，`authorize` 回答“你有没有这个权限”。如果还涉及具体资源，就需要加载 Article、检查 Policy，判断它是否属于当前用户，以及是否允许操作。
+
+**前端决定“给不给你看到这个入口”，后端决定“你到底能不能执行这个操作”。**
+
+## 6. 一次完整鉴权请求是如何完成的？
+
+把前面的所有部分串起来，一次完整流程如下。
+
+### 第一次登录
+
+```text
+用户输入账号密码
+        ↓
+POST /login
+        ↓
+服务端 Authentication
+        ↓
+验证账号密码
+        ↓
+确认 userId = 1001
+        ↓
+建立登录态
+        ↓
+Session / Token
+```
+
+### 初始化当前用户
+
+```text
+浏览器保存身份凭证
+        ↓
+GET /api/me
+        ↓
+请求携带 Session ID / Token
+        ↓
+Authentication Middleware
+        ↓
+恢复 userId = 1001
+        ↓
+查询用户 Role / Permission
+        ↓
+返回：
+
+user
+role
+permissions
+```
+
+### 前端初始化权限
+
+```text
+user + permissions
+        ↓
+Auth Store
+        ↓
+路由级控制
+页面级控制
+按钮级控制
+```
+
+### 用户执行操作
+
+以点击“删除文章”为例，前端检查 `article:delete`，有权限时展示按钮，用户点击后发送请求：
+
+```http
+DELETE /api/articles/123
+```
+
+后端收到请求后，依次恢复身份、检查权限和具体资源，再决定是否执行删除：
+
+```text
+Authentication
+↓
+恢复 userId
+↓
+Authorization
+↓
+检查 article:delete
+↓
+检查 Policy / Resource
+↓
+允许
+↓
+执行删除
+```
+
+如果 Permission 不满足，返回 `403`；如果身份凭证失效，返回 `401`。因此，整条链最终可以压缩成：
+
+```text
+登录
+↓
+认证身份
+↓
+建立登录态
+↓
+后续请求携带凭证
+↓
+恢复当前用户
+↓
+判断权限
+↓
+前端控制入口
+↓
+后端真正拦截
+↓
+执行业务
+```
+
+## 总结
+
+整个鉴权系统可以记成下面五个问题：
+
+1. **Authentication**：你是谁？
+2. **Session / Token**：如何让后续请求继续证明你是谁？
+3. **Authentication Middleware**：服务端如何从请求中恢复当前用户？
+4. **Authorization**：你能做什么？
+5. **Frontend + Backend Permission**：权限如何真正落到页面和接口？
+
+进一步压缩，就是“身份认证 → 建立登录态 → 恢复身份 → 判断权限 → 执行权限控制”。这就是一个完整鉴权系统的主线。
