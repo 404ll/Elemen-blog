@@ -3,8 +3,8 @@ import { getAllPosts, normalizeTags } from "@/lib/post";
 import { allBlogPosts, blogPost } from "@/server/cms/posts";
 import YouMindContent from "@/components/cms/YouMindContent";
 import { notFound } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft, Calendar, Clock } from "lucide-react";
+import { Calendar, Clock } from "lucide-react";
+import Breadcrumbs from "@/components/layout/Breadcrumbs";
 import { mdxComponents } from "@/components/ui/MdxContent";
 import ReadingEnhancements from "@/components/ui/ReadingEnhancements";
 import CodeCopyButton from "@/components/ui/CodeCopyButton";
@@ -108,6 +108,22 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
   const displayDate = formatDate(frontmatter.date);
   const tags = normalizeTags(frontmatter.tags);
   const headings = extractHeadingsFromMdx(content);
+  const articleCategory = frontmatter.category;
+  const articleCategoryMeta = articleCategory
+    ? CATEGORIES[articleCategory as keyof typeof CATEGORIES]
+    : undefined;
+  const breadcrumbs = [
+    { label: "文章", href: "/" },
+    ...(articleCategory
+      ? [
+          {
+            label: articleCategoryMeta?.name ?? articleCategory,
+            href: articleCategoryMeta ? `/blog/${articleCategory}` : undefined,
+          },
+        ]
+      : []),
+    { label: frontmatter.title },
+  ];
 
   return (
     <div className="reading-page">
@@ -116,15 +132,9 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
       <div className="reading-column">
         {/* Header */}
         <div className="reading-header">
-          <Link
-            href="/blog"
-            className="inline-flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors group mb-5"
-          >
-            <div className="p-1.5 rounded-full bg-gray-100 dark:bg-gray-700 group-hover:bg-orange-50 dark:group-hover:bg-orange-900/30 transition-colors">
-              <ArrowLeft size={14} />
-            </div>
-            <span className="text-sm">返回文章列表</span>
-          </Link>
+          <div className="mb-5">
+            <Breadcrumbs items={breadcrumbs} />
+          </div>
 
           <div className="mb-4 flex flex-wrap items-center gap-3 font-mono">
             {frontmatter.category && (

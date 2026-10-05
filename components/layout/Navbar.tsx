@@ -8,7 +8,7 @@ import { useTheme } from "next-themes";
 import { useState } from "react";
 
 const NAV_LINKS = [
-  { label: "知识库", href: "/blog" },
+  { label: "文章", href: "/" },
   { label: "代码练习", href: "/practice" },
   { label: "关于", href: "/about" },
 ];
@@ -24,7 +24,13 @@ export default function Navbar() {
 
   if (pathname === "/admin" || pathname.startsWith("/admin/")) return null;
 
-  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const isActive = (href: string) => {
+    if (href === "/") {
+      return pathname === "/" || pathname === "/blog" || pathname.startsWith("/blog/");
+    }
+
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-[#dedbd4]/70 bg-[#f2f1ed]/92 text-[#191916] backdrop-blur-md dark:border-white/10 dark:bg-[#121210]/92 dark:text-stone-50">
@@ -54,7 +60,7 @@ export default function Navbar() {
         <div className="flex items-center gap-1">
           <Link
             href="/blog"
-            aria-label="搜索知识库"
+            aria-label="搜索文章"
             className="rounded-full p-2.5 text-[#5f5c56] transition-colors hover:bg-[#e9e7e1] hover:text-[#a45e3f] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#f05a28] dark:text-stone-300 dark:hover:bg-white/10"
           >
             <Search aria-hidden="true" className="h-[18px] w-[18px]" strokeWidth={1.7} />

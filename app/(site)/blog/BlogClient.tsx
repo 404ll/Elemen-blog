@@ -33,7 +33,7 @@ export default function BlogClient({ posts, initialSearchTerm = "" }: BlogClient
       <div className="max-w-[1080px] mx-auto px-5 sm:px-8 space-y-7">
         <div className="space-y-2">
           <h1 className="text-[2rem] font-semibold tracking-[-0.035em] text-[#191916] transition-colors dark:text-stone-100">
-            博客
+            文章
           </h1>
           <div className="flex flex-wrap gap-2 pt-2">
             {Object.entries(CATEGORIES).map(([key, meta]) => (

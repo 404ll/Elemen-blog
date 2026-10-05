@@ -1,10 +1,12 @@
 import ArticleList from "./ArticleList";
+import Breadcrumbs from "@/components/layout/Breadcrumbs";
 import type { Post } from "@/types";
 
 export default function ArticleCategory({ name, posts }: { name: string; posts: Post[] }) {
   return (
     <main id="main-content" className="pt-28 pb-16">
       <div className="mx-auto max-w-[1080px] space-y-7 px-5 sm:px-8">
+        <Breadcrumbs items={[{ label: "文章", href: "/" }, { label: name }]} />
         <header className="space-y-2">
           <p className="text-xs tracking-wide text-[#77746d] dark:text-stone-400">Category</p>
           <h1 className="text-[2rem] font-semibold tracking-tight text-[#282824] dark:text-stone-100">{name}</h1>
