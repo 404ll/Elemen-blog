@@ -3,6 +3,7 @@ import { compile } from "@mdx-js/mdx"
 import * as runtime from "react/jsx-runtime"
 import rehypePrettyCode, { Options } from "rehype-pretty-code"
 import remarkGfm from "remark-gfm"
+import remarkMermaid from "./remark-mermaid"
 
 // 配置 rehype-pretty-code（语法高亮）
 type PrettyNode = {
@@ -35,7 +36,7 @@ const rehypePrettyCodeOptions = {
 export async function renderMDX(source: string, options: Pick<Options, "theme"> = {}) {
   const compiled = await compile(source, {
     outputFormat: "function-body",
-    remarkPlugins: [remarkGfm],
+    remarkPlugins: [remarkGfm, remarkMermaid],
     rehypePlugins: [[rehypePrettyCode, { ...rehypePrettyCodeOptions, ...options }]],
   });
   

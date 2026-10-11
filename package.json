@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "new-post": "node scripts/new-post.mjs",
     "practice:sync": "git submodule update --init --remote practice && git add practice",
-    "test": "node --test --experimental-strip-types tests/post.test.ts tests/practice.test.ts tests/cms.test.ts",
+    "test": "node --test --experimental-strip-types tests/post.test.ts tests/practice.test.ts tests/cms.test.ts tests/mermaid.test.ts",
     "prepare": "husky"
   },
   "dependencies": {
@@ -22,6 +22,7 @@
     "fuse.js": "^7.1.0",
     "gray-matter": "^4.0.3",
     "lucide-react": "^0.556.0",
+    "mermaid": "^11.17.2",
     "next": "^16.0.7",
     "next-themes": "^0.4.6",
     "react": "19.2.0",

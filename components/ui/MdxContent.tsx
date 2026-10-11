@@ -4,6 +4,7 @@ import Image from "next/image";
 import { slugify } from "@/lib/slugify";
 import Callout from "@/components/ui/Callout";
 import Figure from "@/components/ui/Figure";
+import MermaidDiagram from "@/components/ui/MermaidDiagram";
 import { Step, Steps } from "@/components/ui/Steps";
 
 type BasicProps = { children?: React.ReactNode; id?: string } & Record<string, unknown>;
@@ -35,6 +36,7 @@ function getHeadingId(id: string | undefined, children: React.ReactNode): string
 }
 
 export const mdxComponents = {
+  MermaidDiagram,
   h1: (props: BasicProps) => {
     const headingId = getHeadingId(props.id, props.children);
     return (

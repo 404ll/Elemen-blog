@@ -24,6 +24,20 @@ npm run dev
 
 新建文章：`npm run new-post`。
 
+## Mermaid 图表
+
+MDX 文章和 CMS 导入的 Markdown 都可以直接使用 Mermaid 代码块：
+
+````md
+```mermaid
+sequenceDiagram
+    Browser->>Server: GET /page
+    Server-->>Browser: HTML
+```
+````
+
+图表在浏览器中按需渲染，默认适配正文宽度；点击 `Actual size` 可按原尺寸横向滚动查看。`Mermaid source` 保留源码，语法错误不会阻断正文。普通代码块继续使用原有语法高亮。
+
 ## License
 
 MIT
