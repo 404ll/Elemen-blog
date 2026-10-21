@@ -314,3 +314,10 @@
     border-radius: 20px;
   }
 }
+.cms-source-toolbar > select {
+  width: auto;
+  max-width: 45%;
+  min-width: 0;
+  margin-left: auto;
+  font-size: 11px;
+}

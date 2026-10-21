@@ -20,6 +20,7 @@ export function createArticleStore(db: Client) {
     source_id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE, data TEXT NOT NULL
   )`,
           `CREATE TABLE IF NOT EXISTS cms_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`,
+          `CREATE TABLE IF NOT EXISTS cms_boards (board_id TEXT PRIMARY KEY)`,
         ],
         "write",
       )
@@ -44,13 +45,46 @@ export function createArticleStore(db: Client) {
       );
       return result.rows[0] ? String(result.rows[0].value) : null;
     },
-    // 保存 Board ID，供下次进入后台时读取。
-    async setBoard(boardId: string) {
+    async getBoards(): Promise<string[]> {
       await init();
-      await db.execute({
-        sql: "INSERT INTO cms_settings (key, value) VALUES ('board', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-        args: [boardId],
-      });
+      const [settings, boards] = await db.batch(
+        [
+          "SELECT value AS board_id FROM cms_settings WHERE key = 'board'",
+          "SELECT board_id FROM cms_boards ORDER BY board_id",
+        ],
+        "read",
+      );
+      return [
+        ...new Set(
+          [...settings.rows, ...boards.rows].map((row) => String(row.board_id)),
+        ),
+      ];
+    },
+    // 新来源设为默认，同时保留旧配置和首次使用时的环境变量来源。
+    async addBoard(boardId: string, initialBoardId?: string) {
+      await init();
+      await db.batch(
+        [
+          "INSERT OR IGNORE INTO cms_boards (board_id) SELECT value FROM cms_settings WHERE key = 'board'",
+          ...(initialBoardId
+            ? [
+                {
+                  sql: "INSERT OR IGNORE INTO cms_boards (board_id) SELECT ? WHERE NOT EXISTS (SELECT 1 FROM cms_settings WHERE key = 'board')",
+                  args: [initialBoardId],
+                },
+              ]
+            : []),
+          {
+            sql: "INSERT OR IGNORE INTO cms_boards (board_id) VALUES (?)",
+            args: [boardId],
+          },
+          {
+            sql: "INSERT INTO cms_settings (key, value) VALUES ('board', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            args: [boardId],
+          },
+        ],
+        "write",
+      );
     },
     async publish(
       document: SourceDocument,
@@ -65,9 +99,13 @@ export function createArticleStore(db: Client) {
       try {
         // 同一事务中检查来源、版本和网址，防止旧标签页或并发操作覆盖新快照。
         const settings = await tx.execute(
-          "SELECT value FROM cms_settings WHERE key = 'board'",
+          `SELECT value AS board_id FROM cms_settings WHERE key = 'board'
+           UNION SELECT board_id FROM cms_boards`,
         );
-        if (settings.rows[0] && settings.rows[0].value !== document.boardId)
+        if (
+          settings.rows.length &&
+          !settings.rows.some((row) => row.board_id === document.boardId)
+        )
           throw new CmsError("内容来源已切换，请返回文章库重新选择。", 409);
         const result = await tx.execute({
           sql: "SELECT data FROM cms_articles WHERE source_id = ?",

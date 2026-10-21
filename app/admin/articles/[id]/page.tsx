@@ -28,7 +28,7 @@ export default async function PreviewPage({
     return (
       <main className="cms-preview">
         <div className="cms-preview-top">
-          <Link href="/admin">← 文章同步</Link>
+          <Link href={`/admin?board=${document.boardId}`}>← 文章同步</Link>
           <a
             href={`https://youmind.com/boards/${document.boardId}?tab=file&file-id=${id}`}
             target="_blank"

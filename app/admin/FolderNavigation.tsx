@@ -7,14 +7,17 @@ import {
 } from "@/server/youmind/folders";
 
 export default function FolderNavigation({
+  boardId,
   folders,
   documents,
   selected,
 }: {
+  boardId: string;
   folders: SourceFolder[];
   documents: { parentGroupId?: string | null }[];
   selected: string;
 }) {
+  const baseUrl = `/admin?board=${boardId}`;
   const ordered = folders
     .map((folder) => ({ folder, path: folderPath(folder.id, folders) }))
     .sort((a, b) =>
@@ -27,7 +30,7 @@ export default function FolderNavigation({
     <nav className="cms-folder-nav" aria-label="YouMind 文件夹">
       <p className="cms-eyebrow">文件夹</p>
       <Link
-        href="/admin"
+        href={baseUrl}
         aria-current={selected === "all" ? "page" : undefined}
       >
         <Files size={15} aria-hidden="true" />
@@ -35,7 +38,7 @@ export default function FolderNavigation({
         <small>{documents.length}</small>
       </Link>
       <Link
-        href="/admin?folder=root"
+        href={`${baseUrl}&folder=root`}
         aria-current={selected === "root" ? "page" : undefined}
       >
         <Folder size={15} aria-hidden="true" />
@@ -47,7 +50,7 @@ export default function FolderNavigation({
       {ordered.map(({ folder, path }) => (
         <Link
           key={folder.id}
-          href={`/admin?folder=${folder.id}`}
+          href={`${baseUrl}&folder=${folder.id}`}
           aria-current={selected === folder.id ? "page" : undefined}
           title={path.map((f) => f.title).join(" / ")}
           style={{ paddingLeft: 10 + Math.min(path.length - 1, 6) * 12 }}

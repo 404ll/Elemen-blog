@@ -66,13 +66,13 @@ export async function listSourceBoard(boardId: string) {
   });
   return { documents, folders };
 }
-export async function readDocument(id: string, boardId: string) {
+export async function readDocument(id: string, boardIds: string[]) {
   z.string().uuid().parse(id);
   // 发布前重新读取原文，避免仅凭后台列表里的旧数据发布。
   const parsed = documentSchema.safeParse(await call("getFile", { id }));
   if (
     !parsed.success ||
-    parsed.data.boardId !== boardId ||
+    !boardIds.includes(parsed.data.boardId) ||
     parsed.data.isHidden ||
     parsed.data.trashedAt ||
     parsed.data.deletedAt

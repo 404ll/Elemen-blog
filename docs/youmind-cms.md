@@ -1,6 +1,6 @@
 # YouMind 博客同步
 
-在 `/admin` 登录，通过「配置内容来源」粘贴 YouMind Board 链接并保存。后台会先验证读取权限，再将 Board ID 存到内容数据库；数据库中的配置优先于 `YOUMIND_BOARD_ID` 环境变量。切换 Board 不删除已发布文章。
+在 `/admin` 登录，通过「配置内容来源」粘贴 YouMind Board 链接并保存。后台会先验证读取权限，再将 Board ID 存到内容数据库。可以连接多个 Board，在文章库的来源选择框中切换；新连接的 Board 成为默认来源，原来源和已发布文章保留。首次新增时会保留原单 Board 配置，或尚未保存来源时的 `YOUMIND_BOARD_ID` 环境变量。
 
 文章库提供文件夹层级导航，父文件夹包含其子文件夹的文章；「未分组」只显示 Board 根目录文档。文件夹不自动映射博客分类。
 
@@ -43,7 +43,7 @@ GitHub OAuth 回调地址：`https://<blog-domain>/api/cms/auth/callback`。仅�
 
 ## 内容及并发边界
 
-- YouMind Markdown 使用 `format: md` 渲染，不执行导入的 JSX 或 JavaScript。解析图片 JSON 元数据、清理空段落占位符及标点加粗，保留代码正文。
+- YouMind Markdown 使用 `format: md` 渲染，不执行导入的 JSX 或 JavaScript。解析图片 JSON 元数据、提示框、无属性的行内 `<strong>`，清理空段落占位符并兼容中文标点和边缘空格处的加粗。代码块、行内代码保持原样；提示框只接受预设颜色与 emoji，不直接应用来源中的 CSS 或 HTML 属性。
 - 发布时重新读取原文，并比较预览时的标题/正文 hash；变化则要求重新预览。
 - 数据库事务检查发布版本，旧标签页无法覆盖新版本。文章网址唯一，首次发布后保持固定。
 - 同步接口只接受已配置 Board 中的可见、未删除文档。

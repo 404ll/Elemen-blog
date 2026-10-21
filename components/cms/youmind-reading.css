@@ -30,5 +30,25 @@
 .cms-copy .cms-citation a:hover {
   text-decoration: underline;
 }
+.cms-copy .cms-callout {
+  display: flex;
+  gap: 14px;
+  margin: 28px 0;
+  padding: 20px 22px;
+  border: 1px solid var(--cms-callout-border, #d9dce2);
+  border-radius: 8px;
+  background: var(--cms-callout-bg, #f5f5f5);
+}
+.cms-callout-blue { --cms-callout-bg: #eff6ff; --cms-callout-border: #bfdbfe; }
+.cms-callout-orange { --cms-callout-bg: #fff7ed; --cms-callout-border: #fed7aa; }
+.cms-callout-green { --cms-callout-bg: #f0fdf4; --cms-callout-border: #bbf7d0; }
+.cms-callout-purple { --cms-callout-bg: #faf5ff; --cms-callout-border: #e9d5ff; }
+.cms-callout-red { --cms-callout-bg: #fef2f2; --cms-callout-border: #fecaca; }
+.cms-callout-yellow { --cms-callout-bg: #fefce8; --cms-callout-border: #fef08a; }
+.cms-callout-icon { flex: 0 0 auto; }
+.cms-callout-body { min-width: 0; flex: 1; }
+.cms-copy .cms-callout-body > :first-child { margin-top: 0; }
+.cms-copy .cms-callout-body > :last-child { margin-bottom: 0; }
+.dark .cms-copy .cms-callout { background: #ffffff08; border-color: #ffffff26; }
 .dark .cms-copy { color: #cccdd1; }.dark .cms-copy :is(h2,h3,strong) { color: #ececf0; }
 @media(max-width:600px) { .cms-copy { font-size:16px;line-height:1.85; }.cms-copy h2{font-size:22px;margin-top:42px}.cms-copy h3{font-size:19px}.cms-copy .cms-image{margin:28px auto 32px} }

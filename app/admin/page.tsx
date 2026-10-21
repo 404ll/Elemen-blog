@@ -1,18 +1,19 @@
 import Link from "next/link";
 import { ArrowUpRight, LogOut, Monitor } from "lucide-react";
 import { currentAdmin, localPreviewEnabled } from "@/server/auth/admin";
-import { configuredBoard } from "@/server/cms/source";
+import { configuredBoards } from "@/server/cms/source";
 import { listSourceBoard } from "@/server/youmind/client";
 import { cmsStore } from "@/server/cms/database";
 import { CmsError, sourceHash } from "@/server/cms/model";
 import ArticleBrowser from "./ArticleBrowser";
 import FolderNavigation from "./FolderNavigation";
+import BoardSelector from "./BoardSelector";
 import { folderPath, inFolder } from "@/server/youmind/folders";
 
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; folder?: string }>;
+  searchParams: Promise<{ error?: string; folder?: string; board?: string }>;
 }) {
   const admin = await currentAdmin();
   if (!admin) {
@@ -71,12 +72,15 @@ export default async function AdminPage({
   }
   try {
     // 读取当前 Board ID、来源文档、文件夹和已发布快照。
-    const boardId = await configuredBoard();
-    const [{ documents, folders }, published, params] = await Promise.all([
-      listSourceBoard(boardId),
+    const [boardIds, published, params] = await Promise.all([
+      configuredBoards(),
       cmsStore()?.list() ?? [],
       searchParams,
     ]);
+    const boardId = boardIds.includes(params.board ?? "")
+      ? params.board!
+      : boardIds[0];
+    const { documents, folders } = await listSourceBoard(boardId);
     const selected =
       params.folder === "root" ||
       folders.some((folder) => folder.id === params.folder)
@@ -139,7 +143,10 @@ export default async function AdminPage({
     return (
       <main className="cms-workspace">
         <aside className="cms-sidebar">
-          <Link href="/admin" className="cms-sidebar-current">
+          <Link
+            href={`/admin?board=${boardId}`}
+            className="cms-sidebar-current"
+          >
             文章库 <span>{documents.length}</span>
           </Link>
           <div className="cms-source-card">
@@ -159,6 +166,7 @@ export default async function AdminPage({
             </Link>
           </div>
           <FolderNavigation
+            boardId={boardId}
             folders={folders}
             documents={documents}
             selected={selected}
@@ -213,6 +221,7 @@ export default async function AdminPage({
                 文件夹 · {selected === "all" ? "全部文章" : folderTitle}
               </summary>
               <FolderNavigation
+                boardId={boardId}
                 folders={folders}
                 documents={documents}
                 selected={selected}
@@ -221,6 +230,9 @@ export default async function AdminPage({
           </div>
           <div className="cms-source-toolbar">
             <span>当前来源 · YouMind Board</span>
+            {boardIds.length > 1 && (
+              <BoardSelector boardIds={boardIds} selected={boardId} />
+            )}
             <Link href="/admin/settings">配置内容来源 →</Link>
           </div>
           <ArticleBrowser key={`${boardId}/${selected}`} rows={rows} />
